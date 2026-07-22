@@ -78,14 +78,13 @@ def configure_language_profile(root_dir: Path, language: str):
         content = agents_path.read_text(encoding='utf-8')
         target_line = f"Primary Unit Testing Command: {test_cmd}"
 
-        if "<TEST_COMMAND_PLACEHOLDER>" in content:
-            content = content.replace("Primary Unit Testing Command: <TEST_COMMAND_PLACEHOLDER>", target_line)
+        import re
+        content, n = re.subn(r'Primary Unit Testing Command:\s*`?[^`\n]+`?', target_line, content)
+        if n > 0:
+            agents_path.write_text(content, encoding='utf-8')
+            print(f"  ✓ Mutated AGENTS.md with primary test command: {test_cmd}")
         else:
-            import re
-            content = re.sub(r'Primary Unit Testing Command:\s*`[^`]+`', target_line, content)
-
-        agents_path.write_text(content, encoding='utf-8')
-        print(f"  ✓ Mutated AGENTS.md with primary test command: {test_cmd}")
+            print(f"  ⚠️ Warning: Could not locate Primary Unit Testing Command placeholder in AGENTS.md", file=sys.stderr)
 
 def clean_template_meta_docs(root_dir: Path, project_name: str, language: str):
     """Remove template-only meta docs and generate a clean project README."""

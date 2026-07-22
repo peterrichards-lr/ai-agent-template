@@ -82,13 +82,12 @@ def test_clean_template_meta_docs(tmp_path):
 
 def test_configure_language_profile_mutates_agents_md(tmp_path):
     agents_md = tmp_path / 'AGENTS.md'
-    agents_md.write_text(
-        "# Rules\n\nPrimary Unit Testing Command: <TEST_COMMAND_PLACEHOLDER>\n",
-        encoding='utf-8'
-    )
+    initial_text = "# Rules\n\nPrimary Unit Testing Command: `<TEST_COMMAND_PLACEHOLDER>`\n"
+    agents_md.write_text(initial_text, encoding='utf-8')
 
     configure_language_profile(tmp_path, 'go')
 
     updated_content = agents_md.read_text(encoding='utf-8')
+    assert updated_content != initial_text
     assert "`go test -v -race ./...`" in updated_content
     assert "<TEST_COMMAND_PLACEHOLDER>" not in updated_content
