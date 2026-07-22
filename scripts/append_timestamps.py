@@ -29,28 +29,28 @@ def should_ignore(path: Path) -> bool:
 def append_timestamps(root_dir: Path = None):
     if root_dir is None:
         root_dir = Path(__file__).parent.parent.resolve()
-        
+
     today_str = datetime.today().strftime('%Y-%m-%d')
     footer_text = f"\n\n<!-- markdownlint-disable MD049 -->\n---\n*Last Updated: {today_str}* | *Last Reviewed: {today_str}*\n"
-    
+
     print(f"Scanning for Markdown files in {root_dir}...")
-    
+
     count = 0
     updated_count = 0
-    
+
     for md_path in root_dir.rglob('*.md'):
         if should_ignore(md_path):
             continue
-            
+
         count += 1
         content = md_path.read_text(encoding='utf-8')
-        
+
         if not FOOTER_PATTERN.search(content):
             print(f"Appending timestamp footer to {md_path.relative_to(root_dir)}")
             content = content.rstrip()
             md_path.write_text(content + footer_text, encoding='utf-8')
             updated_count += 1
-            
+
     print(f"Done. Scanned {count} files. Injected footers into {updated_count} files.")
 
 if __name__ == '__main__':

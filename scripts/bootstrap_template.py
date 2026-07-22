@@ -21,7 +21,7 @@ SUPPORTED_LANGUAGES = ['generic', 'go', 'python', 'rust', 'java', 'node', 'lifer
 def check_system_dependencies():
     """Verify presence of essential tools: python >= 3.8, git, gh, pre-commit."""
     print("🔍 Checking system dependencies...")
-    
+
     # 1. Python version check
     py_version = sys.version_info
     if py_version < (3, 8):
@@ -54,12 +54,12 @@ def check_system_dependencies():
 def clean_template_meta_docs(root_dir: Path, project_name: str, language: str):
     """Remove template-only meta docs and generate a clean project README."""
     print("🧹 Cleaning template-specific meta documentation...")
-    
+
     template_guide = root_dir / 'docs' / 'TEMPLATE_GUIDE.md'
     if template_guide.exists():
         template_guide.unlink()
         print("  ✓ Removed template meta-doc (docs/TEMPLATE_GUIDE.md)")
-        
+
     # Generate clean project README.md
     today_str = datetime.today().strftime('%Y-%m-%d')
     clean_readme_content = f"""# {project_name}
@@ -121,7 +121,7 @@ def bootstrap(project_name: str, language: str, non_interactive: bool = False, i
     print(f"   Project Name  : {project_name}")
     print(f"   Language Stack : {language}")
     print("-" * 50)
-    
+
     check_system_dependencies()
     print("-" * 50)
 
@@ -172,7 +172,7 @@ def main():
     parser.add_argument('-y', '--non-interactive', action='store_true', help='Run in non-interactive mode')
     parser.add_argument('--install-deps', action='store_true', help='Automatically pip install requirements-dev.txt')
     parser.add_argument('--clean-template', action='store_true', help='Clean up template meta docs and generate clean project README')
-    
+
     args = parser.parse_args()
     bootstrap(args.name, args.lang, args.non_interactive, args.install_deps, args.clean_template)
 
