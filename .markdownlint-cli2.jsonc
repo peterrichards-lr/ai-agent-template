@@ -1,0 +1,14 @@
+{
+  "config": {
+    "MD013": false,
+    "MD033": false,
+    "MD024": false
+  },
+  "ignores": [
+    ".venv",
+    ".smoke_venv",
+    "node_modules",
+    ".github",
+    ".gemini"
+  ]
+}

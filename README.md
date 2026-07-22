@@ -50,7 +50,7 @@ The bootstrapper will:
 
 ## Repository Structure
 
-```
+```text
 .
 ├── AGENTS.md                          # Master routing index for AI agent skills
 ├── GEMINI.md                          # Persistent state tracking document
