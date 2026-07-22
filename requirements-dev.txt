@@ -1,5 +1,5 @@
-# Development & Pre-commit Quality Gate Dependencies
-pytest>=8.0.0
-pre-commit>=3.5.0
-detect-secrets>=1.5.0
-actionlint-py>=1.7.0
+# Development & Pre-commit Quality Gate Dependencies (Pinned Versions)
+pytest==8.3.4
+pre-commit==4.0.1
+detect-secrets==1.5.0
+actionlint-py==1.7.7.23

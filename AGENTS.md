@@ -35,6 +35,9 @@ Whenever executing CLI commands or developer tools via terminal, the agent MUST 
 ### 4. Technical Debt Logging
 If the agent encounters technical debt during a task (Code Smells, Duplication, Missing Tests, Security Hygiene, Config Drift, Doc Debt), it must immediately log a GitHub issue using `gh issue create --label "tech-debt"`.
 
+### 5. Primary Unit Testing Command
+Primary Unit Testing Command: `<TEST_COMMAND_PLACEHOLDER>`
+
 <!-- markdownlint-disable MD049 -->
 ---
 *Last Updated: 2026-07-22* | *Last Reviewed: 2026-07-22*

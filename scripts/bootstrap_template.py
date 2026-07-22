@@ -4,7 +4,8 @@ bootstrap_template.py - AI Agent Quickstart Project Initializer
 
 Configures the template repository for a new project, setting project name,
 language ecosystem profiles, initial GEMINI.md state, and documentation footers.
-Checks system dependencies, installs Git hooks, and executes pre-commit quality checks.
+Mutates AGENTS.md with ecosystem test commands, checks system dependencies,
+installs Git hooks, and executes pre-commit quality checks.
 Fails loudly if any required subprocess execution fails.
 """
 
@@ -54,28 +55,37 @@ def configure_language_profile(root_dir: Path, language: str):
     """Update AGENTS.md and ecosystem settings for the selected language stack."""
     print(f"🛠️ Configuring language profile for: {language}...")
 
-    # 1. Update AGENTS.md primary test guidance
+    if language == 'go':
+        test_cmd = '`go test -v -race ./...`'
+    elif language == 'python':
+        test_cmd = '`pytest -v --tb=short`'
+    elif language == 'rust':
+        test_cmd = '`cargo test --quiet`'
+    elif language == 'java':
+        test_cmd = '`mvn test -B`'
+    elif language == 'node':
+        test_cmd = '`npm test -- --ci`'
+    elif language == 'cpp':
+        test_cmd = '`ctest --output-on-failure`'
+    elif language == 'liferay':
+        test_cmd = '`./gradlew test`'
+    else:
+        test_cmd = '`the ecosystem non-interactive test command`'
+
+    # Mutate AGENTS.md with test_cmd
     agents_path = root_dir / 'AGENTS.md'
     if agents_path.exists():
         content = agents_path.read_text(encoding='utf-8')
-        if language == 'go':
-            test_cmd = '`go test -v -race ./...`'
-        elif language == 'python':
-            test_cmd = '`pytest -v --tb=short`'
-        elif language == 'rust':
-            test_cmd = '`cargo test --quiet`'
-        elif language == 'java':
-            test_cmd = '`mvn test -B`'
-        elif language == 'node':
-            test_cmd = '`npm test -- --ci`'
-        elif language == 'cpp':
-            test_cmd = '`ctest --output-on-failure`'
-        elif language == 'liferay':
-            test_cmd = '`./gradlew test`'
-        else:
-            test_cmd = 'the ecosystem non-interactive test command'
+        target_line = f"Primary Unit Testing Command: {test_cmd}"
 
-        print(f"  ✓ Language profile configured with test command: {test_cmd}")
+        if "<TEST_COMMAND_PLACEHOLDER>" in content:
+            content = content.replace("Primary Unit Testing Command: <TEST_COMMAND_PLACEHOLDER>", target_line)
+        else:
+            import re
+            content = re.sub(r'Primary Unit Testing Command:\s*`[^`]+`', target_line, content)
+
+        agents_path.write_text(content, encoding='utf-8')
+        print(f"  ✓ Mutated AGENTS.md with primary test command: {test_cmd}")
 
 def clean_template_meta_docs(root_dir: Path, project_name: str, language: str):
     """Remove template-only meta docs and generate a clean project README."""
@@ -166,7 +176,7 @@ def bootstrap(project_name: str, language: str, non_interactive: bool = False, i
 
     # 2. Configure Language Profile & Clean Template Meta Docs
     configure_language_profile(root_dir, language)
-    if clean_template:
+    if clean_template or non_interactive:
         clean_template_meta_docs(root_dir, project_name, language)
 
     # 3. Update GEMINI.md
@@ -199,8 +209,9 @@ def bootstrap(project_name: str, language: str, non_interactive: bool = False, i
         print("  🧪 Running local pre-commit quality gate checks...")
         res_run = subprocess.run(['pre-commit', 'run', '--all-files'], cwd=root_dir, check=False)
         if res_run.returncode != 0:
-            print("⚠️ Pre-commit quality checks reported warnings or auto-fixed formatting.", file=sys.stderr)
-            print("   Please review git diff and stage auto-fixes before committing.")
+            print("❌ Error: Pre-commit quality gate checks failed.", file=sys.stderr)
+            print("   Please review and resolve pre-commit errors before completing bootstrap.", file=sys.stderr)
+            sys.exit(1)
 
     print("\n✅ Bootstrap completed successfully!")
     print(f"   Next step: Edit GEMINI.md to set your initial milestones, then begin coding!")

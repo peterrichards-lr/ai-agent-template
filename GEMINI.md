@@ -3,7 +3,7 @@
 This document maintains persistent state across AI agent sessions. It records project goals, architectural constraints, completed tasks, active work state, technical debt, and roadmap priorities.
 
 > [!NOTE]
-> **Agent Directive**: AI agents MUST inspect and update this file before beginning work and after completing major milestones to ensure seamless state preservation.
+> **Agent Directive**: AI agents MUST inspect and update this file before beginning work and after completing major milestones to ensure seamless state preservation. Refer to [`AGENTS.md`](AGENTS.md) for the authoritative AI Agent Rules of Engagement.
 
 ---
 
@@ -16,15 +16,11 @@ This document maintains persistent state across AI agent sessions. It records pr
 
 ## 2. Active Constraints & Security Directives
 
-### Security & Secrets Management
-- **No Plaintext Credentials**: *Active Constraint*: Never commit or hardcode private keys, API tokens, certificates, or passphrases. Use environment variables, keyrings, or standard secret vaults.
-- **Temporary File Cleanup**: *Active Constraint*: Always delete temporary key files, certificates, or scratch artifacts before committing code.
-
-### Workflow & Quality Enforcement
-- **Multi-File Edits**: *Active Constraint*: Before executing multi-file edits, present an implementation plan and obtain approval.
-- **Atomic Changes**: *Active Constraint*: Execute changes in discrete, verifiable units.
-- **Predictive Failure Analysis**: *Active Constraint*: Append a "Failure Analysis" section to non-trivial logic edits detailing two edge cases and how the code handles them.
-- **Non-Interactive Execution**: *Active Constraint*: Append `-y` or `--non-interactive` flags to all CLI tooling invocations.
+Refer to [`AGENTS.md`](AGENTS.md) and `.agents/skills/` for the complete rules of engagement. Key constraints include:
+- **No Plaintext Credentials**: Never commit or hardcode private keys, API tokens, certificates, or passphrases.
+- **Temporary File Cleanup**: Always delete temporary key files, certificates, or scratch artifacts before committing code.
+- **Multi-File Edits & Planning**: Present an implementation plan and obtain approval before multi-file edits.
+- **Non-Interactive Execution**: Append `-y` or `--non-interactive` flags to all CLI tooling invocations.
 
 ---
 
