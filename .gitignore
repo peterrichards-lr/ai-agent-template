@@ -1,0 +1,77 @@
+# Multi-Language & AI Agent .gitignore
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# AI Agent Scratch & Context Directories
+.gemini/
+.agent_scratch/
+.progress-signal
+scratch/
+*.tmp
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.smoke_venv/
+.temp_venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Go
+bin/
+*.exe
+*.exe?
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.txt
+
+# Rust
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Java / Maven / Gradle
+.gradle/
+build/
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# TypeScript / Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.next/
+out/
+
+# Secret Baselines & Local Overrides
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt

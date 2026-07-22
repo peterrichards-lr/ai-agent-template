@@ -1,0 +1,49 @@
+# Language-Agnostic Pre-Commit Quality Gate Configuration
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.16.0
+    hooks:
+      - id: markdownlint-cli2
+        files: \.md$
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/Mateusz-Grzelinski/actionlint-py
+    rev: v1.7.12.24
+    hooks:
+      - id: actionlint
+
+  - repo: local
+    hooks:
+      - id: append-timestamps
+        name: Append Markdown Timestamps
+        entry: python3 scripts/append_timestamps.py
+        language: system
+        files: \.md$
+        pass_filenames: false
+
+      - id: check-docs-review
+        name: Check Documentation Review Staleness
+        entry: python3 scripts/check_docs_review.py --max-review-days 180 --max-update-days 180
+        language: system
+        files: \.md$
+        pass_filenames: false
