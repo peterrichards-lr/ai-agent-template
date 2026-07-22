@@ -8,8 +8,8 @@ This document maintains persistent state across AI agent sessions. It records pr
 ---
 
 ## 1. Project Goal & Overview
-- **Goal**: Core development for quickstart-demo.
-- **Target Stack**: Go
+- **Goal**: [Define the primary objective and business value of the project]
+- **Target Stack**: [Specify language(s): Go, Python, Rust, Java, TypeScript/Node.js, C++, Liferay, etc.]
 - **Architecture Overview**: [Brief description of key components, packages, or services]
 
 ---
@@ -33,7 +33,7 @@ This document maintains persistent state across AI agent sessions. It records pr
 - [x] Template repository initialization (`AGENTS.md`, `README.md`, `GEMINI.md`).
 - [ ] Bootstrap new project using `scripts/bootstrap_template.py`.
 - [ ] Define core domain model and project modules in `src/`.
-- [ ] Implement unit test suite baseline in `tests/` or equivalent.
+- [ ] Implement unit test suite baseline in `tests/`.
 - [ ] Setup GitHub Action CI quality workflow.
 
 ---

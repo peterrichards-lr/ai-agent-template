@@ -14,7 +14,7 @@ from datetime import datetime
 
 IGNORE_DIRS = {
     '.git', 'node_modules', '.venv', 'venv', 'env', '.smoke_venv',
-    'coverage', 'target', 'build', 'dist', 'bin', '.gemini', '.agent_scratch'
+    'coverage', 'target', 'build', 'dist', 'bin', '.gemini', '.agent_scratch', '.pytest_cache'
 }
 
 FOOTER_REGEX = re.compile(

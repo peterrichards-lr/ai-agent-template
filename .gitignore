@@ -6,11 +6,13 @@ Thumbs.db
 *.swp
 *.swo
 
-# AI Agent Scratch & Context Directories
+# AI Agent Scratch, Planning & Context Files
 .gemini/
 .agent_scratch/
 .progress-signal
 scratch/
+implementation_plan.md
+walkthrough.md
 *.tmp
 *.log
 
