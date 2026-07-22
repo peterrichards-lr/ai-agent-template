@@ -1,6 +1,6 @@
-# Template Architecture, Design Patterns & AI Agent Guide
+# Template Architecture, Design Patterns & Language Customization Guide
 
-Welcome to the **AI Agent Development Quickstart Template**. This document outlines why you and your engineering team should adopt this template, along with the core **AI Agent Design Patterns** and best practices integrated into its architecture.
+Welcome to the **AI Agent Development Quickstart Template**. This document outlines why you and your engineering team should adopt this template, the core **AI Agent Design Patterns** integrated into its architecture, and step-by-step instructions for customizing the repository for your target programming language.
 
 ---
 
@@ -58,6 +58,47 @@ This template solves these failure modes out of the box, providing a standardize
 ### 10. Multi-Agent Subagent Delegation & Asynchronous Synthesis
 - **Problem**: Large codebase surveys or parallel research blocking the primary developer agent.
 - **Pattern**: Delegates background exploration or static analysis to specialized subagents, synthesizing results asynchronously without polling.
+
+---
+
+## Language Customization Guide
+
+When bootstrapping this template for a specific programming language, follow these ecosystem customization steps:
+
+### 1. Go (`--lang go`)
+- **Initialization**: `python3 scripts/bootstrap_template.py --name "my-service" --lang go --clean-template`
+- **Source Layout**: Create `go.mod` in project root (`go mod init my-service`) and place source packages in `pkg/` or `cmd/`.
+- **Pre-Commit Hooks**: Append `gofmt` and `golangci-lint` to `.pre-commit-config.yaml`.
+- **Test Command**: Ensure `.agents/skills/unit-testing/SKILL.md` specifies `go test -v -race ./...`.
+
+### 2. Python (`--lang python`)
+- **Initialization**: `python3 scripts/bootstrap_template.py --name "my-app" --lang python --clean-template`
+- **Source Layout**: Create `pyproject.toml` or `requirements.txt` and place packages in `src/`.
+- **Pre-Commit Hooks**: Append `ruff` (`ruff check --fix`) and `mypy` to `.pre-commit-config.yaml`.
+- **Test Command**: Ensure `.agents/skills/unit-testing/SKILL.md` specifies `pytest -v --tb=short`.
+
+### 3. Rust (`--lang rust`)
+- **Initialization**: `python3 scripts/bootstrap_template.py --name "my-crate" --lang rust --clean-template`
+- **Source Layout**: Run `cargo init` in project root to generate `Cargo.toml` and `src/main.rs` / `src/lib.rs`.
+- **Pre-Commit Hooks**: Append `cargo fmt --check` and `cargo clippy -- -D warnings` to `.pre-commit-config.yaml`.
+- **Test Command**: Ensure `.agents/skills/unit-testing/SKILL.md` specifies `cargo test --quiet`.
+
+### 4. Java / Kotlin (`--lang java`)
+- **Initialization**: `python3 scripts/bootstrap_template.py --name "my-java-service" --lang java --clean-template`
+- **Source Layout**: Setup standard Maven (`pom.xml`) or Gradle (`build.gradle`) structure under `src/main/java` and `src/test/java`.
+- **Pre-Commit Hooks**: Append `checkstyle` or SpotBugs hooks to `.pre-commit-config.yaml`.
+- **Test Command**: Ensure `.agents/skills/unit-testing/SKILL.md` specifies `mvn test -B` or `./gradlew test --no-daemon`.
+
+### 5. TypeScript / Node.js (`--lang node`)
+- **Initialization**: `python3 scripts/bootstrap_template.py --name "my-node-app" --lang node --clean-template`
+- **Source Layout**: Create `package.json` and `tsconfig.json` placing source code in `src/`.
+- **Pre-Commit Hooks**: Append `eslint` and `prettier` to `.pre-commit-config.yaml`.
+- **Test Command**: Ensure `.agents/skills/unit-testing/SKILL.md` specifies `npm test -- --ci` or `npx vitest run`.
+
+### 6. Liferay Client Extensions (`--lang liferay`)
+- **Initialization**: `python3 scripts/bootstrap_template.py --name "my-cx-project" --lang liferay --clean-template`
+- **Source Layout**: Maintain `client-extension.yaml` at root and place microservices/assets in dedicated folders.
+- **Rules Alignment**: Enforce `Liferay.authToken` usage (no hardcoded secrets) and LDM integration commands.
 
 ---
 
