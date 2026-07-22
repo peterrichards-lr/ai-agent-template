@@ -69,7 +69,7 @@ This template solves these failure modes out of the box, providing a standardize
 | **`human-in-the-loop`** | Enforces safety gates for deployments, database drops, plain-text secret prohibitions, and visual diff approvals. |
 | **`coding-standards`** | Mandates DRY code discovery (`grep_search`), self-documenting code, defensive safety guards, and language idiom alignment. |
 | **`unit-testing`** | Enforces test-driven development, empirical verification gates, non-interactive execution, and prohibits superficial test deletion. |
-| **`documentation`** | Governs timestamp footers (`*Last Updated* | *Last Reviewed*`), post-feature doc updates, andstaleness policy checks. |
+| **`documentation`** | Governs timestamp footers (`*Last Updated* \| *Last Reviewed*`), post-feature doc updates, and staleness policy checks. |
 | **`github-workflow`** | Standardizes `gh` CLI usage, forces PRs to link `Closes #<issue>`, logs tech-debt, and cleans up historical CI failures. |
 | **`tool-use-react`** | Enforces reasoning before tool activation, non-interactive flags, and asynchronous task lifecycle management. |
 | **`multi-agent-orchestration`** | Governs subagent delegation criteria, clear prompt framing, and asynchronous result synthesis. |
