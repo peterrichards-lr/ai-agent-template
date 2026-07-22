@@ -4,8 +4,8 @@ bootstrap_template.py - AI Agent Quickstart Project Initializer
 
 Configures the template repository for a new project, setting project name,
 language ecosystem profiles, initial GEMINI.md state, and documentation footers.
-Cleans up template-specific meta-documentation so instantiated projects start
-with clean, project-specific documentation.
+Checks for local tool dependencies (Python 3, Git, gh CLI, pre-commit), installs
+Git hooks, and runs initial local pre-commit verification to prevent CI failures.
 """
 
 import sys
@@ -89,6 +89,9 @@ pip install -r requirements-dev.txt
 
 # Install Git pre-commit hooks
 pre-commit install
+
+# Run pre-commit quality checks locally
+pre-commit run --all-files
 ```
 
 ---
@@ -153,14 +156,16 @@ def bootstrap(project_name: str, language: str, non_interactive: bool = False, i
     except Exception as e:
         print(f"  ⚠️ Warning: Could not run append_timestamps: {e}")
 
-    # 3. Check pre-commit setup readiness
+    # 3. Check pre-commit setup readiness & run pre-commit quality check
     pre_commit_config = root_dir / '.pre-commit-config.yaml'
     if pre_commit_config.exists() and shutil.which('pre-commit'):
         try:
             subprocess.run(['pre-commit', 'install'], cwd=root_dir, check=False)
             print("  ✓ Installed Git pre-commit hooks")
+            print("  🧪 Running local pre-commit quality gate checks...")
+            subprocess.run(['pre-commit', 'run', '--all-files'], cwd=root_dir, check=False)
         except Exception as e:
-            print(f"  ⚠️ Could not install pre-commit hooks: {e}")
+            print(f"  ⚠️ Could not run pre-commit hooks: {e}")
 
     print("\n✅ Bootstrap completed successfully!")
     print(f"   Next step: Edit GEMINI.md to set your initial milestones, then begin coding!")
