@@ -41,6 +41,7 @@ python3 scripts/bootstrap_template.py --name "my-awesome-app" --lang go
 ```
 
 The bootstrapper will:
+
 1. Update project configuration files (`README.md`, `GEMINI.md`, `AGENTS.md`).
 2. Generate language-specific `.gitignore` and `.pre-commit-config.yaml` rules.
 3. Initialize local Git pre-commit hooks.
