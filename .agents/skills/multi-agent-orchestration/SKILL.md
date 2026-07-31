@@ -1,6 +1,6 @@
 # Skill: Multi-Agent Orchestration & Delegation
 
-**Trigger Condition**: Load this skill when delegating subtasks to subagents (`invoke_subagent`), spawning research subagents, or coordinating multi-agent workflows.
+**Trigger Condition**: Load this skill when delegating subtasks to subagents, spawning research subagents, or coordinating multi-agent workflows -- using whatever subagent-delegation mechanism your agent provides, if any. Not every agent supports subagents; where one doesn't, this skill doesn't apply.
 
 ---
 
@@ -23,4 +23,4 @@ Do not poll subagents in a loop. When subagents finish, synthesize their returne
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-22* | *Last Reviewed: 2026-07-22*
+*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*

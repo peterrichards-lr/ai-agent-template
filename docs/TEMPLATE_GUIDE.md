@@ -29,7 +29,7 @@ This template solves these failure modes out of the box, providing a standardize
 
 ### 3. Logic-First Planning & Predictive Failure Analysis
 - **Problem**: AI agents diving into multi-file code modifications prematurely, creating fragile or broken diffs.
-- **Pattern**: Before modifying code, the agent outputs a structured `implementation_plan.md` artifact specifying proposed file edits and open questions. It appends a **Predictive Failure Analysis** detailing two edge cases or failure modes and how the code handles them.
+- **Pattern**: Before modifying code, the agent writes out a structured implementation plan specifying proposed file edits and open questions, using whatever planning mechanism its own toolset provides. It appends a **Predictive Failure Analysis** detailing two edge cases or failure modes and how the code handles them.
 
 ### 4. Human-in-the-Loop Verification Gates
 - **Problem**: Unchecked agent execution leading to unintended production deployments, database purges, or leaked credentials.
@@ -109,9 +109,9 @@ When bootstrapping this template for a specific programming language, follow the
 
 | Skill Directory | Purpose & Design Pattern |
 | :--- | :--- |
-| **`reflection-and-planning`** | Implements Logic-First Planning, `implementation_plan.md` artifacts, Predictive Failure Analysis, and approval loops. |
+| **`reflection-and-planning`** | Implements Logic-First Planning, written implementation plans, Predictive Failure Analysis, and approval loops. |
 | **`human-in-the-loop`** | Enforces safety gates for deployments, database drops, plain-text secret prohibitions, and visual diff approvals. |
-| **`coding-standards`** | Mandates DRY code discovery (`grep_search`), self-documenting code, defensive safety guards, and language idiom alignment. |
+| **`coding-standards`** | Mandates DRY code discovery (using the agent's available code-search tool), self-documenting code, defensive safety guards, and language idiom alignment. |
 | **`unit-testing`** | Enforces test-driven development, empirical verification gates, non-interactive execution, and prohibits superficial test deletion. |
 | **`documentation`** | Governs timestamp footers (`*Last Updated* \| *Last Reviewed*`), post-feature doc updates, and staleness policy checks. |
 | **`github-workflow`** | Standardizes `gh` CLI usage, forces PRs to link `Closes #<issue>`, logs tech-debt, and cleans up historical CI failures. |
