@@ -35,6 +35,7 @@ Test commands MUST be run in non-interactive mode:
 > Instead, build each package's test binary explicitly into a directory the
 > project controls (and can get EDR-allowlisted if needed), then run that
 > binary directly:
+>
 > ```bash
 > mkdir -p .test-bin
 > for pkg in $(go list -f '{{if .TestGoFiles}}{{.ImportPath}}{{end}}' ./...); do
@@ -42,6 +43,7 @@ Test commands MUST be run in non-interactive mode:
 >   (cd "$(go list -f '{{.Dir}}' "$pkg")" && "$OLDPWD/.test-bin/pkg.test") || exit 1
 > done
 > ```
+>
 > Wrap this in a `Makefile` target (e.g. `make test`) or a script once the
 > project has one, rather than typing it out each time.
 
