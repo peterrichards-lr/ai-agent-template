@@ -30,7 +30,7 @@ Any technical statement, architecture decision, or bug diagnosis MUST be verifie
 After completing any feature or code change, the agent MUST inspect the project documentation, execute `scripts/append_timestamps.py` to update timestamp footers, and run `scripts/check_docs_review.py` to ensure document policy compliance.
 
 ### 3. Non-Interactive Default
-Whenever executing CLI commands or developer tools via terminal, the agent MUST explicitly append non-interactive flags (e.g. `-y`, `--non-interactive`, `--batch`, `-n`) to prevent blocking interactive prompts.
+Whenever executing CLI commands or developer tools via terminal, the agent MUST explicitly append non-interactive flags (e.g. `-y`, `--non-interactive`, `--batch`, `-n`) to prevent blocking interactive prompts -- for routine, safe confirmations only (a normal init/install prompt). This never overrides `human-in-the-loop/SKILL.md`'s Rule 1 (High-Risk Operation Gates): a confirmation prompt guarding a destructive or irreversible action must never be auto-answered this way. If in doubt which category a prompt falls into, treat it as high-risk and stop for human approval.
 
 ### 4. Technical Debt Logging
 If the agent encounters technical debt during a task (Code Smells, Duplication, Missing Tests, Security Hygiene, Config Drift, Doc Debt), it must immediately log a GitHub issue using `gh issue create --label "tech-debt"`.
@@ -40,4 +40,4 @@ Primary Unit Testing Command: `<TEST_COMMAND_PLACEHOLDER>`
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-22* | *Last Reviewed: 2026-07-22*
+*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*

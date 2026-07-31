@@ -23,6 +23,15 @@ All CLI commands executed via the agent's terminal/command-execution tool MUST a
 - `docker`: `--detach` or non-interactive flags
 - `git`: non-interactive environment settings
 
+**This does not override `human-in-the-loop/SKILL.md`.** These flags exist to
+stop a tool getting *stuck* waiting on a routine, safe confirmation (a normal
+init/install prompt) -- they must never be used to auto-confirm a prompt that
+exists specifically to stop a destructive or irreversible action (deleting
+data, dropping/truncating a database, an unreviewed package install with
+side effects, a production deployment, etc.). If a confirmation prompt could
+plausibly be either, treat it as the latter and stop for human approval
+instead of suppressing it.
+
 ### 3. Asynchronous Task Lifecycle
 
 After launching long-running or asynchronous background commands, the agent MUST NOT poll in a loop. Either proceed to independent parallel work or provide a brief status update and end the turn. The system will automatically wake the agent upon completion.
