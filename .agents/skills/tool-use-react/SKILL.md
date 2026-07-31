@@ -1,6 +1,6 @@
 # Skill: Tool Use & ReAct Reasoning
 
-**Trigger Condition**: Load this skill when invoking terminal tools (`run_command`), file editing tools, or background tasks.
+**Trigger Condition**: Load this skill when invoking terminal/command-execution tools, file editing tools, or background tasks -- whatever your agent's specific toolset calls them.
 
 ---
 
@@ -16,7 +16,7 @@ Before calling any tool, the agent MUST explicitly articulate its reasoning:
 
 ### 2. Non-Interactive CLI Boundaries
 
-All CLI commands executed via `run_command` MUST append non-interactive options:
+All CLI commands executed via the agent's terminal/command-execution tool MUST append non-interactive options:
 
 - `npm`: `--yes` or `-y`
 - `apt-get`: `-y`
@@ -29,4 +29,4 @@ After launching long-running or asynchronous background commands, the agent MUST
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-22* | *Last Reviewed: 2026-07-22*
+*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*

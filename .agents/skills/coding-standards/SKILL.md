@@ -7,7 +7,7 @@
 ## Directives & Rules of Engagement
 
 ### 1. DRY Enforcement & Code Discovery
-Before implementing new helper functions, utility methods, or data classes, the agent MUST run search tools (`grep_search`) across the codebase to look for pre-existing utilities. Tool search results MUST be cited in the response to prove verification.
+Before implementing new helper functions, utility methods, or data classes, the agent MUST use whatever code-search tool it has available (a grep/ripgrep-style search, an IDE symbol search, etc. -- the specific tool name varies by agent) to look across the codebase for pre-existing utilities. Tool search results MUST be cited in the response to prove verification.
 
 ### 2. Self-Documenting Code & Identifier Precision
 - Use domain-accurate, explicit variable and function names.
@@ -28,4 +28,4 @@ Before implementing new helper functions, utility methods, or data classes, the 
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-22* | *Last Reviewed: 2026-07-22*
+*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*
