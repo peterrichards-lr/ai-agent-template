@@ -89,5 +89,7 @@ def test_configure_language_profile_mutates_agents_md(tmp_path):
 
     updated_content = agents_md.read_text(encoding='utf-8')
     assert updated_content != initial_text
-    assert "`go test -v -race ./...`" in updated_content
+    assert "go test -v -race ./..." not in updated_content
+    assert "go test -c -o" in updated_content
+    assert "never bare `go test`" in updated_content
     assert "<TEST_COMMAND_PLACEHOLDER>" not in updated_content

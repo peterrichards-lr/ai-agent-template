@@ -38,7 +38,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 ## 3. Pull Request Protocol
 
 Before opening a Pull Request:
-1. Ensure all unit tests pass cleanly: `pytest`, `go test ./...`, `cargo test`, `npm test`, or equivalent.
+1. Ensure all unit tests pass cleanly: `pytest`, `cargo test`, `npm test`, or your ecosystem's equivalent. **For Go, never bare `go test`/`go test ./...`** -- see the EDR-safety warning in `.agents/skills/unit-testing/SKILL.md`.
 2. Run pre-commit checks locally: `pre-commit run --all-files`.
 3. Update documentation and inject timestamp footers via `python3 scripts/append_timestamps.py`.
 4. Ensure your PR description references the parent issue (e.g., `Closes #123`).
@@ -84,4 +84,4 @@ Expired PATs trigger `401 Unauthorized` errors on `gh` commands. Set calendar re
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-22* | *Last Reviewed: 2026-07-22*
+*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*

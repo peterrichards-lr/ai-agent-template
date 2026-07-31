@@ -56,7 +56,16 @@ def configure_language_profile(root_dir: Path, language: str):
     print(f"🛠️ Configuring language profile for: {language}...")
 
     if language == 'go':
-        test_cmd = '`go test -v -race ./...`'
+        # Never bare `go test`/`go test ./...` -- it compiles an unsigned
+        # test binary into the OS default temp dir and executes it, which
+        # trips behavior-based endpoint security (SentinelOne, CrowdStrike,
+        # etc.) for any package under test that opens a real network
+        # listener (httptest.Server, a WebSocket server, ...). Build named
+        # test binaries explicitly into a directory the project controls
+        # instead. See docs/TEMPLATE_GUIDE.md's EDR-safe testing note.
+        test_cmd = ('`go test -c -o <test-dir>/<pkg>.test <import-path>` per package '
+                    '(loop over `go list -f \'{{if .TestGoFiles}}{{.ImportPath}}{{end}}\' ./...`), '
+                    'then run each binary directly -- never bare `go test`/`go test ./...`')
     elif language == 'python':
         test_cmd = '`pytest -v --tb=short`'
     elif language == 'rust':

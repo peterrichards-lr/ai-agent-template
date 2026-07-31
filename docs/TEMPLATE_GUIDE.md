@@ -37,7 +37,7 @@ This template solves these failure modes out of the box, providing a standardize
 
 ### 5. Empirical Test-Driven Verification Gate
 - **Problem**: Agents declaring success ("I have fixed the bug") without running the compiler or test suite.
-- **Pattern**: Agents are forbidden from claiming completion based on file edits alone. They must execute non-interactive test commands (`go test`, `pytest`, `cargo test`, `mvn test`) and verify clean output before concluding work.
+- **Pattern**: Agents are forbidden from claiming completion based on file edits alone. They must execute the project's non-interactive test command for its ecosystem (`pytest`, `cargo test`, `mvn test`, or the EDR-safe compiled-binary pattern for Go -- see `.agents/skills/unit-testing/SKILL.md`) and verify clean output before concluding work.
 
 ### 6. Automated Documentation Hygiene & Decay Prevention
 - **Problem**: Documentation staleness as code evolves.
@@ -69,7 +69,10 @@ When bootstrapping this template for a specific programming language, follow the
 - **Initialization**: `python3 scripts/bootstrap_template.py --name "my-service" --lang go --clean-template`
 - **Source Layout**: Create `go.mod` in project root (`go mod init my-service`) and place source packages in `pkg/` or `cmd/`.
 - **Pre-Commit Hooks**: Append `gofmt` and `golangci-lint` to `.pre-commit-config.yaml`.
-- **Test Command**: Ensure `.agents/skills/unit-testing/SKILL.md` specifies `go test -v -race ./...`.
+- **Test Command**: Never bare `go test`/`go test ./...` -- see the EDR-safety
+  warning in `.agents/skills/unit-testing/SKILL.md`. Build named test
+  binaries into a project-controlled directory instead, ideally wrapped in a
+  `Makefile` target (e.g. `make test`) once the project has one.
 
 ### 2. Python (`--lang python`)
 - **Initialization**: `python3 scripts/bootstrap_template.py --name "my-app" --lang python --clean-template`
@@ -133,4 +136,4 @@ The bootstrapper script will:
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-22* | *Last Reviewed: 2026-07-22*
+*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*
