@@ -120,6 +120,12 @@ When bootstrapping this template for a specific programming language, follow the
 
 ---
 
+## Enforcing These Rules, Not Just Documenting Them
+
+Prose rules alone don't reliably bind agent behavior -- see `docs/BRANCH_PROTECTION.md` for the evidence and the recommended fix: importable GitHub repository rulesets that turn several of the conventions above (PR-only changes to main, required CI checks, issue-linking) into gates no one -- human or agent -- can silently skip.
+
+---
+
 ## Template Instantiation & Cleanup
 
 When initializing a new repository from this template:
@@ -136,4 +142,4 @@ The bootstrapper script will:
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*
+*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
