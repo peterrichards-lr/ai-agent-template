@@ -18,6 +18,7 @@ This document acts as the central **Routing Index**. When performing specific so
 | **[github-workflow](file:///.agents/skills/github-workflow/SKILL.md)** | [.agents/skills/github-workflow/SKILL.md](file:///.agents/skills/github-workflow/SKILL.md) | Managing issues, creating PRs, or resolving CI pipeline failures. | Governs GitHub CLI usage, issue linking (`Closes #<issue>`), PR constraints, and CI run cleanup. |
 | **[tool-use-react](file:///.agents/skills/tool-use-react/SKILL.md)** | [.agents/skills/tool-use-react/SKILL.md](file:///.agents/skills/tool-use-react/SKILL.md) | Executing terminal commands, file tools, or background tasks. | Enforces ReAct reasoning patterns, non-interactive flags (`-y`), and tool safety boundaries. |
 | **[multi-agent-orchestration](file:///.agents/skills/multi-agent-orchestration/SKILL.md)** | [.agents/skills/multi-agent-orchestration/SKILL.md](file:///.agents/skills/multi-agent-orchestration/SKILL.md) | Delegating tasks to subagents or running parallel background research. | Defines subagent invocation, prompt framing, and async result synthesis. |
+| **[rule-adherence](file:///.agents/skills/rule-adherence/SKILL.md)** | [.agents/skills/rule-adherence/SKILL.md](file:///.agents/skills/rule-adherence/SKILL.md) | Before merging, deploying, tagging a release, applying a ruleset, or declaring a task complete. | Addresses agents (including rule authors) not reliably following prose rules over long sessions: re-read before acting, prefer checkable artifacts, and self-correct visibly when a rule was missed. |
 
 ---
 
@@ -37,6 +38,9 @@ If the agent encounters technical debt during a task (Code Smells, Duplication, 
 
 ### 5. Primary Unit Testing Command
 Primary Unit Testing Command: `<TEST_COMMAND_PLACEHOLDER>`
+
+### 6. Rule Adherence
+Having read a rule earlier in a session doesn't mean it's still governing your behavior now -- this template's own history shows agents (including the one that wrote a rule) failing to follow it minutes later. Before a high-commitment action (merging, deploying, tagging, applying a ruleset), re-read the specific governing skill file fresh rather than relying on memory. If you catch yourself having already skipped a rule, say so explicitly and fix it retroactively rather than continuing quietly. See `rule-adherence/SKILL.md` for the full guidance, including preferring checkable artifacts (CI checks) over memory wherever a rule can be made one.
 
 <!-- markdownlint-disable MD049 -->
 ---
