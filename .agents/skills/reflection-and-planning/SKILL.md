@@ -20,8 +20,13 @@ Use whatever structured planning mechanism your agent provides for this (a dedic
 ### 2. User Approval Gate
 The agent MUST present the plan and then stop and wait for explicit human approval (e.g. "Proceed") before calling any file-modification tool. Use your agent's own mechanism for pausing and requesting feedback -- an explicit approval-request tool if one exists, or simply asking the question and ending the turn if it doesn't. Do not proceed to file edits on an assumption that silence or a vague acknowledgement counts as approval.
 
-### 3. Issue Comment Sync
-If the work being planned is tied to a GitHub issue (see `github-workflow/SKILL.md`), once the plan is approved (Rule 2), post a concise summary of it -- goal, key file changes, open questions if any; not the full verbatim plan -- as a comment on that issue (`gh issue comment <issue-number> --body "..."`) before beginning implementation. This keeps the issue itself a readable record of what was planned and done, independent of the agent's chat session -- visible to a teammate, a future agent picking up the same issue, or anyone auditing the work later.
+### 3. Issue Comment Sync & Open-Question Resolution
+- **A plan with unresolved Open Questions is not actionable.** Do not begin implementation until every open question from the plan has been explicitly answered -- an unanswered design ambiguity is exactly the kind of thing that turns into a wrong implementation.
+- If the work being planned is tied to a GitHub issue (see `github-workflow/SKILL.md`), once the plan is approved (Rule 2), post a concise summary of it -- goal, key file changes, open questions if any; not the full verbatim plan -- as a comment on that issue (`gh issue comment <issue-number> --body "..."`) before beginning implementation.
+- When an open question is subsequently answered, post the answer as a further comment on the same issue.
+- If answering an open question changes the plan, post the revised plan as another comment, clearly marked as a revision (e.g. "Revised plan (supersedes the above):") -- don't silently implement a different plan than the one the issue shows was approved.
+
+This keeps the issue itself a complete, readable record of what was planned, questioned, resolved, and (if changed) revised -- independent of the agent's chat session, visible to a teammate, a future agent picking up the same issue, or anyone auditing the work later.
 
 ### 4. Predictive Failure Analysis
 For non-trivial logic edits, the agent MUST append a section titled **Failure Analysis** to its task summary detailing:
