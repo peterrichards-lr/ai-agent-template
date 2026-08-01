@@ -12,6 +12,7 @@ All GitHub interactions MUST use the GitHub CLI (`gh`). Custom Python scripts us
 ### 2. Issue Synchronization & Task Linking
 - Every Pull Request MUST close a parent GitHub issue. In the PR body, include `Closes #<issue-number>`.
 - Before creating a PR, verify branch status against main (`git fetch origin main && git log HEAD..origin/main --oneline`).
+- Once an implementation plan for that issue is approved (see `reflection-and-planning/SKILL.md` Rule 3), post a concise summary of it as a comment on the issue before starting implementation -- keeps a readable record of what was planned independent of the agent's chat session.
 
 ### 3. CI Failure Analysis & Cleanup
 - If a GitHub Actions CI job fails, view logs via `gh run list` and `gh run view <run-id> --log`.
@@ -48,4 +49,4 @@ Expired tokens trigger `401 Unauthorized` errors on `gh` commands. Set calendar 
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-22* | *Last Reviewed: 2026-07-22*
+*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
