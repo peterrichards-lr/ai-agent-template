@@ -20,14 +20,17 @@ Use whatever structured planning mechanism your agent provides for this (a dedic
 ### 2. User Approval Gate
 The agent MUST present the plan and then stop and wait for explicit human approval (e.g. "Proceed") before calling any file-modification tool. Use your agent's own mechanism for pausing and requesting feedback -- an explicit approval-request tool if one exists, or simply asking the question and ending the turn if it doesn't. Do not proceed to file edits on an assumption that silence or a vague acknowledgement counts as approval.
 
-### 3. Predictive Failure Analysis
+### 3. Issue Comment Sync
+If the work being planned is tied to a GitHub issue (see `github-workflow/SKILL.md`), once the plan is approved (Rule 2), post a concise summary of it -- goal, key file changes, open questions if any; not the full verbatim plan -- as a comment on that issue (`gh issue comment <issue-number> --body "..."`) before beginning implementation. This keeps the issue itself a readable record of what was planned and done, independent of the agent's chat session -- visible to a teammate, a future agent picking up the same issue, or anyone auditing the work later.
+
+### 4. Predictive Failure Analysis
 For non-trivial logic edits, the agent MUST append a section titled **Failure Analysis** to its task summary detailing:
 1. **Edge Case 1**: Description of potential edge case / error boundary & how the code handles it.
 2. **Edge Case 2**: Description of concurrency, memory, or network failure & how the code handles it.
 
-### 4. Atomic Work Units
-Break multi-step implementations into discrete, isolated steps. Execute Step 1, verify tool output, summarize findings, and halt for user feedback before proceeding to Step 2.
+### 5. Atomic Work Units
+Break multi-step implementations into discrete, verifiable steps -- but once a plan is approved (Rule 2), execute its steps continuously; don't stop for a fresh approval after each one. Halt mid-plan only at a genuine decision point: a step reveals something the approved plan didn't anticipate (an unexpected error, a design assumption that turns out wrong, a file that doesn't match what the plan described), or a step is itself high-risk under `human-in-the-loop/SKILL.md`. Otherwise, verify each step's tool output as you go and summarize what was done at natural checkpoints or at the end -- not as a mandatory round-trip after every individual step. A plan that needs 5 approvals to execute 5 already-approved steps defeats the purpose of approving the plan in the first place.
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*
+*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
