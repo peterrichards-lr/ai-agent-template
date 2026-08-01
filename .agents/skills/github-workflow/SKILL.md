@@ -14,6 +14,19 @@ All GitHub interactions MUST use the GitHub CLI (`gh`). Custom Python scripts us
 - Before creating a PR, verify branch status against main (`git fetch origin main && git log HEAD..origin/main --oneline`).
 - Once an implementation plan for that issue is approved (see `reflection-and-planning/SKILL.md` Rule 3), post a concise summary of it as a comment on the issue before starting implementation -- keeps a readable record of what was planned independent of the agent's chat session.
 
+**This is CI-enforced, not just documented here.** The "Issue Link Check"
+workflow (`.github/workflows/issue-link-check.yml`) fails any PR that doesn't
+reference a `Closes|Fixes|Resolves #N` issue, unless the PR carries the
+`no-issue-needed` label (an intentional escape hatch for genuinely trivial
+changes -- don't reach for it just to skip filing an issue for real work).
+Prose-only versions of this rule don't reliably get followed -- a sibling
+project documented the exact same requirement and then had it skipped on the
+next 5 PRs regardless, including by the agent that had just written the
+rule. File the issue *before* running `gh pr create`; a CI failure after the
+fact just means going back to create one anyway. Once this check has proven
+out, add it to the repo's required status checks in branch protection
+settings -- that step can't be done from a workflow file alone.
+
 ### 3. CI Failure Analysis & Cleanup
 - If a GitHub Actions CI job fails, view logs via `gh run list` and `gh run view <run-id> --log`.
 - Fix the underlying cause and push a verified fix.
