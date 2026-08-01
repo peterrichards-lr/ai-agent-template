@@ -13,6 +13,7 @@ The agent MUST explicitly halt and request human approval before executing any o
 - Force pushing (`git push --force`) or overriding branch protection rules.
 - Merging code into `main`/`master`.
 - Creating or modifying repository branch protection / ruleset settings (see `docs/BRANCH_PROTECTION.md`) -- propose the change and wait for confirmation; don't apply it silently.
+- Pushing a version tag or publishing a release (see `release-management/SKILL.md`) -- propose the version number and release notes, and wait for confirmation. Tags become immutable once `protect-version-tags.json` is applied, so a wrong one can't be cleaned up, only superseded.
 
 Opening a Pull Request itself is not gated here -- it's cheap and fully reversible (just close it if it turns out to be wrong). Lumping it in with genuinely irreversible actions dilutes the seriousness of the ones that actually matter. The gate that matters is merging.
 
