@@ -19,7 +19,15 @@ All GitHub interactions MUST use the GitHub CLI (`gh`). Custom Python scripts us
 - Once a fix is verified green, delete the historical record of failed runs (`gh run delete <run-id>`) to keep the build history clean.
 
 ### 4. Technical Debt Issue Creation
-When encountering any of the 10 catalogued tech debt categories (Code Smells, Duplication, Over-complexity, Fragile Coupling, Missing Safety Guards, Missing Tests, Security Hygiene, Deprecated Patterns, Config Drift, Documentation Debt), immediately create a GitHub issue:
+Tech debt you notice but don't fix as part of the current task must still be tracked -- untracked debt is debt that never gets paid down. This is the single canonical place tech debt is tracked in this template: as a GitHub issue labeled `tech-debt`. Do not also maintain a separate registry elsewhere (`GEMINI.md` points back here rather than keeping its own list, for exactly this reason).
+
+The 10 catalogued categories: Code Smells, Duplication, Over-complexity, Fragile Coupling, Missing Safety Guards, Missing Tests, Security Hygiene, Deprecated Patterns, Config Drift, Documentation Debt.
+
+Apply this without derailing the task you're actually doing:
+- **Don't halt mid-task.** Keep working; log tech debt at a natural checkpoint (before opening your PR is fine) rather than interrupting the current edit the moment you spot something.
+- **Dedup first.** Before filing, check for an existing open issue covering the same thing: `gh issue list --label "tech-debt" --search "<keyword>"`. If one exists, comment or `+1` on it instead of creating a duplicate.
+- **Batch related findings into one issue.** If a single pass surfaces several instances of the same category (e.g. three duplicated helper functions), file one issue describing the pattern with all instances listed, not one issue per instance.
+- **Bar for filing.** File it if it's a real, specific problem you can point at -- not a vague "this area could be cleaner." If you can't say what a future agent should do with it, it's not ready to file yet.
 
 ```bash
 gh issue create --title "Tech Debt: [Title]" --body "[Details, File Path, Proposed Fix]" --label "tech-debt"
@@ -48,4 +56,4 @@ Expired tokens trigger `401 Unauthorized` errors on `gh` commands. Set calendar 
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-22* | *Last Reviewed: 2026-07-22*
+*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*

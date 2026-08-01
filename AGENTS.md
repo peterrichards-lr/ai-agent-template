@@ -33,11 +33,11 @@ After completing any feature or code change, the agent MUST inspect the project 
 Whenever executing CLI commands or developer tools via terminal, the agent MUST explicitly append non-interactive flags (e.g. `-y`, `--non-interactive`, `--batch`, `-n`) to prevent blocking interactive prompts -- for routine, safe confirmations only (a normal init/install prompt). This never overrides `human-in-the-loop/SKILL.md`'s Rule 1 (High-Risk Operation Gates): a confirmation prompt guarding a destructive or irreversible action must never be auto-answered this way. If in doubt which category a prompt falls into, treat it as high-risk and stop for human approval.
 
 ### 4. Technical Debt Logging
-If the agent encounters technical debt during a task (Code Smells, Duplication, Missing Tests, Security Hygiene, Config Drift, Doc Debt), it must immediately log a GitHub issue using `gh issue create --label "tech-debt"`.
+If the agent encounters technical debt during a task (Code Smells, Duplication, Missing Tests, Security Hygiene, Config Drift, Doc Debt, etc.), it must track it as a GitHub issue labeled `tech-debt` -- see `github-workflow/SKILL.md` rule 4 for the full category list, dedup, and batching guidance. Log it at a natural checkpoint (e.g. before opening the PR); don't interrupt the task at hand to do it the instant it's spotted.
 
 ### 5. Primary Unit Testing Command
 Primary Unit Testing Command: `<TEST_COMMAND_PLACEHOLDER>`
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*
+*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
