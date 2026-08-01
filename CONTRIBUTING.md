@@ -10,6 +10,7 @@ When working on this repository, AI agents MUST follow the operational directive
 1. **[AGENTS.md](AGENTS.md)**: Routing index for modular skills and universal engagement rules.
 2. **[GEMINI.md](GEMINI.md)**: Persistent state, active roadmap, and project constraints.
 3. **`.agents/skills/`**: Specific task instructions (`reflection-and-planning`, `unit-testing`, `coding-standards`, `github-workflow`, etc.).
+4. **[docs/BRANCH_PROTECTION.md](docs/BRANCH_PROTECTION.md)**: Recommended repository rulesets that turn several of the above conventions into real, CI/platform-enforced gates rather than prose alone.
 
 ---
 
@@ -84,4 +85,4 @@ Expired PATs trigger `401 Unauthorized` errors on `gh` commands. Set calendar re
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*
+*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
