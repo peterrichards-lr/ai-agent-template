@@ -34,11 +34,9 @@ Refer to [`AGENTS.md`](AGENTS.md) and `.agents/skills/` for the complete rules o
 
 ---
 
-## 4. Technical Debt Registry
+## 4. Technical Debt
 
-| Debt ID | Category | Location | Description | Proposed Remediation | Status |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| *None recorded yet* | - | - | - | - | - |
+Tracked as GitHub issues labeled `tech-debt`, not in this file -- see `.agents/skills/github-workflow/SKILL.md` rule 4 for the full policy (categories, dedup, batching). Keeping a second tech-debt list here would just drift out of sync with the real one.
 
 ---
 
@@ -52,4 +50,4 @@ Refer to [`AGENTS.md`](AGENTS.md) and `.agents/skills/` for the complete rules o
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-22* | *Last Reviewed: 2026-07-22*
+*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
