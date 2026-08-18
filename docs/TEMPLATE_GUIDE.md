@@ -23,9 +23,9 @@ This template solves these failure modes out of the box, providing a standardize
 - **Problem**: Monolithic system prompts consume thousands of tokens on every message, confusing the agent.
 - **Pattern**: `AGENTS.md` acts as a lightweight routing table. Specific operational directives are isolated inside modular `.agents/skills/<skill>/SKILL.md` files. The agent dynamically loads only the skill relevant to its active task (e.g., loading `unit-testing` only during verification).
 
-### 2. Session-Agnostic Persistent State Engine (`GEMINI.md`)
-- **Problem**: AI agent context resets when a new conversation begins.
-- **Pattern**: `GEMINI.md` serves as a persistent state file tracking project goals, active tasks, completed milestones, roadmap priorities, and rules of engagement. Agents inspect and update `GEMINI.md` before starting work and after completing milestones.
+### 2. Provider-Agnostic Routing & Persistent Scratchpad (`.agent-state.md`)
+- **Problem**: AI agent context resets when a new conversation begins, or context is fragmented across provider-specific files (`GEMINI.md`, `CLAUDE.md`).
+- **Pattern**: `GEMINI.md` and `CLAUDE.md` exist solely as lightweight discovery redirects to `AGENTS.md`. Active in-flight state is managed in `.agent-state.md` (gitignored), ensuring seamless context preservation across AI provider switches (Gemini, Claude, Cursor, Copilot, etc.).
 
 ### 3. Logic-First Planning & Predictive Failure Analysis
 - **Problem**: AI agents diving into multi-file code modifications prematurely, creating fragile or broken diffs.

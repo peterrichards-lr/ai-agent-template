@@ -3,7 +3,7 @@
 bootstrap_template.py - AI Agent Quickstart Project Initializer
 
 Configures the template repository for a new project, setting project name,
-language ecosystem profiles, initial GEMINI.md state, and documentation footers.
+language ecosystem profiles, initial .agent-state.md scratchpad, and documentation footers.
 Mutates AGENTS.md with ecosystem test commands, checks system dependencies,
 installs Git hooks, and executes pre-commit quality checks.
 Fails loudly if any required subprocess execution fails.
@@ -141,10 +141,11 @@ pre-commit run --all-files
 
 ## AI Agent Pair Programming Workflow
 
-This repository uses **Agent Skills** located in `.agents/skills/` and persistent state tracking in `GEMINI.md`:
+This repository uses **Agent Skills** located in `.agents/skills/` and persistent state tracking in `.agent-state.md`:
 
 - **Master Routing Index**: Refer to [`AGENTS.md`](AGENTS.md) for available agent skills and rules of engagement.
-- **Session State**: Update [`GEMINI.md`](GEMINI.md) before starting major milestones or architectural changes.
+- **Provider Redirects**: [`GEMINI.md`](GEMINI.md) and [`CLAUDE.md`](CLAUDE.md) redirect to `AGENTS.md`.
+- **Session State**: Update [`.agent-state.md`](.agent-state.md) before starting major milestones or architectural changes.
 - **Documentation Verification**: Run `python3 scripts/append_timestamps.py` and `python3 scripts/check_docs_review.py` after implementing features.
 
 ---
@@ -187,14 +188,20 @@ def bootstrap(project_name: str, language: str, non_interactive: bool = False, i
     if clean_template or non_interactive:
         clean_template_meta_docs(root_dir, project_name, language)
 
-    # 3. Update GEMINI.md
-    gemini_path = root_dir / 'GEMINI.md'
-    if gemini_path.exists():
-        content = gemini_path.read_text(encoding='utf-8')
-        content = content.replace('[Define the primary objective and business value of the project]', f'Core development for {project_name}.')
-        content = content.replace('[Specify language(s): Go, Python, Rust, Java, TypeScript/Node.js, C++, Liferay, etc.]', language.capitalize())
-        gemini_path.write_text(content, encoding='utf-8')
-        print(f"  ✓ Customised GEMINI.md with project name and language stack ({language})")
+    # 3. Update .agent-state.md and AGENTS.md
+    agent_state_path = root_dir / '.agent-state.md'
+    if agent_state_path.exists():
+        content = agent_state_path.read_text(encoding='utf-8')
+        content = content.replace('ai-agent-template', project_name)
+        agent_state_path.write_text(content, encoding='utf-8')
+        print(f"  ✓ Customized .agent-state.md with project name ({project_name})")
+
+    agents_path = root_dir / 'AGENTS.md'
+    if agents_path.exists():
+        content = agents_path.read_text(encoding='utf-8')
+        content = content.replace('ai-agent-template', project_name)
+        agents_path.write_text(content, encoding='utf-8')
+        print(f"  ✓ Customized AGENTS.md with project name ({project_name})")
 
     # 4. Append/Update timestamps
     try:
@@ -222,7 +229,7 @@ def bootstrap(project_name: str, language: str, non_interactive: bool = False, i
             sys.exit(1)
 
     print("\n✅ Bootstrap completed successfully!")
-    print(f"   Next step: Edit GEMINI.md to set your initial milestones, then begin coding!")
+    print(f"   Next step: Edit .agent-state.md to set your initial milestones, then begin coding!")
 
 def main():
     parser = argparse.ArgumentParser(description="Bootstrap an AI Agent-assisted project.")

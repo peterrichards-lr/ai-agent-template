@@ -9,7 +9,8 @@ Whether you are building in **Go**, **Python**, **Rust**, **Java**, **TypeScript
 ## Key Features
 
 - 🧠 **Context-Optimized Agent Routing (`AGENTS.md`)**: Decouples agent rules into domain-specific skill files (`.agents/skills/`), preventing prompt bloat and context token exhaustion.
-- 📌 **Persistent State Engine (`GEMINI.md`)**: Maintains continuity across chat sessions by tracking project status, active goals, roadmap items, and rules of engagement.
+- 🔀 **Provider Discovery Redirects (`GEMINI.md`, `CLAUDE.md`)**: Lightweight redirects ensuring all AI providers load canonical rules from `AGENTS.md`.
+- 📌 **Persistent Scratchpad State (`.agent-state.md`)**: Shared gitignored scratchpad tracking project status, active goals, and roadmap priorities across provider switches.
 - 🛡️ **Language-Agnostic Quality Gates (`.pre-commit-config.yaml`)**: Out-of-the-box pre-commit configuration supporting secret scanning (`detect-secrets`, `gitleaks`), markdown link validation, document review policies, and modular linting for Go, Python, Rust, Java, and Node.js.
 - ⏱️ **Automated Documentation Hygiene**: Zero-dependency Python 3 tools (`append_timestamps.py` and `check_docs_review.py`) to enforce timestamp footers (`*Last Updated* | *Last Reviewed*`) and prevent documentation decay.
 - ⚙️ **Project Bootstrapper (`scripts/bootstrap_template.py`)**: One-command initialization script that customizes the template for your chosen programming language stack, installs git hooks, and seeds project metadata.
@@ -42,7 +43,7 @@ python3 scripts/bootstrap_template.py --name "my-awesome-app" --lang go
 
 The bootstrapper will:
 
-1. Update project configuration files (`README.md`, `GEMINI.md`, `AGENTS.md`).
+1. Update project configuration files (`README.md`, `.agent-state.md`, `AGENTS.md`).
 2. Generate language-specific `.gitignore` and `.pre-commit-config.yaml` rules.
 3. Initialize local Git pre-commit hooks.
 4. Inject initial documentation timestamps.
@@ -54,7 +55,9 @@ The bootstrapper will:
 ```text
 .
 ├── AGENTS.md                          # Master routing index for AI agent skills
-├── GEMINI.md                          # Persistent state tracking document
+├── GEMINI.md                          # Discovery redirect to AGENTS.md (Gemini CLI)
+├── CLAUDE.md                          # Discovery redirect to AGENTS.md (Claude CLI)
+├── .agent-state.md                    # Gitignored persistent task scratchpad
 ├── CONTRIBUTING.md                    # Guidelines for human & AI agent contributors
 ├── README.md                          # This file
 ├── LICENSE                            # MIT License
@@ -85,9 +88,9 @@ The bootstrapper will:
 
 ## AI Agent Workflow & Interaction Model
 
-When interacting with an AI coding assistant in this repository, the agent will automatically follow the **Rules of Engagement** specified in `AGENTS.md` and `GEMINI.md`:
+When interacting with an AI coding assistant in this repository, the agent will automatically follow the **Rules of Engagement** specified in `AGENTS.md` and `.agent-state.md`:
 
-1. **State Persistence**: Before making structural changes, the agent updates `GEMINI.md` to persist current context.
+1. **State Persistence**: Before making structural changes, the agent updates `.agent-state.md` to persist current context.
 2. **Context-Driven Skill Activation**: The agent loads only the relevant `.agents/skills/<skill>/SKILL.md` file required for the current task.
 3. **Logic-First Planning**: For complex changes, the agent presents an implementation plan before modifying files.
 4. **Documentation Sync**: After writing code, the agent runs `scripts/append_timestamps.py` and `scripts/check_docs_review.py` to maintain documentation hygiene.

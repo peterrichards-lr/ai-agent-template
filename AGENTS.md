@@ -1,12 +1,22 @@
-# Master AI Agent Rules & Skills Directory
+# AI Agent Template - Canonical Agent Context
 
-To prevent agent prompt bloat, cognitive overload, and excessive token usage, project rules are organized into active, modular skill files located under `.agents/skills/`.
+This document is the single source of truth for AI agent rules in this repository across all AI providers (Gemini, Claude, Cursor, Copilot, etc.). It acts as a canonical router pointing to modular skill instructions under `.agents/skills/` and in-flight scratchpad state in `.agent-state.md`.
 
-This document acts as the central **Routing Index**. When performing specific software engineering tasks, the AI agent must reference and activate the corresponding skill file.
+Provider discovery files (`GEMINI.md`, `CLAUDE.md`) exist only so each tool finds this file, and redirect straight back here. Do not duplicate context into them.
 
 ---
 
-## Skills Directory & Activation Routing
+## 1. Project Identity & Architecture
+
+- **Repository**: `ai-agent-template` - reusable multi-language project template for AI Agent-assisted development.
+- **Provider-Agnostic Model**: Discovery files (`GEMINI.md`, `CLAUDE.md`) redirect to `AGENTS.md`. In-flight task scratchpad lives in `.agent-state.md` (gitignored).
+- **Quality Gates**: Pre-commit hooks, documentation timestamp footers, linting, and automated unit testing per language ecosystem stack.
+
+---
+
+## 2. Skills Routing Directory
+
+Project rules are organized into active, modular skill files located under `.agents/skills/`. Reference and activate the corresponding skill file when executing relevant tasks:
 
 | Skill Name | Skill Path | Trigger Condition / When to Load | Description |
 | :--- | :--- | :--- | :--- |
@@ -18,31 +28,53 @@ This document acts as the central **Routing Index**. When performing specific so
 | **[github-workflow](file:///.agents/skills/github-workflow/SKILL.md)** | [.agents/skills/github-workflow/SKILL.md](file:///.agents/skills/github-workflow/SKILL.md) | Managing issues, creating PRs, or resolving CI pipeline failures. | Governs GitHub CLI usage, issue linking (`Closes #<issue>`), PR constraints, and CI run cleanup. |
 | **[tool-use-react](file:///.agents/skills/tool-use-react/SKILL.md)** | [.agents/skills/tool-use-react/SKILL.md](file:///.agents/skills/tool-use-react/SKILL.md) | Executing terminal commands, file tools, or background tasks. | Enforces ReAct reasoning patterns, non-interactive flags (`-y`), and tool safety boundaries. |
 | **[multi-agent-orchestration](file:///.agents/skills/multi-agent-orchestration/SKILL.md)** | [.agents/skills/multi-agent-orchestration/SKILL.md](file:///.agents/skills/multi-agent-orchestration/SKILL.md) | Delegating tasks to subagents or running parallel background research. | Defines subagent invocation, prompt framing, and async result synthesis. |
-| **[rule-adherence](file:///.agents/skills/rule-adherence/SKILL.md)** | [.agents/skills/rule-adherence/SKILL.md](file:///.agents/skills/rule-adherence/SKILL.md) | Before merging, deploying, tagging a release, applying a ruleset, or declaring a task complete. | Addresses agents (including rule authors) not reliably following prose rules over long sessions: re-read before acting, prefer checkable artifacts, and self-correct visibly when a rule was missed. |
-| **[release-management](file:///.agents/skills/release-management/SKILL.md)** | [.agents/skills/release-management/SKILL.md](file:///.agents/skills/release-management/SKILL.md) | Tagging a version, publishing a release, or when a meaningful batch of merged changes has accumulated. | Governs semantic versioning, requiring real release notes (not a bare tag), auditing issue closure before drafting them, and treating tagging as a human-in-the-loop gate. |
+| **[rule-adherence](file:///.agents/skills/rule-adherence/SKILL.md)** | [.agents/skills/rule-adherence/SKILL.md](file:///.agents/skills/rule-adherence/SKILL.md) | Before merging, deploying, tagging a release, applying a ruleset, or declaring a task complete. | Addresses agents not reliably following prose rules: re-read before acting, prefer checkable artifacts, and self-correct visibly. |
+| **[release-management](file:///.agents/skills/release-management/SKILL.md)** | [.agents/skills/release-management/SKILL.md](file:///.agents/skills/release-management/SKILL.md) | Tagging a version, publishing a release, or when merged changes accumulate. | Governs semantic versioning, release notes, auditing issue closure, and human verification gates. |
 
 ---
 
-## Universal Rules of Engagement
+## 3. Current Work State
 
-### 1. No Assumptions (Anti-Hallucination Protocol)
+Active, in-flight task state and intra-task scratchpad context are maintained locally in `.agent-state.md` (gitignored).
+
+- **On Session Startup**: If `.agent-state.md` exists, read it to discover active objectives and resume in-flight work without lost context across AI provider switches.
+- **During Execution**: Update `.agent-state.md` when making progress, encountering blockers, or pausing a workflow.
+- **On Feature Completion**: Clear or reset `.agent-state.md` once all objectives and verification steps are met.
+
+---
+
+## 4. Universal Rules of Engagement
+
+### 1. Anti-Hallucination Protocol
 Any technical statement, architecture decision, or bug diagnosis MUST be verified against actual code using search and file viewing tools before taking action. Do not guess variable names, file paths, or API signatures.
 
 ### 2. Active Documentation Maintenance Rule
 After completing any feature or code change, the agent MUST inspect the project documentation, execute `scripts/append_timestamps.py` to update timestamp footers, and run `scripts/check_docs_review.py` to ensure document policy compliance.
 
 ### 3. Non-Interactive Default
-Whenever executing CLI commands or developer tools via terminal, the agent MUST explicitly append non-interactive flags (e.g. `-y`, `--non-interactive`, `--batch`, `-n`) to prevent blocking interactive prompts -- for routine, safe confirmations only (a normal init/install prompt). This never overrides `human-in-the-loop/SKILL.md`'s Rule 1 (High-Risk Operation Gates): a confirmation prompt guarding a destructive or irreversible action must never be auto-answered this way. If in doubt which category a prompt falls into, treat it as high-risk and stop for human approval.
+Whenever executing CLI commands or developer tools via terminal, the agent MUST explicitly append non-interactive flags (e.g. `-y`, `--non-interactive`, `--batch`, `-n`) to prevent blocking interactive prompts -- for routine, safe confirmations only. This never overrides `human-in-the-loop/SKILL.md`'s Rule 1 (High-Risk Operation Gates).
 
 ### 4. Technical Debt Logging
-If the agent encounters technical debt during a task (Code Smells, Duplication, Missing Tests, Security Hygiene, Config Drift, Doc Debt, etc.), it must track it as a GitHub issue labeled `tech-debt` -- see `github-workflow/SKILL.md` rule 4 for the full category list, dedup, and batching guidance. Log it at a natural checkpoint (e.g. before opening the PR); don't interrupt the task at hand to do it the instant it's spotted.
+If the agent encounters technical debt during a task (Code Smells, Duplication, Missing Tests, Security Hygiene, Config Drift, Doc Debt, etc.), it must track it as a GitHub issue labeled `tech-debt` -- see `github-workflow/SKILL.md` rule 4 for the full policy.
 
 ### 5. Primary Unit Testing Command
 Primary Unit Testing Command: `<TEST_COMMAND_PLACEHOLDER>`
 
 ### 6. Rule Adherence
-Having read a rule earlier in a session doesn't mean it's still governing your behavior now -- this template's own history shows agents (including the one that wrote a rule) failing to follow it minutes later. Before a high-commitment action (merging, deploying, tagging, applying a ruleset), re-read the specific governing skill file fresh rather than relying on memory. If you catch yourself having already skipped a rule, say so explicitly and fix it retroactively rather than continuing quietly. See `rule-adherence/SKILL.md` for the full guidance, including preferring checkable artifacts (CI checks) over memory wherever a rule can be made one.
+Before a high-commitment action (merging, deploying, tagging, applying a ruleset), re-read the specific governing skill file fresh rather than relying on memory. See `rule-adherence/SKILL.md` for full guidance.
+
+---
+
+## 5. Related References
+
+| File | Purpose |
+| :--- | :--- |
+| [`.agent-state.md`](./.agent-state.md) | In-flight task state, synced between AI providers. Gitignored. |
+| [`README.md`](./README.md) | Consumer-facing documentation & quick setup. |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Contribution guidelines and quality gate commands. |
 
 <!-- markdownlint-disable MD049 -->
+
 ---
-*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
+
+*Last Updated: 2026-08-18* | *Last Reviewed: 2026-08-18*
