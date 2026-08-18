@@ -142,4 +142,4 @@ The bootstrapper script will:
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
+*Last Updated: 2026-08-18* | *Last Reviewed: 2026-08-18*
