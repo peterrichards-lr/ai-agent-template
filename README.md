@@ -37,8 +37,8 @@ Run the language-agnostic bootstrapper to configure your project details and set
 # Interactive setup
 python3 scripts/bootstrap_template.py
 
-# Or specify your language stack directly (e.g., go, python, rust, java, node, generic)
-python3 scripts/bootstrap_template.py --name "my-awesome-app" --lang go
+# Or specify your language stack and GitHub SEO metadata directly
+python3 scripts/bootstrap_template.py --name "my-awesome-app" --lang go --repo-desc "High-performance Go service built with AI Agent pair programming" --repo-topics "ai-agent,developer-tools,go"
 ```
 
 The bootstrapper will:
@@ -47,6 +47,7 @@ The bootstrapper will:
 2. Generate language-specific `.gitignore` and `.pre-commit-config.yaml` rules.
 3. Initialize local Git pre-commit hooks.
 4. Inject initial documentation timestamps.
+5. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
 
 ---
 
@@ -104,4 +105,5 @@ This template is open source and available under the [MIT License](LICENSE).
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-18* | *Last Reviewed: 2026-08-18*
+*Last Updated: 2026-08-19* | *Last Reviewed: 2026-08-19*
+

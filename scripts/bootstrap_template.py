@@ -162,7 +162,48 @@ This project is licensed under the [MIT License](LICENSE).
     readme_path.write_text(clean_readme_content, encoding='utf-8')
     print(f"  ✓ Generated clean project README.md for '{project_name}'")
 
-def bootstrap(project_name: str, language: str, non_interactive: bool = False, install_deps: bool = False, clean_template: bool = False):
+def get_default_topics(language: str) -> list:
+    """Return default GitHub SEO topics based on language stack."""
+    base_topics = ['ai-agent', 'developer-tools']
+    if language and language != 'generic':
+        base_topics.append(language.lower())
+    else:
+        base_topics.append('template-repository')
+    return base_topics
+
+def configure_repository_seo(repo_desc: str = None, repo_topics: list = None, language: str = 'generic'):
+    """Configure GitHub repository description and SEO topics via gh CLI if available."""
+    gh_bin = shutil.which('gh')
+    if not gh_bin:
+        print("  ⚠️ Skipping GitHub SEO configuration: gh CLI not found in PATH.")
+        return
+
+    topics = repo_topics if repo_topics else get_default_topics(language)
+    topics_csv = ",".join([t.strip() for t in topics if t.strip()])
+
+    print(f"🏷️ Configuring GitHub Repository SEO (Topics: {topics_csv})...")
+    cmd = [gh_bin, 'repo', 'edit', '--add-topic', topics_csv]
+    if repo_desc:
+        cmd.extend(['--description', repo_desc])
+
+    res = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if res.returncode == 0:
+        print(f"  ✓ Updated GitHub repository topics ({topics_csv})")
+        if repo_desc:
+            print(f"  ✓ Updated GitHub repository description")
+    else:
+        print(f"  ⚠️ Warning: Could not update GitHub repo via gh CLI (Code {res.returncode}): {res.stderr.strip()}")
+
+def bootstrap(
+    project_name: str,
+    language: str,
+    non_interactive: bool = False,
+    install_deps: bool = False,
+    clean_template: bool = False,
+    repo_desc: str = None,
+    repo_topics: str = None,
+    setup_branch_protection: bool = False
+):
     root_dir = Path(__file__).parent.parent.resolve()
     print(f"🚀 Initializing AI Agent Project Template in: {root_dir}")
     print(f"   Project Name  : {project_name}")
@@ -212,7 +253,20 @@ def bootstrap(project_name: str, language: str, non_interactive: bool = False, i
         print(f"❌ Error running append_timestamps: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # 5. Pre-commit setup readiness & local verification check
+    # 5. Configure GitHub Repository SEO (Description & Topics)
+    parsed_topics = [t.strip() for t in repo_topics.split(',')] if repo_topics else None
+    configure_repository_seo(repo_desc=repo_desc, repo_topics=parsed_topics, language=language)
+
+    # 6. Optionally configure GitHub Branch Protection Ruleset
+    if setup_branch_protection:
+        try:
+            from setup_branch_protection import apply_branch_protection
+            ruleset_file = root_dir / '.github' / 'rulesets' / 'main-protection.json'
+            apply_branch_protection(ruleset_file)
+        except Exception as e:
+            print(f"  ⚠️ Could not apply branch protection ruleset: {e}", file=sys.stderr)
+
+    # 7. Pre-commit setup readiness & local verification check
     pre_commit_config = root_dir / '.pre-commit-config.yaml'
     if pre_commit_config.exists() and shutil.which('pre-commit'):
         print("  ✓ Installing Git pre-commit hooks...")
@@ -238,9 +292,23 @@ def main():
     parser.add_argument('-y', '--non-interactive', action='store_true', help='Run in non-interactive mode')
     parser.add_argument('--install-deps', action='store_true', help='Automatically pip install requirements-dev.txt')
     parser.add_argument('--clean-template', action='store_true', help='Clean up template meta docs and generate clean project README')
+    parser.add_argument('--repo-desc', type=str, default=None, help='GitHub repository description for SEO')
+    parser.add_argument('--repo-topics', type=str, default=None, help='Comma-separated list of GitHub topics for SEO')
+    parser.add_argument('--setup-branch-protection', action='store_true', help='Apply GitHub branch protection ruleset via gh CLI')
 
     args = parser.parse_args()
-    bootstrap(args.name, args.lang, args.non_interactive, args.install_deps, args.clean_template)
+    bootstrap(
+        project_name=args.name,
+        language=args.lang,
+        non_interactive=args.non_interactive,
+        install_deps=args.install_deps,
+        clean_template=args.clean_template,
+        repo_desc=args.repo_desc,
+        repo_topics=args.repo_topics,
+        setup_branch_protection=args.setup_branch_protection
+    )
 
 if __name__ == '__main__':
     main()
+
+

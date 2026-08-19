@@ -14,8 +14,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 
 from append_timestamps import append_timestamps, should_ignore
 from check_docs_review import check_docs, parse_date
-from bootstrap_template import configure_language_profile, clean_template_meta_docs
+from bootstrap_template import configure_language_profile, clean_template_meta_docs, get_default_topics
 from gh_issue_sync import sync_issues
+from setup_branch_protection import apply_branch_protection, validate_ruleset_file
 
 def test_should_ignore_directories(tmp_path):
     assert should_ignore(tmp_path / '.git' / 'README.md') is True
@@ -93,3 +94,28 @@ def test_configure_language_profile_mutates_agents_md(tmp_path):
     assert "go test -c -o" in updated_content
     assert "never bare `go test`" in updated_content
     assert "<TEST_COMMAND_PLACEHOLDER>" not in updated_content
+
+def test_get_default_topics():
+    topics_go = get_default_topics('go')
+    assert 'ai-agent' in topics_go
+    assert 'developer-tools' in topics_go
+    assert 'go' in topics_go
+
+    topics_python = get_default_topics('python')
+    assert 'ai-agent' in topics_python
+    assert 'python' in topics_python
+
+def test_setup_branch_protection_dry_run(tmp_path):
+    ruleset_file = tmp_path / 'ruleset.json'
+    ruleset_data = {
+        "name": "Test Ruleset",
+        "target": "branch",
+        "enforcement": "active",
+        "rules": [{"type": "deletion"}]
+    }
+    ruleset_file.write_text(json.dumps(ruleset_data), encoding='utf-8')
+
+    assert validate_ruleset_file(ruleset_file) == ruleset_data
+    assert apply_branch_protection(ruleset_file, dry_run=True) is True
+
+

@@ -68,6 +68,17 @@ Expose the token via `export GH_TOKEN="github_pat_..."` inside non-tracked shell
 #### Expiration & Token Rotation
 Expired tokens trigger `401 Unauthorized` errors on `gh` commands. Set calendar reminders to rotate 30/90-day tokens proactively.
 
+### 6. Repository SEO Optimization (Description & Topics Mandate)
+
+To ensure high visibility, search discoverability, and SEO positioning on GitHub:
+- Every repository generated from or using this template MUST have a concise, keyword-rich **Repository Description** and appropriate **Topics (Tags)** set.
+- Minimum required topic tags: `ai-agent`, `developer-tools`, and the primary language/stack identifier (e.g., `python`, `go`, `rust`, etc.).
+- Set or update repository SEO metadata using the `gh` CLI:
+  ```bash
+  gh repo edit --description "<concise keyword-rich summary>" --add-topic "ai-agent,developer-tools,<language>"
+  ```
+
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
+*Last Updated: 2026-08-19* | *Last Reviewed: 2026-08-19*
+
