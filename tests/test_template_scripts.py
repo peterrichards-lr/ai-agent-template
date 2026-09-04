@@ -651,3 +651,37 @@ def test_unit_testing_skill_fail_first_gate():
     assert "Empirical Test-Driven Verification Gate" in guide_content
     assert "reproduction test must be observed and cited failing red" in guide_content
     assert "fail-first verification gates" in guide_content
+
+def test_ci_filter_skip_job_pattern():
+    """Verify that ci.yml implements the filter + same-named skip job pattern.
+
+    Ensures that path filtering does not deadlock required status checks under
+    GitHub Repository Rulesets (Issue #44).
+    """
+    ci_file = Path(__file__).parent.parent / '.github' / 'workflows' / 'ci.yml'
+    content = ci_file.read_text(encoding='utf-8')
+    data = yaml.safe_load(content)
+
+    jobs = data.get('jobs', {})
+    assert 'filter' in jobs, "ci.yml must define a 'filter' job"
+    assert 'quality-gate' in jobs, "ci.yml must define a 'quality-gate' primary job"
+    assert 'quality-gate-skip' in jobs, "ci.yml must define a 'quality-gate-skip' companion job"
+
+    # Both jobs must define the exact same display name matching protect-main-branch.json
+    primary_name = jobs['quality-gate'].get('name')
+    skip_name = jobs['quality-gate-skip'].get('name')
+    assert primary_name == "Code & Documentation Quality Verification"
+    assert skip_name == "Code & Documentation Quality Verification"
+
+    # Verify dependency on filter job and conditional gating
+    assert jobs['quality-gate'].get('needs') == 'filter'
+    assert jobs['quality-gate-skip'].get('needs') == 'filter'
+    assert "needs.filter.outputs.code == 'true'" in jobs['quality-gate'].get('if', '')
+    assert "needs.filter.outputs.code != 'true'" in jobs['quality-gate-skip'].get('if', '')
+
+def test_branch_protection_docs_mentions_path_filter_deadlock():
+    """Verify that docs/BRANCH_PROTECTION.md explains the path-filter deadlock risk."""
+    doc = Path(__file__).parent.parent / 'docs' / 'BRANCH_PROTECTION.md'
+    content = doc.read_text(encoding='utf-8')
+    assert "Path-Filtered CI Deadlock" in content
+    assert "skip-job pattern" in content

@@ -68,6 +68,15 @@ one-size-fits-all config to apply blindly:
 - `bypass_actors` is empty by default (nobody can bypass). Add an actor here
   only if you have a real, considered need for an emergency override path,
   and treat that as itself a high-risk change to make deliberately.
+- **Path-Filtered CI Deadlock**: If your CI workflow uses path filters (e.g.
+  skipping builds on docs-only changes), required status checks will stop
+  reporting on filtered PRs, permanently deadlocking them in "Expected — Waiting
+  for status to be reported". To avoid this, downstream workflows must adopt the
+  **filter + same-named skip-job pattern** modeled in `.github/workflows/ci.yml`:
+  a lightweight `filter` job gates execution, and both the primary build job
+  and a no-op skip job declare the exact same `name:` (e.g. `Code & Documentation Quality Verification`).
+  This ensures GitHub receives a successful status check under the required context
+  name on every push or PR, regardless of which paths changed.
 
 An agent proposing this import to you, or modifying an existing ruleset, is a
 high-risk operation under `.agents/skills/human-in-the-loop/SKILL.md` -- it
