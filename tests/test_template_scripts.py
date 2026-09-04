@@ -651,3 +651,32 @@ def test_unit_testing_skill_fail_first_gate():
     assert "Empirical Test-Driven Verification Gate" in guide_content
     assert "reproduction test must be observed and cited failing red" in guide_content
     assert "fail-first verification gates" in guide_content
+
+def test_ruleset_validator_supports_same_named_skip_jobs(tmp_path):
+    """Verify that extract_workflow_job_contexts cleanly supports the filter + same-named skip-job pattern."""
+    wf_file = tmp_path / 'heavy-ci.yml'
+    wf_file.write_text(
+        "jobs:\n"
+        "  filter:\n"
+        "    runs-on: ubuntu-latest\n"
+        "  build-and-test:\n"
+        "    needs: filter\n"
+        "    if: needs.filter.outputs.code == 'true'\n"
+        "    name: CI / Build and Test\n"
+        "  build-and-test-skip:\n"
+        "    needs: filter\n"
+        "    if: needs.filter.outputs.code != 'true'\n"
+        "    name: CI / Build and Test\n",
+        encoding='utf-8'
+    )
+    valid_contexts = extract_workflow_job_contexts(tmp_path)
+    assert "CI / Build and Test" in valid_contexts
+    assert "filter" in valid_contexts
+
+def test_branch_protection_docs_mentions_path_filter_deadlock():
+    """Verify that docs/BRANCH_PROTECTION.md explains the path-filter deadlock risk and failure caveats."""
+    doc = Path(__file__).parent.parent / 'docs' / 'BRANCH_PROTECTION.md'
+    content = doc.read_text(encoding='utf-8')
+    assert "Path-Filtered CI Deadlock" in content
+    assert "skip-job pattern" in content
+    assert "if the filter job itself fails" in content
