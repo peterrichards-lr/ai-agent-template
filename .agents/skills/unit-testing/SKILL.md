@@ -1,6 +1,11 @@
-# Skill: Unit Testing & Verification Hard-Gates
+---
+name: unit-testing
+description: >-
+  Enforces test-driven development, empirical verification gates, non-interactive test runs, and test suite integrity.
+  Load when writing tests, refactoring, or investigating test failures.
+---
 
-**Trigger Condition**: Load this skill when writing test cases, running test suites, refactoring code, or debugging test failures.
+# Skill: Unit Testing & Verification Hard-Gates
 
 ---
 
@@ -52,4 +57,4 @@ Never fix failing tests by commenting out assertions, reducing test thresholds, 
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*

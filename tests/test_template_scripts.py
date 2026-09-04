@@ -244,3 +244,37 @@ def test_ruleset_validator_rejects_internal_job_id_when_name_present(tmp_path):
 
     with pytest.raises(AssertionError, match="requires status check 'quality-gate'"):
         validate_ruleset_contexts(bad_ruleset, valid_contexts)
+
+def test_skill_frontmatter_and_routing_tables():
+    root_dir = Path(__file__).parent.parent
+    skills_dir = root_dir / '.agents' / 'skills'
+    agents_md = root_dir / 'AGENTS.md'
+    template_guide = root_dir / 'docs' / 'TEMPLATE_GUIDE.md'
+
+    skill_dirs = sorted([d for d in skills_dir.iterdir() if d.is_dir()])
+    assert len(skill_dirs) == 10, f"Expected 10 skill directories, found {len(skill_dirs)}"
+
+    agents_content = agents_md.read_text(encoding='utf-8')
+    guide_content = template_guide.read_text(encoding='utf-8')
+
+    for s_dir in skill_dirs:
+        skill_name = s_dir.name
+        skill_file = s_dir / 'SKILL.md'
+        assert skill_file.exists(), f"Missing SKILL.md in {s_dir}"
+
+        content = skill_file.read_text(encoding='utf-8')
+        assert content.startswith('---\n'), f"{skill_file} missing leading frontmatter delimiter"
+        parts = content.split('---\n', 2)
+        assert len(parts) >= 3, f"{skill_file} invalid frontmatter structure"
+
+        fm_text = parts[1]
+        fm = yaml.safe_load(fm_text)
+        assert isinstance(fm, dict), f"{skill_file} frontmatter did not parse to a dict"
+        assert fm.get('name') == skill_name, f"{skill_file} frontmatter name '{fm.get('name')}' != directory name '{skill_name}'"
+        assert fm.get('description'), f"{skill_file} missing or empty frontmatter description"
+
+        # Verify skill is indexed in AGENTS.md routing table
+        assert f"**[{skill_name}]" in agents_content, f"Skill '{skill_name}' not listed in AGENTS.md table"
+
+        # Verify skill is indexed in TEMPLATE_GUIDE.md table
+        assert f"**`{skill_name}`**" in guide_content, f"Skill '{skill_name}' not listed in TEMPLATE_GUIDE.md table"

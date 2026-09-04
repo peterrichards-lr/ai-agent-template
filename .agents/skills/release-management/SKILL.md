@@ -1,6 +1,11 @@
-# Skill: Release Management
+---
+name: release-management
+description: >-
+  Governs semantic versioning, release notes generation, issue closure auditing, and release verification gates.
+  Load when tagging versions or publishing releases.
+---
 
-**Trigger Condition**: Load this skill when tagging a version, publishing a release, or when a meaningful batch of merged changes has accumulated since the last tag.
+# Skill: Release Management
 
 ---
 
@@ -25,4 +30,4 @@ Pushing a version tag or publishing a release belongs alongside merging in `huma
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*

@@ -117,6 +117,8 @@ When bootstrapping this template for a specific programming language, follow the
 | **`github-workflow`** | Standardizes `gh` CLI usage, forces PRs to link `Closes #<issue>`, logs tech-debt, and cleans up historical CI failures. |
 | **`tool-use-react`** | Enforces reasoning before tool activation, non-interactive flags, and asynchronous task lifecycle management. |
 | **`multi-agent-orchestration`** | Governs subagent delegation criteria, clear prompt framing, and asynchronous result synthesis. |
+| **`rule-adherence`** | Addresses agents not reliably following prose rules: re-read before acting, prefer checkable artifacts, and self-correct visibly. |
+| **`release-management`** | Governs semantic versioning, release notes, auditing issue closure, and human verification gates. |
 
 ---
 

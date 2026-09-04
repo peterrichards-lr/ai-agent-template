@@ -1,6 +1,11 @@
-# Skill: Tool Use & ReAct Reasoning
+---
+name: tool-use-react
+description: >-
+  Enforces ReAct reasoning patterns, non-interactive CLI defaults (-y), and tool safety boundaries.
+  Load when invoking terminal tools, file modifications, or background tasks.
+---
 
-**Trigger Condition**: Load this skill when invoking terminal/command-execution tools, file editing tools, or background tasks -- whatever your agent's specific toolset calls them.
+# Skill: Tool Use & ReAct Reasoning
 
 ---
 
@@ -38,4 +43,4 @@ After launching long-running or asynchronous background commands, the agent MUST
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*

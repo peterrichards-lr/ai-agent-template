@@ -1,6 +1,11 @@
-# Skill: Human-in-the-Loop Verification
+---
+name: human-in-the-loop
+description: >-
+  Enforces strict human verification gates before high-risk or irreversible operations.
+  Load before deployments, database drops, secrets generation, or opening PRs.
+---
 
-**Trigger Condition**: Load this skill when performing destructive actions, production deployments, database migrations/drops, credentials handling, or submitting Pull Requests.
+# Skill: Human-in-the-Loop Verification
 
 ---
 
@@ -27,4 +32,4 @@ Before finalizing UI component changes or layout edits, the agent MUST explicitl
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*

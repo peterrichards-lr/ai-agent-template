@@ -1,6 +1,11 @@
-# Skill: Rule Adherence & Self-Verification
+---
+name: rule-adherence
+description: >-
+  Enforces explicit self-verification against prose rules, checkable artifacts, and visible self-correction.
+  Load before high-commitment actions like merging, deploying, or declaring tasks complete.
+---
 
-**Trigger Condition**: Load this skill before any high-commitment or terminal action -- merging a PR, pushing a tag, deploying, applying a branch-protection ruleset, or declaring a task complete.
+# Skill: Rule Adherence & Self-Verification
 
 ---
 
@@ -23,4 +28,4 @@ Discovering mid-session that an earlier action didn't follow a documented rule i
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*

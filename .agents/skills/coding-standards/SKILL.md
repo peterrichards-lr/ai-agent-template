@@ -1,6 +1,11 @@
-# Skill: Language-Agnostic Coding Standards
+---
+name: coding-standards
+description: >-
+  Enforces DRY code discovery, self-documenting identifiers, predictive failure analysis, and safety guards.
+  Load when writing, refactoring, or reviewing code in any programming language.
+---
 
-**Trigger Condition**: Load this skill when writing, refactoring, or reviewing source code across any programming language (Go, Python, Rust, Java, TypeScript, C++, etc.).
+# Skill: Language-Agnostic Coding Standards
 
 ---
 
@@ -28,4 +33,4 @@ Before implementing new helper functions, utility methods, or data classes, the 
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
