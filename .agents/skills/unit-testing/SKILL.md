@@ -20,6 +20,7 @@ The agent is FORBIDDEN from declaring a bug fixed or a new behavior verified bas
 1. **Empirical Failure Evidence**:
    - **For Bug Fixes**: The agent MUST write the reproduction test first, execute the test suite, and **cite the exact failing assertion output** (terminal snippet showing the red failure) *before* writing or modifying production code.
    - **For New Features / Behaviors**: If writing the test prior to implementation is impractical, the agent MUST mutate or temporarily disable the new logic post-implementation to observe and **cite the expected test failure**, verifying the assertion is not vacuously true.
+   - **For Refactoring**: When restructuring existing code without altering observable behavior, existing tests must remain continuously green throughout; the existing test suite serves as the invariant baseline. Fail-first verification is strictly scoped to new, modified, or repaired behaviors.
 2. **Mutation Reversion & Clean Pass Gate**:
    - When using the mutate-to-confirm fallback, the agent MUST revert the intentional mutation immediately, re-run the test suite to verify it returns to clean green, and cite the passing output. Leaving an un-reverted mutation or broken code in the working tree is strictly forbidden.
 3. **Durable Citation in Pull Request**:

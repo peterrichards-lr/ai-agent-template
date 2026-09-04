@@ -36,8 +36,8 @@ This template solves these failure modes out of the box, providing a standardize
 - **Pattern**: Dual-layer defense: High-risk operations (deployments, database drops, secrets generation, force pushes, merging to `main`) trigger mandatory human approval gates in `.agents/skills/human-in-the-loop/SKILL.md`. On the client side, `.claude/settings.json` enforces deterministic command interception (`deny` for `rm -rf`, `git push --force`, `docker system prune`, `DROP DATABASE`, `gh repo delete`; `ask` for `gh pr merge`, `git tag`, `gh release create`). This serves as the client-side counterpart to server-side branch protection rulesets (`docs/BRANCH_PROTECTION.md`): the same defense-in-depth argument at both ends of the development pipe.
 
 ### 5. Empirical Test-Driven Verification Gate
-- **Problem**: Agents declaring success ("I have fixed the bug") without running the compiler or test suite.
-- **Pattern**: Agents are forbidden from claiming completion based on file edits alone. They must execute the project's non-interactive test command for its ecosystem (`pytest`, `cargo test`, `mvn test`, or the EDR-safe compiled-binary pattern for Go -- see `.agents/skills/unit-testing/SKILL.md`) and verify clean output before concluding work.
+- **Problem**: Agents declaring success ("I have fixed the bug") without running the compiler or test suite, or asserting tautologies on tests that pass vacuously without proving they had the power to fail.
+- **Pattern**: Agents are forbidden from claiming completion based on file edits alone, or claiming verification from an immediate pass. For bug fixes, the reproduction test must be observed and cited failing red before implementing the fix; for new features, logic must be mutated/disabled to confirm the test fails red before concluding. In both cases, the agent must revert any mutation, execute the project's non-interactive test command for its ecosystem (`pytest`, `cargo test`, `mvn test`, or the EDR-safe compiled-binary pattern for Go -- see `.agents/skills/unit-testing/SKILL.md`), and document the red-to-green transition before concluding work. For pure refactorings, the existing test suite serves as the invariant baseline that must stay continuously green.
 
 ### 6. Automated Documentation Hygiene & Decay Prevention
 - **Problem**: Documentation staleness as code evolves.
@@ -112,7 +112,7 @@ When bootstrapping this template for a specific programming language, follow the
 | **`reflection-and-planning`** | Implements Logic-First Planning, written implementation plans, Predictive Failure Analysis, and approval loops. |
 | **`human-in-the-loop`** | Enforces safety gates for deployments, database drops, plain-text secret prohibitions, and visual diff approvals. |
 | **`coding-standards`** | Mandates DRY code discovery (using the agent's available code-search tool), self-documenting code, defensive safety guards, and language idiom alignment. |
-| **`unit-testing`** | Enforces test-driven development, empirical verification gates, non-interactive execution, and prohibits superficial test deletion. |
+| **`unit-testing`** | Enforces test-driven development, fail-first verification gates (citing red-to-green empirical evidence), non-interactive execution, and prohibits superficial test deletion. |
 | **`documentation`** | Governs timestamp footers (`*Last Updated* \| *Last Reviewed*`), post-feature doc updates, and staleness policy checks. |
 | **`github-workflow`** | Standardizes `gh` CLI usage, forces PRs to link `Closes #<issue>`, logs tech-debt, and cleans up historical CI failures. |
 | **`tool-use-react`** | Enforces reasoning before tool activation, non-interactive flags, and asynchronous task lifecycle management. |
