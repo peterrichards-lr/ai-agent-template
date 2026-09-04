@@ -198,13 +198,13 @@ def ensure_claude_skills_symlink(root_dir: Path) -> bool:
     """Ensure .claude/skills relative symlink exists and points to ../.agents/skills."""
     claude_dir = root_dir / '.claude'
     claude_skills = claude_dir / 'skills'
-    target_rel = Path('..') / '.agents' / 'skills'
+    target_rel = '../.agents/skills'
 
     claude_dir.mkdir(exist_ok=True)
 
     if claude_skills.is_symlink():
-        current_target = os.readlink(claude_skills)
-        if current_target == str(target_rel):
+        current_target = os.readlink(claude_skills).replace('\\', '/')
+        if current_target == target_rel:
             print("  ✓ Verified .claude/skills symlink -> ../.agents/skills")
             return True
         claude_skills.unlink()
@@ -219,7 +219,7 @@ def ensure_claude_skills_symlink(root_dir: Path) -> bool:
         return False
 
     try:
-        os.symlink(str(target_rel), claude_skills)
+        os.symlink(target_rel, claude_skills, target_is_directory=True)
         print("  ✓ Created .claude/skills symlink -> ../.agents/skills")
         return True
     except OSError as e:

@@ -257,13 +257,18 @@ def test_skill_frontmatter_and_routing_tables():
     skill_dirs = sorted([d for d in skills_dir.iterdir() if d.is_dir()])
     agents_content = agents_md.read_text(encoding='utf-8')
     guide_content = template_guide.read_text(encoding='utf-8')
+    readme_content = (root_dir / 'README.md').read_text(encoding='utf-8')
+    skills_section = re.search(r'├── \.agents/skills/.*?(?=├── scripts/)', readme_content, re.DOTALL)
+    assert skills_section, "Could not find .agents/skills section in README.md"
 
     disk = {d.name for d in skill_dirs}
     agents = set(re.findall(r'\*\*\[([a-z0-9-]+)\]', agents_content))
     guide = set(re.findall(r'\*\*`([a-z0-9-]+)`\*\*', guide_content))
+    readme = set(re.findall(r'[├└]──\s+([a-z0-9-]+)/', skills_section.group(0)))
 
     assert disk == agents, f"AGENTS.md drift — only on disk: {disk - agents}; only in table: {agents - disk}"
     assert disk == guide, f"TEMPLATE_GUIDE drift — only on disk: {disk - guide}; only in table: {guide - disk}"
+    assert disk == readme, f"README.md tree drift — only on disk: {disk - readme}; only in README: {readme - disk}"
 
     for s_dir in skill_dirs:
         skill_name = s_dir.name
@@ -287,8 +292,8 @@ def test_claude_skills_symlink_and_gitignore(tmp_path):
 
     # 1. Verify repository symlink exists, is relative, and resolves to .agents/skills
     assert claude_skills.is_symlink(), ".claude/skills should be a symlink"
-    target = os.readlink(claude_skills)
-    assert target == str(Path('..') / '.agents' / 'skills'), f"Expected relative target '../.agents/skills', got '{target}'"
+    target = os.readlink(claude_skills).replace('\\', '/')
+    assert target == '../.agents/skills', f"Expected relative target '../.agents/skills', got '{target}'"
     assert claude_skills.resolve() == (root_dir / '.agents' / 'skills').resolve()
 
     skills_on_disk = {d.name for d in (root_dir / '.agents' / 'skills').iterdir() if d.is_dir()}
@@ -306,11 +311,13 @@ def test_claude_skills_symlink_and_gitignore(tmp_path):
     (dummy_root / '.claude' / 'skills').unlink()
     os.symlink('wrong_target', dummy_root / '.claude' / 'skills')
     assert ensure_claude_skills_symlink(dummy_root) is True
-    assert os.readlink(dummy_root / '.claude' / 'skills') == str(Path('..') / '.agents' / 'skills')
+    assert os.readlink(dummy_root / '.claude' / 'skills').replace('\\', '/') == '../.agents/skills'
 
-    # 3. Verify .gitignore scoping via git check-ignore
-    res_local = subprocess.run(['git', 'check-ignore', '.claude/settings.local.json', '.gemini/settings.local.json'], cwd=root_dir, capture_output=True, text=True)
-    assert res_local.returncode == 0
+    # 3. Verify .gitignore scoping via git check-ignore individually
+    for p in ['.claude/settings.local.json', '.gemini/settings.local.json']:
+        res = subprocess.run(['git', 'check-ignore', p], cwd=root_dir, capture_output=True, text=True)
+        assert res.returncode == 0, f"Expected {p} to be ignored by git"
 
-    res_tracked = subprocess.run(['git', 'check-ignore', '.claude/skills', '.claude/settings.json'], cwd=root_dir, capture_output=True, text=True)
-    assert res_tracked.returncode == 1
+    for p in ['.claude/skills', '.claude/settings.json']:
+        res = subprocess.run(['git', 'check-ignore', p], cwd=root_dir, capture_output=True, text=True)
+        assert res.returncode == 1, f"Expected {p} NOT to be ignored by git"
