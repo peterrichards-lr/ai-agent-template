@@ -74,6 +74,7 @@ To ensure high visibility, search discoverability, and SEO positioning on GitHub
 - Every repository generated from or using this template MUST have a concise, keyword-rich **Repository Description** and appropriate **Topics (Tags)** set.
 - Minimum required topic tags: `ai-agent`, `developer-tools`, and the primary language/stack identifier (e.g., `python`, `go`, `rust`, etc.).
 - Set or update repository SEO metadata using the `gh` CLI:
+
   ```bash
   gh repo edit --description "<concise keyword-rich summary>" --add-topic "ai-agent,developer-tools,<language>"
   ```
@@ -81,4 +82,3 @@ To ensure high visibility, search discoverability, and SEO positioning on GitHub
 <!-- markdownlint-disable MD049 -->
 ---
 *Last Updated: 2026-08-19* | *Last Reviewed: 2026-08-19*
-
