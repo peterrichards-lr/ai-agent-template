@@ -10,6 +10,9 @@ Provider discovery files (`GEMINI.md`, `CLAUDE.md`) exist only so each tool find
 
 - **Repository**: `ai-agent-template` - reusable multi-language project template for AI Agent-assisted development.
 - **Provider-Agnostic Model**: Discovery files (`GEMINI.md`, `CLAUDE.md`) redirect to `AGENTS.md`. In-flight task scratchpad lives in `.agent-state.md` (gitignored).
+- **Native Claude Code Discovery**: `.claude/skills` is a tracked relative symlink to `../.agents/skills`, allowing Claude Code to discover all skills natively without duplication.
+  > [!NOTE]
+  > **Windows Checkouts (`core.symlinks`)**: On Windows, Git defaults to checking out symlinks as plain text files unless Developer Mode is enabled or Git is configured with `core.symlinks=true` (`git clone -c core.symlinks=true <repo>` or `git config core.symlinks true`). If checked out as text, Claude Code will fail to traverse `.claude/skills/`.
 - **Quality Gates**: Pre-commit hooks, documentation timestamp footers, linting, and automated unit testing per language ecosystem stack.
 
 ---
@@ -72,9 +75,10 @@ Before a high-commitment action (merging, deploying, tagging, applying a ruleset
 | [`.agent-state.md`](./.agent-state.md) | In-flight task state, synced between AI providers. Gitignored. |
 | [`README.md`](./README.md) | Consumer-facing documentation & quick setup. |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Contribution guidelines and quality gate commands. |
+| [`.claude/skills`](./.claude/skills) | Tracked symlink to [`.agents/skills/`](./.agents/skills) for Claude Code auto-discovery. |
 
 <!-- markdownlint-disable MD049 -->
 
 ---
 
-*Last Updated: 2026-08-19* | *Last Reviewed: 2026-08-19*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*

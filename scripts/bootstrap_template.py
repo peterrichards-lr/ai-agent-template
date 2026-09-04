@@ -194,6 +194,42 @@ def configure_repository_seo(repo_desc: str = None, repo_topics: list = None, la
     else:
         print(f"  ⚠️ Warning: Could not update GitHub repo via gh CLI (Code {res.returncode}): {res.stderr.strip()}")
 
+def ensure_claude_skills_symlink(root_dir: Path) -> bool:
+    """Ensure .claude/skills relative symlink exists and points to ../.agents/skills."""
+    claude_dir = root_dir / '.claude'
+    claude_skills = claude_dir / 'skills'
+    target_rel = '../.agents/skills'
+
+    claude_dir.mkdir(exist_ok=True)
+
+    if claude_skills.is_symlink():
+        current_target = os.readlink(claude_skills).replace('\\', '/')
+        if current_target == target_rel:
+            print("  ✓ Verified .claude/skills symlink -> ../.agents/skills")
+            return True
+        claude_skills.unlink()
+
+    if claude_skills.exists() and not claude_skills.is_symlink():
+        print(
+            "  ⚠️ Warning: .claude/skills exists but is not a symlink.\n"
+            "     On Windows, ensure Git has core.symlinks enabled: git config core.symlinks true\n"
+            "     or enable Windows Developer Mode.",
+            file=sys.stderr
+        )
+        return False
+
+    try:
+        os.symlink(target_rel, claude_skills, target_is_directory=True)
+        print("  ✓ Created .claude/skills symlink -> ../.agents/skills")
+        return True
+    except OSError as e:
+        print(
+            f"  ⚠️ Warning: Could not create .claude/skills symlink: {e}\n"
+            "     On Windows, symlinks require 'git config core.symlinks true' or Windows Developer Mode.",
+            file=sys.stderr
+        )
+        return False
+
 def bootstrap(
     project_name: str,
     language: str,
@@ -244,7 +280,10 @@ def bootstrap(
         agents_path.write_text(content, encoding='utf-8')
         print(f"  ✓ Customized AGENTS.md with project name ({project_name})")
 
-    # 4. Append/Update timestamps
+    # 4. Ensure .claude/skills auto-discovery symlink
+    ensure_claude_skills_symlink(root_dir)
+
+    # 5. Append/Update timestamps
     try:
         from append_timestamps import append_timestamps
         append_timestamps(root_dir)
@@ -253,11 +292,11 @@ def bootstrap(
         print(f"❌ Error running append_timestamps: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # 5. Configure GitHub Repository SEO (Description & Topics)
+    # 6. Configure GitHub Repository SEO (Description & Topics)
     parsed_topics = [t.strip() for t in repo_topics.split(',')] if repo_topics else None
     configure_repository_seo(repo_desc=repo_desc, repo_topics=parsed_topics, language=language)
 
-    # 6. Optionally configure GitHub Branch Protection Ruleset
+    # 7. Optionally configure GitHub Branch Protection Ruleset
     if setup_branch_protection:
         ruleset_file = root_dir / '.github' / 'rulesets' / 'protect-main-branch.json'
         if not ruleset_file.exists():
@@ -279,7 +318,7 @@ def bootstrap(
                 file=sys.stderr
             )
 
-    # 7. Pre-commit setup readiness & local verification check
+    # 8. Pre-commit setup readiness & local verification check
     pre_commit_config = root_dir / '.pre-commit-config.yaml'
     if pre_commit_config.exists() and shutil.which('pre-commit'):
         print("  ✓ Installing Git pre-commit hooks...")

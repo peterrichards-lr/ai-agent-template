@@ -6,9 +6,10 @@ Thumbs.db
 *.swp
 *.swo
 
-# AI Agent Scratch, Planning & Context Files
-.gemini/
-.claude/
+# AI Agent Per-User State (never commit; shared configs in these dirs are tracked)
+.claude/settings.local.json
+.claude/worktrees/
+.gemini/settings.local.json
 .agent-state.md
 .agent_scratch/
 .progress-signal

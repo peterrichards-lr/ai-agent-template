@@ -29,6 +29,13 @@ git clone https://github.com/your-org/ai-agent-template.git my-new-project
 cd my-new-project
 ```
 
+> [!NOTE]
+> **Windows Users (`core.symlinks`)**: Ensure symlink creation is enabled during clone so `.claude/skills` is materialized as a true directory link rather than a text file:
+>
+> ```bash
+> git clone -c core.symlinks=true https://github.com/your-org/ai-agent-template.git my-new-project
+> ```
+
 ### 2. Run the Bootstrap Script
 
 Run the language-agnostic bootstrapper to configure your project details and setup pre-commit quality gates:
@@ -45,9 +52,10 @@ The bootstrapper will:
 
 1. Update project configuration files (`README.md`, `.agent-state.md`, `AGENTS.md`).
 2. Generate language-specific `.gitignore` and `.pre-commit-config.yaml` rules.
-3. Initialize local Git pre-commit hooks.
-4. Inject initial documentation timestamps.
-5. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
+3. Verify or create the `.claude/skills` auto-discovery symlink.
+4. Initialize local Git pre-commit hooks.
+5. Inject initial documentation timestamps.
+6. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
 
 ---
 
@@ -58,6 +66,8 @@ The bootstrapper will:
 ├── AGENTS.md                          # Master routing index for AI agent skills
 ├── GEMINI.md                          # Discovery redirect to AGENTS.md (Gemini CLI)
 ├── CLAUDE.md                          # Discovery redirect to AGENTS.md (Claude CLI)
+├── .claude/                           # Claude Code configuration & discovery
+│   └── skills                         # Symlink -> ../.agents/skills
 ├── .agent-state.md                    # Gitignored persistent task scratchpad
 ├── CONTRIBUTING.md                    # Guidelines for human & AI agent contributors
 ├── README.md                          # This file
@@ -76,7 +86,9 @@ The bootstrapper will:
 │   ├── documentation/                 # Timestamp & doc maintenance rules
 │   ├── github-workflow/               # Issue sync, PR constraints & CI cleanup
 │   ├── tool-use-react/                # ReAct reasoning & CLI command boundaries
-│   └── multi-agent-orchestration/     # Subagent delegation directives
+│   ├── multi-agent-orchestration/     # Subagent delegation directives
+│   ├── rule-adherence/                # Self-verification & checkable artifact rules
+│   └── release-management/            # Semantic versioning & release auditing
 ├── scripts/                           # Portable Python 3 helper utilities
 │   ├── append_timestamps.py           # Injects markdown footer timestamps
 │   ├── check_docs_review.py           # Validates doc freshness & review age
@@ -105,4 +117,4 @@ This template is open source and available under the [MIT License](LICENSE).
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-19* | *Last Reviewed: 2026-08-19*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
