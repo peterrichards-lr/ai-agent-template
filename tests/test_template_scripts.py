@@ -35,6 +35,45 @@ def test_append_timestamps_injection(tmp_path):
     assert "*Last Updated:" in content
     assert "*Last Reviewed:" in content
 
+def test_append_timestamps_underscore_idempotency(tmp_path):
+    md_file = tmp_path / 'test_underscore.md'
+    md_file.write_text(
+        "# Underscore Doc\n\nSome content.\n\n<!-- markdownlint-disable MD049 -->\n---\n_Last Updated: 2026-08-18_ | _Last Reviewed: 2026-08-18_\n",
+        encoding='utf-8'
+    )
+
+    append_timestamps(tmp_path)
+
+    content = md_file.read_text(encoding='utf-8')
+    assert content.count("Last Updated:") == 1
+
+def test_append_timestamps_run_twice_idempotency(tmp_path):
+    md_file = tmp_path / 'test_idempotency.md'
+    md_file.write_text("# Idempotent Doc\n\nSome content.", encoding='utf-8')
+
+    append_timestamps(tmp_path)
+    content_first = md_file.read_text(encoding='utf-8')
+    assert content_first.count("Last Updated:") == 1
+
+    append_timestamps(tmp_path)
+    content_second = md_file.read_text(encoding='utf-8')
+    assert content_second == content_first
+    assert content_second.count("Last Updated:") == 1
+
+def test_append_timestamps_paired_negative_fenced_code(tmp_path):
+    md_file = tmp_path / 'fenced_only.md'
+    md_file.write_text(
+        "# Doc with code block only\n\n```markdown\n<!-- markdownlint-disable MD049 -->\n---\n*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*\n```\n",
+        encoding='utf-8'
+    )
+
+    append_timestamps(tmp_path)
+
+    content = md_file.read_text(encoding='utf-8')
+    # A new footer should have been injected outside the code block
+    assert content.count("Last Updated:") == 2
+    assert check_docs(max_review_days=180, max_update_days=180, max_gap_days=180, root_dir=tmp_path) is True
+
 def test_check_docs_policy(tmp_path):
     valid_md = tmp_path / 'valid.md'
     valid_md.write_text(
@@ -49,6 +88,22 @@ def test_check_docs_missing_footer(tmp_path):
     invalid_md.write_text("# Invalid Doc\n\nNo footer here.", encoding='utf-8')
 
     assert check_docs(max_review_days=180, max_update_days=180, max_gap_days=180, root_dir=tmp_path) is False
+
+def test_check_docs_duplicate_footers(tmp_path):
+    dup_md = tmp_path / 'duplicate.md'
+    dup_md.write_text(
+        "# Dup Doc\n\n*Last Updated: 2026-08-18* | *Last Reviewed: 2026-08-18*\n\n*Last Updated: 2026-08-18* | *Last Reviewed: 2026-08-18*\n",
+        encoding='utf-8'
+    )
+    assert check_docs(max_review_days=180, max_update_days=180, max_gap_days=180, root_dir=tmp_path) is False
+
+def test_check_docs_ignores_fenced_code_blocks(tmp_path):
+    code_md = tmp_path / 'code_example.md'
+    code_md.write_text(
+        "# Doc with Example\n\n```markdown\n*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*\n```\n\n<!-- markdownlint-disable MD049 -->\n---\n*Last Updated: 2026-08-18* | *Last Reviewed: 2026-08-18*\n",
+        encoding='utf-8'
+    )
+    assert check_docs(max_review_days=180, max_update_days=180, max_gap_days=180, root_dir=tmp_path) is True
 
 def test_gh_issue_sync_validation(tmp_path, capsys):
     # Invalid JSON task plan missing title
