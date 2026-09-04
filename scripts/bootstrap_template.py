@@ -11,6 +11,7 @@ Fails loudly if any required subprocess execution fails.
 
 import sys
 import os
+import json
 import shutil
 import subprocess
 import argparse
@@ -230,6 +231,37 @@ def ensure_claude_skills_symlink(root_dir: Path) -> bool:
         )
         return False
 
+def configure_claude_settings(root_dir: Path, language: str) -> bool:
+    """Configure client-side .claude/settings.json permissions per language stack."""
+    claude_dir = root_dir / '.claude'
+    settings_file = claude_dir / 'settings.json'
+
+    claude_dir.mkdir(exist_ok=True)
+    if settings_file.exists():
+        try:
+            data = json.loads(settings_file.read_text(encoding='utf-8'))
+        except Exception as e:
+            print(f"  ⚠️ Warning: Could not parse {settings_file}: {e}", file=sys.stderr)
+            data = {}
+    else:
+        data = {}
+
+    permissions = data.setdefault("permissions", {})
+    deny_list = permissions.setdefault("deny", [])
+
+    if language == 'go':
+        go_deny = "Bash(go test*)"
+        if go_deny not in deny_list:
+            deny_list.append(go_deny)
+            print("  ✓ Configured .claude/settings.json with Go EDR test command deny-list")
+
+    try:
+        settings_file.write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
+        return True
+    except Exception as e:
+        print(f"  ⚠️ Warning: Could not write {settings_file}: {e}", file=sys.stderr)
+        return False
+
 def bootstrap(
     project_name: str,
     language: str,
@@ -280,8 +312,9 @@ def bootstrap(
         agents_path.write_text(content, encoding='utf-8')
         print(f"  ✓ Customized AGENTS.md with project name ({project_name})")
 
-    # 4. Ensure .claude/skills auto-discovery symlink
+    # 4. Ensure .claude/skills auto-discovery symlink and client settings
     ensure_claude_skills_symlink(root_dir)
+    configure_claude_settings(root_dir, language)
 
     # 5. Append/Update timestamps
     try:

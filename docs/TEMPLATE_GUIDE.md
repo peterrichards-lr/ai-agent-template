@@ -31,9 +31,9 @@ This template solves these failure modes out of the box, providing a standardize
 - **Problem**: AI agents diving into multi-file code modifications prematurely, creating fragile or broken diffs.
 - **Pattern**: Before modifying code, the agent writes out a structured implementation plan specifying proposed file edits and open questions, using whatever planning mechanism its own toolset provides. It appends a **Predictive Failure Analysis** detailing two edge cases or failure modes and how the code handles them.
 
-### 4. Human-in-the-Loop Verification Gates
-- **Problem**: Unchecked agent execution leading to unintended production deployments, database purges, or leaked credentials.
-- **Pattern**: High-risk operations (deployments, database drops, secrets generation, force pushes, opening PRs) trigger mandatory approval gates where the agent must stop, request human verification, and wait.
+### 4. Human-in-the-Loop Verification Gates & Client-Side Harness Enforcement
+- **Problem**: Unchecked agent execution leading to unintended production deployments, database purges, or leaked credentials. Prose rules alone in skill files do not physically prevent agents from executing destructive commands locally.
+- **Pattern**: Dual-layer defense: High-risk operations (deployments, database drops, secrets generation, force pushes, merging to `main`) trigger mandatory human approval gates in `.agents/skills/human-in-the-loop/SKILL.md`. On the client side, `.claude/settings.json` enforces deterministic command interception (`deny` for `rm -rf`, `git push --force`, `docker system prune`, `DROP DATABASE`, `gh repo delete`; `ask` for `gh pr merge`, `git tag`, `gh release create`). This serves as the client-side counterpart to server-side branch protection rulesets (`docs/BRANCH_PROTECTION.md`): the same defense-in-depth argument at both ends of the development pipe.
 
 ### 5. Empirical Test-Driven Verification Gate
 - **Problem**: Agents declaring success ("I have fixed the bug") without running the compiler or test suite.
@@ -124,7 +124,9 @@ When bootstrapping this template for a specific programming language, follow the
 
 ## Enforcing These Rules, Not Just Documenting Them
 
-Prose rules alone don't reliably bind agent behavior -- see `docs/BRANCH_PROTECTION.md` for the evidence and the recommended fix: importable GitHub repository rulesets that turn several of the conventions above (PR-only changes to main, required CI checks, issue-linking) into gates no one -- human or agent -- can silently skip.
+Prose rules alone don't reliably bind agent behavior. This template enforces defense-in-depth at both ends of the development pipe:
+- **Server-Side Enforcement**: Importable GitHub repository rulesets (`docs/BRANCH_PROTECTION.md`) turn repository governance (PR-only changes to main, required CI checks, issue-linking) into gates no one -- human or agent -- can silently skip.
+- **Client-Side Enforcement**: Checked-in harness configuration (`.claude/settings.json`) intercepts and denies irreversibly destructive local shell patterns (`rm -rf`, `git push --force`, `docker system prune`, `DROP DATABASE`, `gh repo delete`) and requires interactive confirmation for high-risk operations (`gh pr merge`, `git tag`, `gh release create`).
 
 ---
 
