@@ -8,7 +8,12 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  # cancel-in-progress: false because this job supplies a required status check in
+  # .github/rulesets/protect-main-branch.json. Queuing rather than cancelling ensures
+  # the newest run reports last so the final check status reflects the latest state,
+  # and avoids aborting runs mid-execution. Note that GitHub still cancels pending runs
+  # if a newer run queues behind them. See #30.
+  cancel-in-progress: false
 
 permissions:
   contents: read
