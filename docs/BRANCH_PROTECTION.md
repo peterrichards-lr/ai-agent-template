@@ -20,9 +20,10 @@ several of this template's conventions into real, unbypassable gates.
 - No direct pushes or force-pushes to the default branch -- all changes go
   through a PR.
 - Requires this template's CI quality-gate job
-  (`Code & Documentation Quality Verification`) and the Issue Link Check
-  (`Verify PR references an issue`, see `.github/workflows/issue-link-check.yml`)
-  to pass before merge.
+  (`Code & Documentation Quality Verification`), the Issue Link Check
+  (`Verify PR references an issue`, see `.github/workflows/issue-link-check.yml`),
+  and the Scope Sprawl Gate (`Verify PR scope sprawl guardrail`, see
+  `.github/workflows/pr-scope-check.yml`) to pass before merge.
 - Requires at least 1 approving review. **Adjust this deliberately** if your
   team's workflow differs -- a solo developer importing this as-is cannot
   merge any PR because GitHub prohibits self-approval, and `bypass_actors: []`

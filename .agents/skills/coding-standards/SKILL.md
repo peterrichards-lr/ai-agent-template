@@ -31,6 +31,11 @@ Before implementing new helper functions, utility methods, or data classes, the 
 - **Java**: Dependency injection, strict type boundaries, stream immutability, `Checkstyle` adherence.
 - **TypeScript/Node**: Immutable state, strict null checks (`tsconfig`), async/await over raw promises.
 
+### 5. Scope Sprawl & Anti-Churn Guardrails
+- **Focused Bugfixes**: Bugfix pull requests (branch starting with `fix/`, `fix-`, `bugfix/`, or `bugfix-`, or PR title starting with `fix:`/`bugfix:`/`bug:`) MUST be tightly focused on resolving the targeted defect and MUST NOT modify more than 10 files.
+- **No Drive-by Refactoring**: Do not combine speculative refactoring, formatting cleanup, or codebase-wide renames into a bugfix. If unrelated improvements or tech debt are identified during an edit, log them as a separate issue (labeled `tech-debt`) rather than bloating the immediate fix.
+- **Bypass Overrides**: If a legitimate defect repair fundamentally spans more than 10 files, an explicit bypass must be granted by a maintainer applying the `bypass-sprawl` PR label.
+
 <!-- markdownlint-disable MD049 -->
 ---
 *Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
