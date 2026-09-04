@@ -8,7 +8,10 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  # cancel-in-progress must remain false because 'Verify PR references an issue' is a required
+  # status check in .github/rulesets/protect-main-branch.json. Cancelling in-flight runs leaves
+  # orphaned 'cancelled' checks that permanently block PR merges (see #30).
+  cancel-in-progress: false
 
 permissions:
   contents: read

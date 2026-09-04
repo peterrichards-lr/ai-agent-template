@@ -6,6 +6,16 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel-in-progress must remain false because 'Code & Documentation Quality Verification' is
+  # a required status check in .github/rulesets/protect-main-branch.json. Cancelling in-flight runs
+  # leaves orphaned 'cancelled' checks that permanently block PR merges (see #30).
+  cancel-in-progress: false
+
 jobs:
   quality-gate:
     name: Code & Documentation Quality Verification
