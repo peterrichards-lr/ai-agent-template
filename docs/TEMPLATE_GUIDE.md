@@ -137,7 +137,7 @@ python3 scripts/bootstrap_template.py --name "my-awesome-service" --lang go --cl
 The bootstrapper script will:
 1. Generate a clean project `README.md` describing your application.
 2. Remove this template-only guide (`docs/TEMPLATE_GUIDE.md`).
-3. Customize `AGENTS.md` and `.agent-state.md` with the project name.
+3. Customize `AGENTS.md` with the project name.
 4. Run `append_timestamps.py` and install Git pre-commit quality gates.
 
 <!-- markdownlint-disable MD049 -->
