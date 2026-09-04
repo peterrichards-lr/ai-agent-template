@@ -15,7 +15,7 @@ repos:
     rev: v0.16.0
     hooks:
       - id: markdownlint-cli2
-        files: \.md$
+        files: (\.md|\.cursorrules|\.windsurfrules)$
 
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
@@ -39,12 +39,19 @@ repos:
         name: Append Markdown Timestamps
         entry: python3 scripts/append_timestamps.py
         language: system
-        files: \.md$
+        files: (\.md|\.cursorrules|\.windsurfrules)$
         pass_filenames: false
 
       - id: check-docs-review
         name: Check Documentation Review Staleness
         entry: python3 scripts/check_docs_review.py --max-review-days 180 --max-update-days 180
         language: system
-        files: \.md$
+        files: (\.md|\.cursorrules|\.windsurfrules)$
+        pass_filenames: false
+
+      - id: check-provider-redirects
+        name: Validate Provider Redirects
+        entry: python3 scripts/check_provider_redirects.py
+        language: system
+        files: ^(CLAUDE\.md|GEMINI\.md|\.cursorrules|\.windsurfrules|\.github/copilot-instructions\.md)$
         pass_filenames: false

@@ -144,7 +144,7 @@ pre-commit run --all-files
 This repository uses **Agent Skills** located in `.agents/skills/` and persistent state tracking in `.agent-state.md`:
 
 - **Master Routing Index**: Refer to [`AGENTS.md`](AGENTS.md) for available agent skills and rules of engagement.
-- **Provider Redirects**: [`GEMINI.md`](GEMINI.md) and [`CLAUDE.md`](CLAUDE.md) redirect to `AGENTS.md`.
+- **Provider Discovery**: Discovery files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`) redirect to `AGENTS.md`.
 - **Session State**: Update [`.agent-state.md`](.agent-state.md) before starting major milestones or architectural changes.
 - **Documentation Verification**: Run `python3 scripts/append_timestamps.py` and `python3 scripts/check_docs_review.py` after implementing features.
 

@@ -1,0 +1,13 @@
+# GitHub Copilot Agent Redirect
+
+> [!IMPORTANT]
+> **This file exists solely for GitHub Copilot auto-discovery.**
+> The canonical AI agent context for this repository is [`AGENTS.md`](../AGENTS.md). All rules, conventions, and skill routing are maintained there as the single source of truth.
+>
+> **Do not duplicate context here.** Read and follow `AGENTS.md` instead. This keeps the project AI-provider agnostic and avoids maintaining state in multiple locations.
+>
+> In-flight task state belongs in `.agent-state.md` (gitignored), not here.
+
+<!-- markdownlint-disable MD049 -->
+---
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
