@@ -4,7 +4,9 @@ test_template_scripts.py - Unit Test Suite for Template Automation Scripts
 Tests append_timestamps.py, check_docs_review.py, bootstrap_template.py, and gh_issue_sync.py.
 """
 
+import os
 import re
+import subprocess
 import sys
 import json
 import yaml
@@ -16,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 
 from append_timestamps import append_timestamps, should_ignore
 from check_docs_review import check_docs, parse_date
-from bootstrap_template import configure_language_profile, clean_template_meta_docs, get_default_topics
+from bootstrap_template import configure_language_profile, clean_template_meta_docs, get_default_topics, ensure_claude_skills_symlink
 from gh_issue_sync import sync_issues
 from setup_branch_protection import apply_branch_protection, validate_ruleset_file
 
@@ -278,3 +280,37 @@ def test_skill_frontmatter_and_routing_tables():
         assert isinstance(fm, dict), f"{skill_file} frontmatter did not parse to a dict"
         assert fm.get('name') == skill_name, f"{skill_file} frontmatter name '{fm.get('name')}' != directory name '{skill_name}'"
         assert fm.get('description'), f"{skill_file} missing or empty frontmatter description"
+
+def test_claude_skills_symlink_and_gitignore(tmp_path):
+    root_dir = Path(__file__).parent.parent
+    claude_skills = root_dir / '.claude' / 'skills'
+
+    # 1. Verify repository symlink exists, is relative, and resolves to .agents/skills
+    assert claude_skills.is_symlink(), ".claude/skills should be a symlink"
+    target = os.readlink(claude_skills)
+    assert target == str(Path('..') / '.agents' / 'skills'), f"Expected relative target '../.agents/skills', got '{target}'"
+    assert claude_skills.resolve() == (root_dir / '.agents' / 'skills').resolve()
+
+    skills_on_disk = {d.name for d in (root_dir / '.agents' / 'skills').iterdir() if d.is_dir()}
+    skills_via_symlink = {d.name for d in claude_skills.iterdir() if d.is_dir()}
+    assert skills_on_disk == skills_via_symlink
+
+    # 2. Test ensure_claude_skills_symlink idempotency and repair
+    dummy_root = tmp_path / 'project'
+    (dummy_root / '.agents' / 'skills').mkdir(parents=True)
+    assert ensure_claude_skills_symlink(dummy_root) is True
+    assert (dummy_root / '.claude' / 'skills').is_symlink()
+    assert ensure_claude_skills_symlink(dummy_root) is True
+
+    # Repair when pointing to wrong target
+    (dummy_root / '.claude' / 'skills').unlink()
+    os.symlink('wrong_target', dummy_root / '.claude' / 'skills')
+    assert ensure_claude_skills_symlink(dummy_root) is True
+    assert os.readlink(dummy_root / '.claude' / 'skills') == str(Path('..') / '.agents' / 'skills')
+
+    # 3. Verify .gitignore scoping via git check-ignore
+    res_local = subprocess.run(['git', 'check-ignore', '.claude/settings.local.json', '.gemini/settings.local.json'], cwd=root_dir, capture_output=True, text=True)
+    assert res_local.returncode == 0
+
+    res_tracked = subprocess.run(['git', 'check-ignore', '.claude/skills', '.claude/settings.json'], cwd=root_dir, capture_output=True, text=True)
+    assert res_tracked.returncode == 1
