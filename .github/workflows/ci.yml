@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,39 +19,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  filter:
-    name: Filter Changes
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      code: ${{ steps.changes.outputs.code }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Detect file changes
-        uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            code:
-              - '**'
-              - '!**/*.md'
-              - '!docs/**'
-              - '!.cursorrules'
-              - '!.windsurfrules'
-
-  # NOTE: quality-gate and quality-gate-skip both declare the identical display name:
-  # "Code & Documentation Quality Verification". This is intentional and required:
-  # .github/rulesets/protect-main-branch.json mandates "Code & Documentation Quality Verification"
-  # as a strict required status check. If path filtering skips the check entirely, GitHub
-  # deadlocks the PR waiting for status to report. With this dual-job pattern, exactly
-  # one of the two jobs runs and reports success under that exact context name. See #44.
   quality-gate:
-    needs: filter
-    if: needs.filter.outputs.code == 'true'
     name: Code & Documentation Quality Verification
     runs-on: ubuntu-latest
 
@@ -83,12 +50,3 @@ jobs:
       - name: Run Pre-Commit Quality Gate Hooks
         run: |
           pre-commit run --all-files
-
-  quality-gate-skip:
-    needs: filter
-    if: needs.filter.outputs.code != 'true'
-    name: Code & Documentation Quality Verification
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip heavy verification for docs-only changes
-        run: echo "Skipped heavy quality gate for docs-only change to satisfy required status check."
