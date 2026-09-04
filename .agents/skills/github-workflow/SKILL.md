@@ -15,15 +15,17 @@ description: >-
 All GitHub interactions MUST use the GitHub CLI (`gh`). Custom Python scripts using raw REST APIs or external libraries for GitHub API access are forbidden.
 
 ### 2. Issue Synchronization & Task Linking
-- Every Pull Request MUST close a parent GitHub issue. In the PR body, include `Closes #<issue-number>`.
+- Every Pull Request MUST close a parent GitHub issue. In the PR body, include `Closes #<issue-number>` strictly inside the `## Linked Issue` section.
+- Multiple closing references are permitted within `## Linked Issue` (e.g. `Closes #30\nCloses #43`).
+- **Positional Anchoring & Negation Trap**: Closing keywords (`closes`, `fixes`, `resolves`) followed by `#<number>` are forbidden in the PR title and outside the `## Linked Issue` section. GitHub's parser ignores English negations (e.g. `does not close #123`, `not fixing #123`), which causes premature, silent issue closure on merge. For non-closing references, use phrases without closing keywords: `part of #123`, `see #123`, `related to #123`, `addresses #123`, or plain `#123`.
 - Before creating a PR, verify branch status against main (`git fetch origin main && git log HEAD..origin/main --oneline`).
 - Once an implementation plan for that issue is approved (see `reflection-and-planning/SKILL.md` Rule 3), post a concise summary of it as a comment on the issue before starting implementation -- keeps a readable record of what was planned independent of the agent's chat session.
 
 **This is CI-enforced, not just documented here.** The "Issue Link Check"
-workflow (`.github/workflows/issue-link-check.yml`) fails any PR that doesn't
-reference a `Closes|Fixes|Resolves #N` issue, unless the PR carries the
-`no-issue-needed` label (an intentional escape hatch for genuinely trivial
-changes -- don't reach for it just to skip filing an issue for real work).
+workflow (`.github/workflows/issue-link-check.yml`) executes `scripts/check_closing_refs.py`,
+failing any PR with stray closing keywords or lacking a valid closing reference in `## Linked Issue`
+(unless the PR carries the `no-issue-needed` label -- an intentional escape hatch for genuinely
+trivial changes).
 Prose-only versions of this rule don't reliably get followed -- a sibling
 project documented the exact same requirement and then had it skipped on the
 next 5 PRs regardless, including by the agent that had just written the

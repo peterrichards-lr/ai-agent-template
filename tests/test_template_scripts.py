@@ -22,6 +22,7 @@ from bootstrap_template import configure_language_profile, clean_template_meta_d
 from gh_issue_sync import sync_issues
 from setup_branch_protection import apply_branch_protection, validate_ruleset_file
 from check_provider_redirects import check_redirects, MAX_REDIRECT_LINES, REDIRECT_FILES
+from check_closing_refs import validate_pr_closing_refs
 
 def test_should_ignore_directories(tmp_path):
     assert should_ignore(tmp_path / '.git' / 'README.md') is True
@@ -471,3 +472,71 @@ def test_claude_settings_structure_and_bootstrap(tmp_path):
     malformed_file.write_text(invalid_content, encoding='utf-8')
     assert configure_claude_settings(malformed_root, 'go') is False
     assert malformed_file.read_text(encoding='utf-8') == invalid_content
+
+def test_check_closing_refs():
+    # 1. Valid single closing reference in ## Linked Issue
+    body_single = "## Summary\n\nImplements core logic.\n\n## Linked Issue\n\nCloses #29\n"
+    is_valid, violations = validate_pr_closing_refs("feat: core logic", body_single)
+    assert is_valid is True
+    assert violations == []
+
+    # 2. Valid multiple closing references in ## Linked Issue
+    body_multiple = "## Summary\n\nFixes both items.\n\n## Linked Issue\n\nCloses #30\nCloses #43\n"
+    is_valid, violations = validate_pr_closing_refs("feat: multi-fix", body_multiple)
+    assert is_valid is True
+    assert violations == []
+
+    # 3. Valid non-closing mentions outside ## Linked Issue
+    body_mentions = (
+        "## Summary\n\n"
+        "Part of #10, see #20, addresses #30, and relates to #40.\n\n"
+        "## Linked Issue\n\n"
+        "Closes #29\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("feat: mentions", body_mentions)
+    assert is_valid is True
+    assert violations == []
+
+    # 4. Closing reference in PR title -> FAIL
+    is_valid, violations = validate_pr_closing_refs("fix: resolves #123", body_single)
+    assert is_valid is False
+    assert any("found in PR title" in v for v in violations)
+
+    # 5. Stray closing reference in ## Summary (negation trap) -> FAIL
+    body_negation = (
+        "## Summary\n\n"
+        "This implements part 1 but does not close #123.\n\n"
+        "## Linked Issue\n\n"
+        "Closes #29\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("feat: part 1", body_negation)
+    assert is_valid is False
+    assert any("Stray closing reference" in v and "negation" in v for v in violations)
+
+    # 6. Missing ## Linked Issue section -> FAIL unless allow_no_issue=True
+    body_missing_section = "## Summary\n\nNo linked issue section anywhere.\n"
+    is_valid, violations = validate_pr_closing_refs("feat: no section", body_missing_section, allow_no_issue=False)
+    assert is_valid is False
+    assert any("Missing '## Linked Issue' section" in v for v in violations)
+
+    is_valid, violations = validate_pr_closing_refs("feat: no section", body_missing_section, allow_no_issue=True)
+    assert is_valid is True
+    assert violations == []
+
+    # 7. Stray reference with allow_no_issue=True still FAILS
+    body_stray_with_allow = "## Summary\n\nDoes not close #123.\n"
+    is_valid, violations = validate_pr_closing_refs("feat: override", body_stray_with_allow, allow_no_issue=True)
+    assert is_valid is False
+    assert any("Stray closing reference" in v for v in violations)
+
+    # 8. Unpopulated placeholder -> FAIL when issue required
+    body_placeholder = "## Summary\n\nDesc.\n\n## Linked Issue\n\nCloses #<issue-number>\n"
+    is_valid, violations = validate_pr_closing_refs("feat: placeholder", body_placeholder, allow_no_issue=False)
+    assert is_valid is False
+    assert any("unpopulated placeholder" in v for v in violations)
+
+    # 9. Verify .github/PULL_REQUEST_TEMPLATE.md preserves non-numeric placeholder
+    root_dir = Path(__file__).parent.parent
+    pr_template = (root_dir / '.github' / 'PULL_REQUEST_TEMPLATE.md').read_text(encoding='utf-8')
+    assert "Closes #<issue-number>" in pr_template
+    assert not re.search(r'Closes #\d+', pr_template), "PR template should never contain a real numeric issue number"
