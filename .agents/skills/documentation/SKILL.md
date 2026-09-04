@@ -17,7 +17,7 @@ Every `.md` document created or modified in this repository MUST conclude with t
 
 ### 2. Post-Implementation Doc Verification
 After completing a feature or bug fix:
-1. Review existing project documentation (`README.md`, `GEMINI.md`, `architecture.md`, etc.).
+1. Review existing project documentation (`README.md`, `AGENTS.md`, `docs/`, `architecture.md`, etc.).
 2. Update relevant markdown content if the implementation changed usage patterns, interfaces, or setup steps.
 3. Run `python3 scripts/append_timestamps.py` to ensure all markdown files have valid footers.
 4. Run `python3 scripts/check_docs_review.py` to verify that no documents violate review staleness thresholds.
@@ -27,4 +27,4 @@ If a feature introduces new commands, CLI flags, configuration parameters, or ar
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-22* | *Last Reviewed: 2026-07-22*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*

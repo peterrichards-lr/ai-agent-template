@@ -7,8 +7,8 @@ Thank you for contributing to this project! Whether you are a human developer or
 ## 1. Rules of Engagement for AI Coding Agents
 
 When working on this repository, AI agents MUST follow the operational directives defined in:
-1. **[AGENTS.md](AGENTS.md)**: Routing index for modular skills and universal engagement rules.
-2. **[GEMINI.md](GEMINI.md)**: Persistent state, active roadmap, and project constraints.
+1. **[AGENTS.md](AGENTS.md)**: Routing index for modular skills and universal engagement rules (canonical single source of truth).
+2. **`.agent-state.md`**: In-flight task scratchpad state, active objectives, and session context across AI provider switches (gitignored).
 3. **`.agents/skills/`**: Specific task instructions (`reflection-and-planning`, `unit-testing`, `coding-standards`, `github-workflow`, etc.).
 4. **[docs/BRANCH_PROTECTION.md](docs/BRANCH_PROTECTION.md)**: Recommended repository rulesets that turn several of the above conventions into real, CI/platform-enforced gates rather than prose alone.
 
@@ -85,4 +85,4 @@ Expired PATs trigger `401 Unauthorized` errors on `gh` commands. Set calendar re
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
