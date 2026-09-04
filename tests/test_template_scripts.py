@@ -4,6 +4,7 @@ test_template_scripts.py - Unit Test Suite for Template Automation Scripts
 Tests append_timestamps.py, check_docs_review.py, bootstrap_template.py, and gh_issue_sync.py.
 """
 
+import re
 import sys
 import json
 import yaml
@@ -252,10 +253,15 @@ def test_skill_frontmatter_and_routing_tables():
     template_guide = root_dir / 'docs' / 'TEMPLATE_GUIDE.md'
 
     skill_dirs = sorted([d for d in skills_dir.iterdir() if d.is_dir()])
-    assert len(skill_dirs) == 10, f"Expected 10 skill directories, found {len(skill_dirs)}"
-
     agents_content = agents_md.read_text(encoding='utf-8')
     guide_content = template_guide.read_text(encoding='utf-8')
+
+    disk = {d.name for d in skill_dirs}
+    agents = set(re.findall(r'\*\*\[([a-z0-9-]+)\]', agents_content))
+    guide = set(re.findall(r'\*\*`([a-z0-9-]+)`\*\*', guide_content))
+
+    assert disk == agents, f"AGENTS.md drift — only on disk: {disk - agents}; only in table: {agents - disk}"
+    assert disk == guide, f"TEMPLATE_GUIDE drift — only on disk: {disk - guide}; only in table: {guide - disk}"
 
     for s_dir in skill_dirs:
         skill_name = s_dir.name
@@ -272,9 +278,3 @@ def test_skill_frontmatter_and_routing_tables():
         assert isinstance(fm, dict), f"{skill_file} frontmatter did not parse to a dict"
         assert fm.get('name') == skill_name, f"{skill_file} frontmatter name '{fm.get('name')}' != directory name '{skill_name}'"
         assert fm.get('description'), f"{skill_file} missing or empty frontmatter description"
-
-        # Verify skill is indexed in AGENTS.md routing table
-        assert f"**[{skill_name}]" in agents_content, f"Skill '{skill_name}' not listed in AGENTS.md table"
-
-        # Verify skill is indexed in TEMPLATE_GUIDE.md table
-        assert f"**`{skill_name}`**" in guide_content, f"Skill '{skill_name}' not listed in TEMPLATE_GUIDE.md table"
