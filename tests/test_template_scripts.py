@@ -4,6 +4,7 @@ test_template_scripts.py - Unit Test Suite for Template Automation Scripts
 Tests append_timestamps.py, check_docs_review.py, bootstrap_template.py, and gh_issue_sync.py.
 """
 
+import re
 import sys
 import json
 import yaml
@@ -244,3 +245,36 @@ def test_ruleset_validator_rejects_internal_job_id_when_name_present(tmp_path):
 
     with pytest.raises(AssertionError, match="requires status check 'quality-gate'"):
         validate_ruleset_contexts(bad_ruleset, valid_contexts)
+
+def test_skill_frontmatter_and_routing_tables():
+    root_dir = Path(__file__).parent.parent
+    skills_dir = root_dir / '.agents' / 'skills'
+    agents_md = root_dir / 'AGENTS.md'
+    template_guide = root_dir / 'docs' / 'TEMPLATE_GUIDE.md'
+
+    skill_dirs = sorted([d for d in skills_dir.iterdir() if d.is_dir()])
+    agents_content = agents_md.read_text(encoding='utf-8')
+    guide_content = template_guide.read_text(encoding='utf-8')
+
+    disk = {d.name for d in skill_dirs}
+    agents = set(re.findall(r'\*\*\[([a-z0-9-]+)\]', agents_content))
+    guide = set(re.findall(r'\*\*`([a-z0-9-]+)`\*\*', guide_content))
+
+    assert disk == agents, f"AGENTS.md drift — only on disk: {disk - agents}; only in table: {agents - disk}"
+    assert disk == guide, f"TEMPLATE_GUIDE drift — only on disk: {disk - guide}; only in table: {guide - disk}"
+
+    for s_dir in skill_dirs:
+        skill_name = s_dir.name
+        skill_file = s_dir / 'SKILL.md'
+        assert skill_file.exists(), f"Missing SKILL.md in {s_dir}"
+
+        content = skill_file.read_text(encoding='utf-8')
+        assert content.startswith('---\n'), f"{skill_file} missing leading frontmatter delimiter"
+        parts = content.split('---\n', 2)
+        assert len(parts) >= 3, f"{skill_file} invalid frontmatter structure"
+
+        fm_text = parts[1]
+        fm = yaml.safe_load(fm_text)
+        assert isinstance(fm, dict), f"{skill_file} frontmatter did not parse to a dict"
+        assert fm.get('name') == skill_name, f"{skill_file} frontmatter name '{fm.get('name')}' != directory name '{skill_name}'"
+        assert fm.get('description'), f"{skill_file} missing or empty frontmatter description"

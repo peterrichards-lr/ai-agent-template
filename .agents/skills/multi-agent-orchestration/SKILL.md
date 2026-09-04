@@ -1,6 +1,11 @@
-# Skill: Multi-Agent Orchestration & Delegation
+---
+name: multi-agent-orchestration
+description: >-
+  Defines criteria and patterns for delegating tasks to subagents and synthesizing results asynchronously.
+  Load when delegating subtasks or running background research.
+---
 
-**Trigger Condition**: Load this skill when delegating subtasks to subagents, spawning research subagents, or coordinating multi-agent workflows -- using whatever subagent-delegation mechanism your agent provides, if any. Not every agent supports subagents; where one doesn't, this skill doesn't apply.
+# Skill: Multi-Agent Orchestration & Delegation
 
 ---
 
@@ -23,4 +28,4 @@ Do not poll subagents in a loop. When subagents finish, synthesize their returne
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-07-31* | *Last Reviewed: 2026-07-31*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*

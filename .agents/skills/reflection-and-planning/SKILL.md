@@ -1,6 +1,11 @@
-# Skill: Reflection & Planning
+---
+name: reflection-and-planning
+description: >-
+  Enforces logic-first planning, written implementation plans, predictive failure analysis, and approval loops.
+  Load when beginning complex tasks, multi-file edits, or architectural changes.
+---
 
-**Trigger Condition**: Load this skill when beginning complex tasks, multi-file refactoring, introducing new architectural components, or when requested to plan.
+# Skill: Reflection & Planning
 
 ---
 
@@ -38,4 +43,4 @@ Break multi-step implementations into discrete, verifiable steps -- but once a p
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*

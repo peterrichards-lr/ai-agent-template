@@ -1,6 +1,11 @@
-# Skill: Documentation Hygiene & Timestamp Maintenance
+---
+name: documentation
+description: >-
+  Governs documentation hygiene, timestamp maintenance (*Last Updated* | *Last Reviewed*), and staleness checks.
+  Load after completing any code change, feature implementation, refactoring, or doc update.
+---
 
-**Trigger Condition**: Load this skill after completing any code change, feature implementation, refactoring, or documentation update.
+# Skill: Documentation Hygiene & Timestamp Maintenance
 
 ---
 

@@ -1,6 +1,11 @@
-# Skill: GitHub Workflow & Issue Synchronization
+---
+name: github-workflow
+description: >-
+  Standardizes GitHub CLI usage, mandatory issue linking (Closes #<issue>), repository SEO, and CI run cleanup.
+  Load when managing issues, opening PRs, or handling CI failures.
+---
 
-**Trigger Condition**: Load this skill when starting tasks, managing GitHub issues, creating Pull Requests, or dealing with CI runner failures.
+# Skill: GitHub Workflow & Issue Synchronization
 
 ---
 
@@ -81,4 +86,4 @@ To ensure high visibility, search discoverability, and SEO positioning on GitHub
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-19* | *Last Reviewed: 2026-08-19*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
