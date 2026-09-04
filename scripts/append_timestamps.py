@@ -13,7 +13,7 @@ from datetime import datetime
 
 # Allow importing sibling script helpers regardless of invocation working directory
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
-from check_docs_review import strip_code_fences, FOOTER_REGEX
+from check_docs_review import strip_code_fences, FOOTER_REGEX, EXTRA_DOC_FILES
 
 IGNORE_DIRS = {
     '.git', 'node_modules', '.venv', 'venv', 'env', '.smoke_venv',
@@ -40,18 +40,19 @@ def append_timestamps(root_dir: Path = None):
     count = 0
     updated_count = 0
 
-    for md_path in root_dir.rglob('*.md'):
-        if should_ignore(md_path):
+    extra_files = [root_dir / f for f in EXTRA_DOC_FILES if (root_dir / f).exists()]
+    for doc_path in list(root_dir.rglob('*.md')) + extra_files:
+        if should_ignore(doc_path):
             continue
 
         count += 1
-        content = md_path.read_text(encoding='utf-8')
+        content = doc_path.read_text(encoding='utf-8')
         content_outside_code = strip_code_fences(content)
 
         if not FOOTER_REGEX.search(content_outside_code):
-            print(f"Appending timestamp footer to {md_path.relative_to(root_dir)}")
+            print(f"Appending timestamp footer to {doc_path.relative_to(root_dir)}")
             content = content.rstrip()
-            md_path.write_text(content + footer_text, encoding='utf-8')
+            doc_path.write_text(content + footer_text, encoding='utf-8')
             updated_count += 1
 
     print(f"Done. Scanned {count} files. Injected footers into {updated_count} files.")

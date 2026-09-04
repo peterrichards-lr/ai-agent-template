@@ -20,6 +20,7 @@ IGNORE_DIRS = {
 FOOTER_REGEX = re.compile(
     r"([*_])Last Updated:\s*(\d{4}-\d{2}-\d{2})\1\s*\|\s*\1Last Reviewed:\s*(\d{4}-\d{2}-\d{2})\1"
 )
+EXTRA_DOC_FILES = ['.cursorrules', '.windsurfrules']
 
 def strip_code_fences(content: str) -> str:
     """Strip fenced code blocks (```...```) to prevent illustrative examples from being parsed as footers."""
@@ -46,13 +47,14 @@ def check_docs(max_review_days: int, max_update_days: int, max_gap_days: int, ro
     violations = []
     scanned_count = 0
 
-    for md_path in root_dir.rglob('*.md'):
-        if should_ignore(md_path):
+    extra_files = [root_dir / f for f in EXTRA_DOC_FILES if (root_dir / f).exists()]
+    for doc_path in list(root_dir.rglob('*.md')) + extra_files:
+        if should_ignore(doc_path):
             continue
 
         scanned_count += 1
-        content = md_path.read_text(encoding='utf-8')
-        rel_path = md_path.relative_to(root_dir)
+        content = doc_path.read_text(encoding='utf-8')
+        rel_path = doc_path.relative_to(root_dir)
 
         content_outside_code = strip_code_fences(content)
         matches = list(FOOTER_REGEX.finditer(content_outside_code))

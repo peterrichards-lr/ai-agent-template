@@ -21,6 +21,7 @@ from check_docs_review import check_docs, parse_date
 from bootstrap_template import configure_language_profile, clean_template_meta_docs, get_default_topics, ensure_claude_skills_symlink
 from gh_issue_sync import sync_issues
 from setup_branch_protection import apply_branch_protection, validate_ruleset_file
+from check_provider_redirects import check_redirects, MAX_REDIRECT_LINES, REDIRECT_FILES
 
 def test_should_ignore_directories(tmp_path):
     assert should_ignore(tmp_path / '.git' / 'README.md') is True
@@ -321,3 +322,58 @@ def test_claude_skills_symlink_and_gitignore(tmp_path):
     for p in ['.claude/skills', '.claude/settings.json']:
         res = subprocess.run(['git', 'check-ignore', p], cwd=root_dir, capture_output=True, text=True)
         assert res.returncode == 1, f"Expected {p} NOT to be ignored by git"
+
+def test_check_provider_redirects(tmp_path):
+    root_dir = Path(__file__).parent.parent
+    assert check_redirects(root_dir) is True
+
+    # 1. Failure on missing file
+    dummy = tmp_path / 'dummy_repo'
+    dummy.mkdir()
+    assert check_redirects(dummy) is False
+
+    # 2. Setup valid mock files
+    (dummy / '.github').mkdir()
+    for f in REDIRECT_FILES:
+        (dummy / f).write_text("# Redirect\nSee [`AGENTS.md`](./AGENTS.md)\n", encoding='utf-8')
+    assert check_redirects(dummy) is True
+
+    # 3. Line bloat boundary tests (<= MAX_REDIRECT_LINES is allowed, > MAX_REDIRECT_LINES fails)
+    exact_content = "\n".join([f"line {i}" for i in range(MAX_REDIRECT_LINES - 1)]) + "\nAGENTS.md\n"
+    (dummy / '.cursorrules').write_text(exact_content, encoding='utf-8')
+    assert check_redirects(dummy) is True
+
+    bloated_content = "\n".join([f"line {i}" for i in range(MAX_REDIRECT_LINES)]) + "\nAGENTS.md\n"
+    (dummy / '.cursorrules').write_text(bloated_content, encoding='utf-8')
+    assert check_redirects(dummy) is False
+
+    # 4. Failure on missing AGENTS.md link
+    (dummy / '.cursorrules').write_text("# Thin redirect\nNo canonical reference here\n", encoding='utf-8')
+    assert check_redirects(dummy) is False
+
+def test_non_md_redirects_timestamp_and_review(tmp_path):
+    # Create mock repo with .cursorrules and .windsurfrules lacking footers
+    (tmp_path / '.cursorrules').write_text("# Cursor Rules\nRedirect to AGENTS.md\n", encoding='utf-8')
+    (tmp_path / '.windsurfrules').write_text("# Windsurf Rules\nRedirect to AGENTS.md\n", encoding='utf-8')
+
+    append_timestamps(tmp_path)
+    assert "Last Updated:" in (tmp_path / '.cursorrules').read_text(encoding='utf-8')
+    assert "Last Updated:" in (tmp_path / '.windsurfrules').read_text(encoding='utf-8')
+    assert check_docs(max_review_days=30, max_update_days=30, max_gap_days=30, root_dir=tmp_path) is True
+
+def test_provider_redirects_doc_drift():
+    root_dir = Path(__file__).parent.parent
+    agents_content = (root_dir / 'AGENTS.md').read_text(encoding='utf-8')
+    readme_content = (root_dir / 'README.md').read_text(encoding='utf-8')
+    guide_content = (root_dir / 'docs' / 'TEMPLATE_GUIDE.md').read_text(encoding='utf-8')
+
+    # Note: This check is intentionally forward-only (asserting that every entry in
+    # REDIRECT_FILES is referenced in the core docs). Unlike test_skill_frontmatter_and_routing_tables,
+    # bidirectional set comparison against prose documents is not practical.
+    # Also note that while CLAUDE.md and GEMINI.md appear in multiple unrelated contexts in the docs,
+    # this check provides vital drift protection for tool-specific files (.cursorrules,
+    # .windsurfrules, .github/copilot-instructions.md).
+    for redirect_file in REDIRECT_FILES:
+        assert redirect_file in agents_content, f"AGENTS.md missing reference to redirect file '{redirect_file}'"
+        assert redirect_file in readme_content, f"README.md missing reference to redirect file '{redirect_file}'"
+        assert redirect_file in guide_content, f"TEMPLATE_GUIDE.md missing reference to redirect file '{redirect_file}'"
