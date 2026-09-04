@@ -11,14 +11,16 @@ import re
 from pathlib import Path
 from datetime import datetime
 
+# Allow importing sibling script helpers regardless of invocation working directory
+sys.path.insert(0, str(Path(__file__).parent.resolve()))
+from check_docs_review import strip_code_fences, FOOTER_REGEX
+
 IGNORE_DIRS = {
     '.git', 'node_modules', '.venv', 'venv', 'env', '.smoke_venv',
     'coverage', 'target', 'build', 'dist', 'bin', '.gemini', '.agent_scratch', '.pytest_cache'
 }
 
-FOOTER_PATTERN = re.compile(
-    r'<!-- markdownlint-disable MD049 -->\s*---\s*\*Last Updated:\s*[\d\-]+\*\s*\|\s*\*Last Reviewed:\s*[\d\-]+\*'
-)
+FOOTER_PATTERN = FOOTER_REGEX
 
 def should_ignore(path: Path) -> bool:
     for part in path.parts:
@@ -44,8 +46,9 @@ def append_timestamps(root_dir: Path = None):
 
         count += 1
         content = md_path.read_text(encoding='utf-8')
+        content_outside_code = strip_code_fences(content)
 
-        if not FOOTER_PATTERN.search(content):
+        if not FOOTER_REGEX.search(content_outside_code):
             print(f"Appending timestamp footer to {md_path.relative_to(root_dir)}")
             content = content.rstrip()
             md_path.write_text(content + footer_text, encoding='utf-8')

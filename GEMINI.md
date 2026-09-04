@@ -9,11 +9,5 @@
 > In-flight task state belongs in `.agent-state.md` (gitignored), not here.
 
 <!-- markdownlint-disable MD049 -->
-
----
-
-_Last Updated: 2026-08-18_ | _Last Reviewed: 2026-08-18_
-
-<!-- markdownlint-disable MD049 -->
 ---
 *Last Updated: 2026-08-18* | *Last Reviewed: 2026-08-18*

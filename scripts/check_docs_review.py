@@ -18,8 +18,12 @@ IGNORE_DIRS = {
 }
 
 FOOTER_REGEX = re.compile(
-    r"\*Last Updated:\s*([\d\-]+)\*\s*\|\s*\*Last Reviewed:\s*([\d\-]+)\*"
+    r"([*_])Last Updated:\s*(\d{4}-\d{2}-\d{2})\1\s*\|\s*\1Last Reviewed:\s*(\d{4}-\d{2}-\d{2})\1"
 )
+
+def strip_code_fences(content: str) -> str:
+    """Strip fenced code blocks (```...```) to prevent illustrative examples from being parsed as footers."""
+    return re.sub(r'```[\s\S]*?```', '', content)
 
 def should_ignore(path: Path) -> bool:
     for part in path.parts:
@@ -48,17 +52,25 @@ def check_docs(max_review_days: int, max_update_days: int, max_gap_days: int, ro
 
         scanned_count += 1
         content = md_path.read_text(encoding='utf-8')
-        match = FOOTER_REGEX.search(content)
         rel_path = md_path.relative_to(root_dir)
 
-        if not match:
+        content_outside_code = strip_code_fences(content)
+        matches = list(FOOTER_REGEX.finditer(content_outside_code))
+
+        if not matches:
             print(f"Violation: {rel_path} is missing a valid timestamp footer block.", file=sys.stderr)
             violations.append(str(rel_path))
             continue
 
+        if len(matches) > 1:
+            print(f"Violation: {rel_path} contains {len(matches)} duplicate timestamp footers.", file=sys.stderr)
+            violations.append(str(rel_path))
+            continue
+
+        match = matches[0]
         try:
-            last_updated_date = parse_date(match.group(1))
-            last_reviewed_date = parse_date(match.group(2))
+            last_updated_date = parse_date(match.group(2))
+            last_reviewed_date = parse_date(match.group(3))
         except Exception:
             violations.append(str(rel_path))
             continue
