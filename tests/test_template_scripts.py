@@ -540,3 +540,63 @@ def test_check_closing_refs():
     pr_template = (root_dir / '.github' / 'PULL_REQUEST_TEMPLATE.md').read_text(encoding='utf-8')
     assert "Closes #<issue-number>" in pr_template
     assert not re.search(r'Closes #\d+', pr_template), "PR template should never contain a real numeric issue number"
+
+    # 10. Closing references inside fenced code blocks do NOT count as strays
+    body_fenced_code = (
+        "## Summary\n\n"
+        "Here is an example:\n"
+        "```markdown\n"
+        "Closes #123\n"
+        "Fixes #456\n"
+        "```\n\n"
+        "## Linked Issue\n\n"
+        "Closes #29\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("docs: update rules", body_fenced_code)
+    assert is_valid is True
+    assert violations == []
+
+    # 11. Closing references inside inline code spans do NOT count as strays
+    body_inline_code = (
+        "## Summary\n\n"
+        "Be sure to put `Closes #123` or `Fixes #456` in the linked issue section.\n\n"
+        "## Linked Issue\n\n"
+        "Closes #29\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("docs: update rules", body_inline_code)
+    assert is_valid is True
+    assert violations == []
+
+    # 12. Closing references inside <details> blocks or blockquotes do NOT count as strays
+    body_details_and_quotes = (
+        "## Summary\n\n"
+        "> Quote discussing Fixes #123\n\n"
+        "<details open>\n"
+        "<summary>Release notes</summary>\n"
+        "- Fixes #789\n"
+        "- Resolves #999\n"
+        "</details>\n\n"
+        "## Linked Issue\n\n"
+        "Closes #29\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("docs: update notes", body_details_and_quotes)
+    assert is_valid is True
+    assert violations == []
+
+    # 13. Automated bot PRs (e.g. dependabot[bot]) are exempted from checks
+    body_bot = (
+        "Bumps dependency from 1.0 to 2.0\n\n"
+        "Changelog:\n"
+        "Fixes #555 in upstream repo\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("bump dep", body_bot, actor="dependabot[bot]")
+    assert is_valid is True
+    assert violations == []
+
+    is_valid, violations = validate_pr_closing_refs("bump dep", body_bot, is_bot=True)
+    assert is_valid is True
+    assert violations == []
+
+    # 14. Verify .github/workflows/issue-link-check.yml uses actions/checkout@v7
+    issue_link_workflow = (root_dir / '.github' / 'workflows' / 'issue-link-check.yml').read_text(encoding='utf-8')
+    assert "uses: actions/checkout@v7" in issue_link_workflow

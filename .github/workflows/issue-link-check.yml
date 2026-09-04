@@ -25,13 +25,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Verify PR closing issue reference
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login || github.actor }}
         run: |
           set -euo pipefail
 
@@ -45,4 +46,4 @@ jobs:
           title=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title -q '.title')
           gh pr view "$PR_NUMBER" --repo "$REPO" --json body -q '.body // ""' > /tmp/pr_body.md
 
-          python3 scripts/check_closing_refs.py --title "$title" --body-file /tmp/pr_body.md $allow_flag
+          python3 scripts/check_closing_refs.py --title "$title" --body-file /tmp/pr_body.md --actor "$PR_AUTHOR" $allow_flag

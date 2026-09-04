@@ -17,6 +17,10 @@ import argparse
 from pathlib import Path
 from typing import List, Tuple, Dict, Any, Optional
 
+# Allow importing sibling script helpers regardless of invocation working directory
+sys.path.insert(0, str(Path(__file__).parent.resolve()))
+from check_docs_review import strip_code_fences
+
 # Regex matching GitHub closing keywords followed by an issue number or issue URL
 # GitHub supported keywords: close, closes, closed, fix, fixes, fixed, resolve, resolves, resolved
 CLOSING_REF_REGEX = re.compile(
@@ -27,6 +31,27 @@ CLOSING_REF_REGEX = re.compile(
 # Heading pattern for splitting markdown into level-2 sections
 HEADING_REGEX = re.compile(r'(?m)^##\s+(.+)$')
 LINKED_ISSUE_HEADING_REGEX = re.compile(r'^Linked\s+Issues?$', re.IGNORECASE)
+
+def strip_non_linking_regions(text: str) -> str:
+    """
+    Remove markdown regions that cannot trigger GitHub issue closures:
+    1. Fenced code blocks (```...```) - via check_docs_review.strip_code_fences
+    2. Inline code spans (`...`)
+    3. Collapsible <details> blocks (where bot changelogs and release notes reside)
+    4. Blockquotes (> ...)
+    """
+    text = strip_code_fences(text)
+    text = re.sub(r'`[^`\n]*`', '', text)                          # inline code
+    text = re.sub(r'(?is)<details\b[^>]*>.*?</details>', '', text)  # <details> / <details open>
+    text = re.sub(r'(?m)^\s*>.*$', '', text)                       # blockquotes
+    return text
+
+def is_bot_actor(actor: Optional[str]) -> bool:
+    """Check if the PR author/actor is an automated bot."""
+    if not actor:
+        return False
+    actor_clean = actor.strip().lower()
+    return actor_clean.endswith("[bot]") or actor_clean in {"dependabot", "renovate"}
 
 def split_markdown_sections(text: str) -> List[Tuple[str, str]]:
     """Split markdown text into (heading, content) tuples based on '## ' headers."""
@@ -52,13 +77,18 @@ def split_markdown_sections(text: str) -> List[Tuple[str, str]]:
 def validate_pr_closing_refs(
     title: str,
     body: str,
-    allow_no_issue: bool = False
+    allow_no_issue: bool = False,
+    actor: Optional[str] = None,
+    is_bot: bool = False
 ) -> Tuple[bool, List[str]]:
     """
     Validate PR title and body for closing references.
 
     Returns (is_valid, violations_list).
     """
+    if is_bot or is_bot_actor(actor):
+        return True, []
+
     violations: List[str] = []
 
     # 1. Check PR title
@@ -85,7 +115,8 @@ def validate_pr_closing_refs(
 
     # Check for stray closing references outside '## Linked Issue'
     for heading, content in other_sections:
-        matches = CLOSING_REF_REGEX.findall(content)
+        sanitized_content = strip_non_linking_regions(content)
+        matches = CLOSING_REF_REGEX.findall(sanitized_content)
         if matches:
             loc = f"section '## {heading}'" if heading else "body preamble"
             for match in matches:
@@ -136,8 +167,14 @@ def main() -> int:
     parser.add_argument("--body", type=str, default=None, help="PR body markdown text")
     parser.add_argument("--body-file", type=Path, default=None, help="Path to file containing PR body markdown")
     parser.add_argument("--allow-no-issue", action="store_true", help="Allow PR without closing issue (e.g. no-issue-needed label)")
+    parser.add_argument("--actor", type=str, default=None, help="PR author or GitHub actor")
+    parser.add_argument("--is-bot", action="store_true", help="Exempt bot PRs from closing reference checks")
 
     args = parser.parse_args()
+
+    if args.is_bot or is_bot_actor(args.actor):
+        print(f"🤖 Bot PR detected ('{args.actor or 'bot'}'). Exempting from closing reference checks.")
+        return 0
 
     title = args.title if args.title is not None else ""
     if args.body_file and args.body_file.exists():
@@ -147,7 +184,9 @@ def main() -> int:
     else:
         body = ""
 
-    is_valid, violations = validate_pr_closing_refs(title, body, allow_no_issue=args.allow_no_issue)
+    is_valid, violations = validate_pr_closing_refs(
+        title, body, allow_no_issue=args.allow_no_issue, actor=args.actor, is_bot=args.is_bot
+    )
 
     if not is_valid:
         print("❌ PR Closing Reference Check Failed:", file=sys.stderr)
