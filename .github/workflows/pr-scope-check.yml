@@ -1,0 +1,49 @@
+name: PR Scope Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+    branches:
+      - main
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  # cancel-in-progress: false because this job supplies a required status check in
+  # .github/rulesets/protect-main-branch.json. Queuing rather than cancelling ensures
+  # the newest run reports last so the final check status reflects the latest state,
+  # and avoids aborting runs mid-execution. Note that GitHub still cancels pending runs
+  # if a newer run queues behind them. See #30.
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  scope-check:
+    name: Verify PR scope sprawl guardrail
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Check PR scope sprawl
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+
+          title=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json title -q '.title')
+          labels=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels -q '.labels[].name' || true)
+          changed_count=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json files -q '.files | length')
+
+          python3 scripts/check_pr_scope.py \
+            --branch "$BRANCH_NAME" \
+            --title "$title" \
+            --labels "$labels" \
+            --changed-count "$changed_count" \
+            --max-files 10

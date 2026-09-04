@@ -111,7 +111,7 @@ When bootstrapping this template for a specific programming language, follow the
 | :--- | :--- |
 | **`reflection-and-planning`** | Implements Logic-First Planning, written implementation plans, Predictive Failure Analysis, and approval loops. |
 | **`human-in-the-loop`** | Enforces safety gates for deployments, database drops, plain-text secret prohibitions, and visual diff approvals. |
-| **`coding-standards`** | Mandates DRY code discovery (using the agent's available code-search tool), self-documenting code, defensive safety guards, and language idiom alignment. |
+| **`coding-standards`** | Mandates DRY code discovery (using the agent's available code-search tool), self-documenting code, defensive safety guards, language idiom alignment, and scope-sprawl anti-churn limits. |
 | **`unit-testing`** | Enforces test-driven development, fail-first verification gates (citing red-to-green empirical evidence), non-interactive execution, and prohibits superficial test deletion. |
 | **`documentation`** | Governs timestamp footers (`*Last Updated* \| *Last Reviewed*`), post-feature doc updates, and staleness policy checks. |
 | **`github-workflow`** | Standardizes `gh` CLI usage, forces PRs to link `Closes #<issue>`, logs tech-debt, and cleans up historical CI failures. |

@@ -680,3 +680,44 @@ def test_branch_protection_docs_mentions_path_filter_deadlock():
     assert "Path-Filtered CI Deadlock" in content
     assert "skip-job pattern" in content
     assert "if the filter job itself fails" in content
+
+def test_check_pr_scope_logic():
+    """Verify check_pr_scope logic across branches, titles, labels, and file counts."""
+    from check_pr_scope import validate_pr_scope
+
+    # 1. Non-bugfix branch and title: always passes regardless of file count
+    assert validate_pr_scope(branch="feat/new-feature", title="feat: add feature", labels=[], changed_count=50) == (True, "Non-bugfix PR: scope sprawl check not applicable.")
+    assert validate_pr_scope(branch="chore/cleanup", title="chore: clean repo", labels=[], changed_count=25) == (True, "Non-bugfix PR: scope sprawl check not applicable.")
+
+    # 2. Bot PR immunity (Dependabot / Renovate)
+    assert validate_pr_scope(branch="dependabot/pip/pytest-9.0", title="build(deps): bump pytest", labels=[], changed_count=30) == (True, "Non-bugfix PR: scope sprawl check not applicable.")
+    assert validate_pr_scope(branch="renovate/actions", title="chore(deps): update actions", labels=[], changed_count=20) == (True, "Non-bugfix PR: scope sprawl check not applicable.")
+
+    # 3. Bugfix branch or title within 10-file threshold: passes
+    assert validate_pr_scope(branch="fix/typo", title="docs: fix typo", labels=[], changed_count=5)[0] is True
+    assert validate_pr_scope(branch="bugfix/issue-12", title="fix(ci): fix yaml error", labels=[], changed_count=10)[0] is True
+    assert validate_pr_scope(branch="feature/something", title="fix: one line bug", labels=[], changed_count=1)[0] is True
+
+    # 4. Bugfix exceeding 10 files without bypass label: fails
+    ok, msg = validate_pr_scope(branch="fix/big-fix", title="fix: bug", labels=[], changed_count=11)
+    assert ok is False
+    assert "modifies 11 files (limit is 10)" in msg
+    assert "bypass-sprawl" in msg
+
+    # 5. Bugfix exceeding 10 files with bypass-sprawl label: passes
+    ok, msg = validate_pr_scope(branch="fix/big-fix", title="fix: bug", labels=["bypass-sprawl"], changed_count=25)
+    assert ok is True
+    assert "bypassed via 'bypass-sprawl' label" in msg
+
+    # 6. Configurable max-files
+    ok, msg = validate_pr_scope(branch="fix/custom", title="fix: bug", labels=[], changed_count=5, max_files=3)
+    assert ok is False
+    assert "limit is 3" in msg
+
+def test_coding_standards_skill_scope_sprawl_rule():
+    """Verify coding-standards/SKILL.md defines Directive 5 (Scope Sprawl & Anti-Churn Guardrails)."""
+    skill = Path(__file__).parent.parent / '.agents' / 'skills' / 'coding-standards' / 'SKILL.md'
+    content = skill.read_text(encoding='utf-8')
+    assert "Scope Sprawl & Anti-Churn Guardrails" in content
+    assert "MUST NOT modify more than 10 files" in content
+    assert "bypass-sprawl" in content
