@@ -24,8 +24,8 @@ This template solves these failure modes out of the box, providing a standardize
 - **Pattern**: `AGENTS.md` acts as a lightweight routing table. Specific operational directives are isolated inside modular `.agents/skills/<skill>/SKILL.md` files. The agent dynamically loads only the skill relevant to its active task (e.g., loading `unit-testing` only during verification).
 
 ### 2. Provider-Agnostic Routing & Persistent Scratchpad (`.agent-state.md`)
-- **Problem**: AI agent context resets when a new conversation begins, or context is fragmented across provider-specific files (`GEMINI.md`, `CLAUDE.md`).
-- **Pattern**: `GEMINI.md` and `CLAUDE.md` exist solely as lightweight discovery redirects to `AGENTS.md`. Active in-flight state is managed in `.agent-state.md` (gitignored), ensuring seamless context preservation across AI provider switches (Gemini, Claude, Cursor, Copilot, etc.).
+- **Problem**: AI agent context resets when a new conversation begins, or context is fragmented across provider-specific files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`).
+- **Pattern**: Provider discovery files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`) exist solely as lightweight redirects to `AGENTS.md`. Active in-flight state is managed in `.agent-state.md` (gitignored), ensuring seamless context preservation across AI provider switches (Gemini, Claude, Cursor, Copilot, Windsurf, etc.).
 
 ### 3. Logic-First Planning & Predictive Failure Analysis
 - **Problem**: AI agents diving into multi-file code modifications prematurely, creating fragile or broken diffs.

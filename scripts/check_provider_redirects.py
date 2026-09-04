@@ -3,7 +3,7 @@
 check_provider_redirects.py - Validate Thin AI Provider Redirect Files
 
 Ensures provider discovery files (.cursorrules, .windsurfrules,
-.github/copilot-instructions.md, CLAUDE.md, GEMINI.md) exist, stay thin (<25 lines),
+.github/copilot-instructions.md, CLAUDE.md, GEMINI.md) exist, stay thin (≤25 lines),
 and explicitly link to AGENTS.md.
 """
 
@@ -33,7 +33,7 @@ def check_redirects(root_dir: Path = None) -> bool:
         content = path.read_text(encoding='utf-8')
         lines = content.splitlines()
 
-        if len(lines) >= MAX_REDIRECT_LINES:
+        if len(lines) > MAX_REDIRECT_LINES:
             violations.append(
                 f"{rel_path} exceeds maximum length of {MAX_REDIRECT_LINES} lines "
                 f"({len(lines)} lines). Redirects must remain thin and free of duplicated rules."
@@ -50,7 +50,7 @@ def check_redirects(root_dir: Path = None) -> bool:
             print(f"  - {v}", file=sys.stderr)
         return False
 
-    print(f"✓ All {len(REDIRECT_FILES)} provider redirect files are thin (<{MAX_REDIRECT_LINES} lines) and link to AGENTS.md.")
+    print(f"✓ All {len(REDIRECT_FILES)} provider redirect files are thin (≤{MAX_REDIRECT_LINES} lines) and link to AGENTS.md.")
     return True
 
 if __name__ == '__main__':

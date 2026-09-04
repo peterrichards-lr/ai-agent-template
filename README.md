@@ -9,7 +9,7 @@ Whether you are building in **Go**, **Python**, **Rust**, **Java**, **TypeScript
 ## Key Features
 
 - 🧠 **Context-Optimized Agent Routing (`AGENTS.md`)**: Decouples agent rules into domain-specific skill files (`.agents/skills/`), preventing prompt bloat and context token exhaustion.
-- 🔀 **Provider Discovery Redirects (`GEMINI.md`, `CLAUDE.md`)**: Lightweight redirects ensuring all AI providers load canonical rules from `AGENTS.md`.
+- 🔀 **Provider Discovery Redirects (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`)**: Lightweight redirects ensuring all AI providers load canonical rules from `AGENTS.md`.
 - 📌 **Persistent Scratchpad State (`.agent-state.md`)**: Shared gitignored scratchpad tracking project status, active goals, and roadmap priorities across provider switches.
 - 🛡️ **Language-Agnostic Quality Gates (`.pre-commit-config.yaml`)**: Out-of-the-box pre-commit configuration supporting secret scanning (`detect-secrets`, `gitleaks`), markdown link validation, document review policies, and modular linting for Go, Python, Rust, Java, and Node.js.
 - ⏱️ **Automated Documentation Hygiene**: Zero-dependency Python 3 tools (`append_timestamps.py` and `check_docs_review.py`) to enforce timestamp footers (`*Last Updated* | *Last Reviewed*`) and prevent documentation decay.
@@ -66,6 +66,8 @@ The bootstrapper will:
 ├── AGENTS.md                          # Master routing index for AI agent skills
 ├── GEMINI.md                          # Discovery redirect to AGENTS.md (Gemini CLI)
 ├── CLAUDE.md                          # Discovery redirect to AGENTS.md (Claude CLI)
+├── .cursorrules                       # Discovery redirect to AGENTS.md (Cursor IDE)
+├── .windsurfrules                     # Discovery redirect to AGENTS.md (Windsurf IDE)
 ├── .claude/                           # Claude Code configuration & discovery
 │   └── skills                         # Symlink -> ../.agents/skills
 ├── .agent-state.md                    # Gitignored persistent task scratchpad
@@ -75,6 +77,7 @@ The bootstrapper will:
 ├── .gitignore                         # Language-agnostic ignore rules
 ├── .pre-commit-config.yaml            # Pre-commit quality gate configuration
 ├── .github/                           # CI workflows & GitHub templates
+│   ├── copilot-instructions.md        # Discovery redirect to AGENTS.md (GitHub Copilot)
 │   ├── PULL_REQUEST_TEMPLATE.md       # PR template with issue linking checks
 │   ├── ISSUE_TEMPLATE/                # Task, Bug, and Tech Debt templates
 │   └── workflows/ci.yml               # GitHub Actions CI workflow

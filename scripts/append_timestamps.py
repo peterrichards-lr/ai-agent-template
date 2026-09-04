@@ -13,7 +13,7 @@ from datetime import datetime
 
 # Allow importing sibling script helpers regardless of invocation working directory
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
-from check_docs_review import strip_code_fences, FOOTER_REGEX
+from check_docs_review import strip_code_fences, FOOTER_REGEX, EXTRA_DOC_FILES
 
 IGNORE_DIRS = {
     '.git', 'node_modules', '.venv', 'venv', 'env', '.smoke_venv',
@@ -21,7 +21,6 @@ IGNORE_DIRS = {
 }
 
 FOOTER_PATTERN = FOOTER_REGEX
-EXTRA_DOC_FILES = ['.cursorrules', '.windsurfrules']
 
 def should_ignore(path: Path) -> bool:
     for part in path.parts:

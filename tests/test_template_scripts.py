@@ -338,8 +338,12 @@ def test_check_provider_redirects(tmp_path):
         (dummy / f).write_text("# Redirect\nSee [`AGENTS.md`](./AGENTS.md)\n", encoding='utf-8')
     assert check_redirects(dummy) is True
 
-    # 3. Failure on line bloat (>= 25 lines)
-    bloated_content = "\n".join([f"line {i}" for i in range(MAX_REDIRECT_LINES + 5)]) + "\nAGENTS.md\n"
+    # 3. Line bloat boundary tests (<= MAX_REDIRECT_LINES is allowed, > MAX_REDIRECT_LINES fails)
+    exact_content = "\n".join([f"line {i}" for i in range(MAX_REDIRECT_LINES - 1)]) + "\nAGENTS.md\n"
+    (dummy / '.cursorrules').write_text(exact_content, encoding='utf-8')
+    assert check_redirects(dummy) is True
+
+    bloated_content = "\n".join([f"line {i}" for i in range(MAX_REDIRECT_LINES)]) + "\nAGENTS.md\n"
     (dummy / '.cursorrules').write_text(bloated_content, encoding='utf-8')
     assert check_redirects(dummy) is False
 
@@ -356,3 +360,20 @@ def test_non_md_redirects_timestamp_and_review(tmp_path):
     assert "Last Updated:" in (tmp_path / '.cursorrules').read_text(encoding='utf-8')
     assert "Last Updated:" in (tmp_path / '.windsurfrules').read_text(encoding='utf-8')
     assert check_docs(max_review_days=30, max_update_days=30, max_gap_days=30, root_dir=tmp_path) is True
+
+def test_provider_redirects_doc_drift():
+    root_dir = Path(__file__).parent.parent
+    agents_content = (root_dir / 'AGENTS.md').read_text(encoding='utf-8')
+    readme_content = (root_dir / 'README.md').read_text(encoding='utf-8')
+    guide_content = (root_dir / 'docs' / 'TEMPLATE_GUIDE.md').read_text(encoding='utf-8')
+
+    # Note: This check is intentionally forward-only (asserting that every entry in
+    # REDIRECT_FILES is referenced in the core docs). Unlike test_skill_frontmatter_and_routing_tables,
+    # bidirectional set comparison against prose documents is not practical.
+    # Also note that while CLAUDE.md and GEMINI.md appear in multiple unrelated contexts in the docs,
+    # this check provides vital drift protection for tool-specific files (.cursorrules,
+    # .windsurfrules, .github/copilot-instructions.md).
+    for redirect_file in REDIRECT_FILES:
+        assert redirect_file in agents_content, f"AGENTS.md missing reference to redirect file '{redirect_file}'"
+        assert redirect_file in readme_content, f"README.md missing reference to redirect file '{redirect_file}'"
+        assert redirect_file in guide_content, f"TEMPLATE_GUIDE.md missing reference to redirect file '{redirect_file}'"
