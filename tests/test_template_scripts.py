@@ -391,14 +391,34 @@ def test_claude_settings_structure_and_bootstrap(tmp_path):
     assert isinstance(permissions.get("ask"), list)
     assert isinstance(permissions.get("allow"), list)
 
-    # Validate essential deny patterns
+    # Validate targeted root/home deny patterns and ensure blanket rm -rf * is absent
+    assert "Bash(rm -rf /)" in permissions["deny"]
     assert "Bash(rm -rf /*)" in permissions["deny"]
-    assert "Bash(git push *--force*)" in permissions["deny"]
+    assert "Bash(rm -rf ~)" in permissions["deny"]
+    assert "Bash(rm -rf ~/*)" in permissions["deny"]
+    assert "Bash(rm -rf $HOME)" in permissions["deny"]
+    assert "Bash(rm -rf $HOME/*)" in permissions["deny"]
+    assert "Bash(rm -rf *)" not in permissions["deny"]
+
+    # Validate anchored force push patterns and ensure unanchored *-f* is absent
+    assert "Bash(git push -f)" in permissions["deny"]
+    assert "Bash(git push -f *)" in permissions["deny"]
+    assert "Bash(git push * -f)" in permissions["deny"]
+    assert "Bash(git push * -f *)" in permissions["deny"]
+    assert "Bash(git push --force)" in permissions["deny"]
+    assert "Bash(git push --force *)" in permissions["deny"]
+    assert "Bash(git push * --force)" in permissions["deny"]
+    assert "Bash(git push * --force *)" in permissions["deny"]
+    assert "Bash(git push *-f*)" not in permissions["deny"]
+    assert "Bash(git push *--force*)" not in permissions["deny"]
+
+    # Validate other essential deny patterns
     assert "Bash(docker system prune*)" in permissions["deny"]
     assert "Bash(*DROP DATABASE*)" in permissions["deny"]
     assert "Bash(gh repo delete*)" in permissions["deny"]
 
-    # Validate essential ask patterns
+    # Validate essential ask patterns (including recoverable git reset --hard)
+    assert "Bash(git reset --hard*)" in permissions["ask"]
     assert "Bash(gh pr merge*)" in permissions["ask"]
     assert "Bash(git tag*)" in permissions["ask"]
     assert "Bash(gh release create*)" in permissions["ask"]
@@ -419,14 +439,35 @@ def test_claude_settings_structure_and_bootstrap(tmp_path):
     # Non-Go stack should not add go test deny
     assert configure_claude_settings(dummy_root, 'python') is True
     res_py = json.loads((dummy_claude / 'settings.json').read_text(encoding='utf-8'))
-    assert "Bash(go test*)" not in res_py["permissions"]["deny"]
+    assert "Bash(go test)" not in res_py["permissions"]["deny"]
+    assert "Bash(go test ./...)" not in res_py["permissions"]["deny"]
 
-    # Go stack should inject Bash(go test*)
+    # Go stack should inject narrow bare go test denies, not broad go test*
     assert configure_claude_settings(dummy_root, 'go') is True
     res_go = json.loads((dummy_claude / 'settings.json').read_text(encoding='utf-8'))
-    assert "Bash(go test*)" in res_go["permissions"]["deny"]
+    assert "Bash(go test)" in res_go["permissions"]["deny"]
+    assert "Bash(go test ./...)" in res_go["permissions"]["deny"]
+    assert "Bash(go test*)" not in res_go["permissions"]["deny"]
 
     # Idempotency check: running again should not duplicate
     assert configure_claude_settings(dummy_root, 'go') is True
     res_idempotent = json.loads((dummy_claude / 'settings.json').read_text(encoding='utf-8'))
-    assert res_idempotent["permissions"]["deny"].count("Bash(go test*)") == 1
+    assert res_idempotent["permissions"]["deny"].count("Bash(go test)") == 1
+    assert res_idempotent["permissions"]["deny"].count("Bash(go test ./...)") == 1
+
+    # 3. Test defensive error handling
+    # Missing settings.json: return False and do not create empty stub
+    empty_root = tmp_path / 'empty_project'
+    empty_root.mkdir()
+    assert configure_claude_settings(empty_root, 'go') is False
+    assert not (empty_root / '.claude' / 'settings.json').exists()
+
+    # Malformed settings.json: return False and preserve file content untouched
+    malformed_root = tmp_path / 'malformed_project'
+    malformed_claude = malformed_root / '.claude'
+    malformed_claude.mkdir(parents=True)
+    malformed_file = malformed_claude / 'settings.json'
+    invalid_content = '{"permissions": {invalid_json: true,'
+    malformed_file.write_text(invalid_content, encoding='utf-8')
+    assert configure_claude_settings(malformed_root, 'go') is False
+    assert malformed_file.read_text(encoding='utf-8') == invalid_content

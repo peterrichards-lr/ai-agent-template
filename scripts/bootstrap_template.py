@@ -236,24 +236,28 @@ def configure_claude_settings(root_dir: Path, language: str) -> bool:
     claude_dir = root_dir / '.claude'
     settings_file = claude_dir / 'settings.json'
 
-    claude_dir.mkdir(exist_ok=True)
-    if settings_file.exists():
-        try:
-            data = json.loads(settings_file.read_text(encoding='utf-8'))
-        except Exception as e:
-            print(f"  ⚠️ Warning: Could not parse {settings_file}: {e}", file=sys.stderr)
-            data = {}
-    else:
-        data = {}
+    if not settings_file.exists():
+        print(f"  ⚠️ Warning: {settings_file} does not exist. Skipping Claude settings configuration.", file=sys.stderr)
+        return False
+
+    try:
+        data = json.loads(settings_file.read_text(encoding='utf-8'))
+    except Exception as e:
+        print(f"  ⚠️ Warning: Could not parse {settings_file}: {e}. Preserving existing file without modification.", file=sys.stderr)
+        return False
 
     permissions = data.setdefault("permissions", {})
     deny_list = permissions.setdefault("deny", [])
 
     if language == 'go':
-        go_deny = "Bash(go test*)"
-        if go_deny not in deny_list:
-            deny_list.append(go_deny)
-            print("  ✓ Configured .claude/settings.json with Go EDR test command deny-list")
+        go_denies = ["Bash(go test)", "Bash(go test ./...)"]
+        added = []
+        for gd in go_denies:
+            if gd not in deny_list:
+                deny_list.append(gd)
+                added.append(gd)
+        if added:
+            print(f"  ✓ Configured .claude/settings.json with Go EDR test command deny-list ({', '.join(added)})")
 
     try:
         settings_file.write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
