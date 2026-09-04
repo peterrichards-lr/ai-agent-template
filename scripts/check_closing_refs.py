@@ -34,17 +34,17 @@ LINKED_ISSUE_HEADING_REGEX = re.compile(r'^Linked\s+Issues?$', re.IGNORECASE)
 
 def strip_non_linking_regions(text: str) -> str:
     """
-    Remove markdown regions that cannot trigger GitHub issue closures:
+    Remove markdown regions that GitHub's parser ignores when extracting closing issues:
     1. Fenced code blocks (```...```) - via check_docs_review.strip_code_fences
     2. Inline code spans (`...`)
-    3. Collapsible <details> blocks (where bot changelogs and release notes reside)
-    4. Blockquotes (> ...)
+
+    Note: GitHub DOES parse and linkify closing references inside blockquotes (>) and
+    <details> accordion blocks. Therefore, those regions are preserved so that human PRs
+    cannot accidentally trigger closures from within quotes or collapsed blocks.
+    Bot PRs (e.g. Dependabot) are cleanly exempted via is_bot_actor().
     """
     text = strip_code_fences(text)
-    text = re.sub(r'`[^`\n]*`', '', text)                          # inline code
-    text = re.sub(r'(?is)<details\b[^>]*>.*?</details>', '', text)  # <details> / <details open>
-    text = re.sub(r'(?m)^\s*>.*$', '', text)                       # blockquotes
-    return text
+    return re.sub(r'`[^`\n]*`', '', text)
 
 def is_bot_actor(actor: Optional[str]) -> bool:
     """Check if the PR author/actor is an automated bot."""
@@ -142,7 +142,8 @@ def validate_pr_closing_refs(
     else:
         # Combine all Linked Issue sections if multiple
         combined_linked_content = "\n".join(content for _, content in linked_issue_sections)
-        linked_matches = CLOSING_REF_REGEX.findall(combined_linked_content)
+        sanitized_linked_content = strip_non_linking_regions(combined_linked_content)
+        linked_matches = CLOSING_REF_REGEX.findall(sanitized_linked_content)
 
         if not linked_matches:
             if not allow_no_issue:

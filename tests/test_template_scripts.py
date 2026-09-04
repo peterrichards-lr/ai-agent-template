@@ -567,23 +567,44 @@ def test_check_closing_refs():
     assert is_valid is True
     assert violations == []
 
-    # 12. Closing references inside <details> blocks or blockquotes do NOT count as strays
-    body_details_and_quotes = (
+    # 12. Closing references inside blockquotes and <details> blocks ARE caught as strays
+    # (GitHub parses both as standard markdown, so they would trigger accidental closure)
+    body_quote = (
         "## Summary\n\n"
         "> Quote discussing Fixes #123\n\n"
+        "## Linked Issue\n\n"
+        "Closes #29\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("docs: quote test", body_quote)
+    assert is_valid is False
+    assert any("Stray closing reference 'Fixes #123'" in v for v in violations)
+
+    body_details = (
+        "## Summary\n\n"
         "<details open>\n"
         "<summary>Release notes</summary>\n"
         "- Fixes #789\n"
-        "- Resolves #999\n"
         "</details>\n\n"
         "## Linked Issue\n\n"
         "Closes #29\n"
     )
-    is_valid, violations = validate_pr_closing_refs("docs: update notes", body_details_and_quotes)
-    assert is_valid is True
-    assert violations == []
+    is_valid, violations = validate_pr_closing_refs("docs: details test", body_details)
+    assert is_valid is False
+    assert any("Stray closing reference 'Fixes #789'" in v for v in violations)
 
-    # 13. Automated bot PRs (e.g. dependabot[bot]) are exempted from checks
+    # 13. Closing references wrapped in code spans inside ## Linked Issue fail as non-closing
+    # (GitHub ignores backticks/fences, so it would fail to link/close the issue on merge)
+    body_code_linked = (
+        "## Summary\n\n"
+        "Implements feature.\n\n"
+        "## Linked Issue\n\n"
+        "`Closes #29`\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("feat: code linked", body_code_linked)
+    assert is_valid is False
+    assert any("does not contain a valid closing reference" in v for v in violations)
+
+    # 14. Automated bot PRs (e.g. dependabot[bot]) are exempted from checks
     body_bot = (
         "Bumps dependency from 1.0 to 2.0\n\n"
         "Changelog:\n"
@@ -597,6 +618,6 @@ def test_check_closing_refs():
     assert is_valid is True
     assert violations == []
 
-    # 14. Verify .github/workflows/issue-link-check.yml uses actions/checkout@v7
+    # 15. Verify .github/workflows/issue-link-check.yml uses actions/checkout@v7
     issue_link_workflow = (root_dir / '.github' / 'workflows' / 'issue-link-check.yml').read_text(encoding='utf-8')
     assert "uses: actions/checkout@v7" in issue_link_workflow
