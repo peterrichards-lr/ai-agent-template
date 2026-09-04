@@ -24,11 +24,13 @@ several of this template's conventions into real, unbypassable gates.
   (`Verify PR references an issue`, see `.github/workflows/issue-link-check.yml`)
   to pass before merge.
 - Requires at least 1 approving review. **Adjust this deliberately** if your
-  team's workflow differs -- e.g. a solo developer pairing closely with an
-  agent might set `required_approving_review_count` to `0`, trusting the
-  plan-approval step in `.agents/skills/reflection-and-planning/SKILL.md`
-  instead of a separate formal GitHub review click. That's a legitimate
-  choice; just make it on purpose, not by leaving the default unexamined.
+  team's workflow differs -- a solo developer importing this as-is cannot
+  merge any PR because GitHub prohibits self-approval, and `bypass_actors: []`
+  means admin override is not available either. A solo developer pairing
+  closely with an agent should set `required_approving_review_count` to `0`
+  before importing, trusting the plan-approval step in
+  `.agents/skills/reflection-and-planning/SKILL.md` instead of a separate
+  formal GitHub review click.
 - Squash-merge only, linear history required.
 - **No bypass actors** -- not even repo admins can override these rules. If a
   check is wrong, fix the check; don't route around it.
@@ -74,4 +76,4 @@ not apply it silently.
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*

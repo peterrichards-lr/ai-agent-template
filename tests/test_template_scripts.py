@@ -6,6 +6,7 @@ Tests append_timestamps.py, check_docs_review.py, bootstrap_template.py, and gh_
 
 import sys
 import json
+import yaml
 import pytest
 from pathlib import Path
 
@@ -172,3 +173,74 @@ def test_setup_branch_protection_dry_run(tmp_path):
 
     assert validate_ruleset_file(ruleset_file) == ruleset_data
     assert apply_branch_protection(ruleset_file, dry_run=True) is True
+
+def extract_workflow_job_contexts(workflows_dir: Path) -> set:
+    """Extract check-run contexts emitted by GitHub Actions workflows.
+
+    GitHub reports a check-run context as jobs.<id>.name if present, otherwise <id>.
+    """
+    contexts = set()
+    for wf in workflows_dir.glob('*.y*ml'):
+        content = wf.read_text(encoding='utf-8')
+        data = yaml.safe_load(content) or {}
+        for job_id, job_data in data.get('jobs', {}).items():
+            if isinstance(job_data, dict) and 'name' in job_data:
+                contexts.add(job_data['name'])
+            else:
+                contexts.add(job_id)
+    return contexts
+
+def validate_ruleset_contexts(ruleset_file: Path, valid_contexts: set):
+    """Validate that all required status check contexts in a ruleset match valid contexts."""
+    data = json.loads(ruleset_file.read_text(encoding='utf-8'))
+    for rule in data.get('rules', []):
+        if rule.get('type') == 'required_status_checks':
+            checks = rule.get('parameters', {}).get('required_status_checks', [])
+            for check in checks:
+                context = check.get('context')
+                if context not in valid_contexts:
+                    raise AssertionError(
+                        f"Ruleset {ruleset_file.name} requires status check '{context}', but no matching "
+                        f"check-run context was found in workflows. Available: {valid_contexts}"
+                    )
+
+def test_ruleset_status_checks_match_workflow_jobs():
+    root_dir = Path(__file__).parent.parent
+    rulesets_dir = root_dir / '.github' / 'rulesets'
+    workflows_dir = root_dir / '.github' / 'workflows'
+
+    valid_contexts = extract_workflow_job_contexts(workflows_dir)
+    ruleset_files = list(rulesets_dir.glob('*.json'))
+    assert ruleset_files, "No ruleset files found in .github/rulesets/"
+
+    for rf in ruleset_files:
+        validate_ruleset_contexts(rf, valid_contexts)
+
+def test_ruleset_validator_rejects_internal_job_id_when_name_present(tmp_path):
+    wf_file = tmp_path / 'ci.yml'
+    wf_file.write_text(
+        "jobs:\n"
+        "  quality-gate:\n"
+        "    name: Code & Documentation Quality Verification\n",
+        encoding='utf-8'
+    )
+    valid_contexts = extract_workflow_job_contexts(tmp_path)
+    assert "Code & Documentation Quality Verification" in valid_contexts
+    assert "quality-gate" not in valid_contexts
+
+    bad_ruleset = tmp_path / 'bad-ruleset.json'
+    bad_ruleset.write_text(
+        json.dumps({
+            "name": "Bad Ruleset",
+            "rules": [{
+                "type": "required_status_checks",
+                "parameters": {
+                    "required_status_checks": [{"context": "quality-gate"}]
+                }
+            }]
+        }),
+        encoding='utf-8'
+    )
+
+    with pytest.raises(AssertionError, match="requires status check 'quality-gate'"):
+        validate_ruleset_contexts(bad_ruleset, valid_contexts)
