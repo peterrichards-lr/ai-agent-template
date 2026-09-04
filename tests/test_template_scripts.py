@@ -22,6 +22,7 @@ from bootstrap_template import configure_language_profile, clean_template_meta_d
 from gh_issue_sync import sync_issues
 from setup_branch_protection import apply_branch_protection, validate_ruleset_file
 from check_provider_redirects import check_redirects, MAX_REDIRECT_LINES, REDIRECT_FILES
+from check_closing_refs import validate_pr_closing_refs
 
 def test_should_ignore_directories(tmp_path):
     assert should_ignore(tmp_path / '.git' / 'README.md') is True
@@ -471,3 +472,152 @@ def test_claude_settings_structure_and_bootstrap(tmp_path):
     malformed_file.write_text(invalid_content, encoding='utf-8')
     assert configure_claude_settings(malformed_root, 'go') is False
     assert malformed_file.read_text(encoding='utf-8') == invalid_content
+
+def test_check_closing_refs():
+    # 1. Valid single closing reference in ## Linked Issue
+    body_single = "## Summary\n\nImplements core logic.\n\n## Linked Issue\n\nCloses #29\n"
+    is_valid, violations = validate_pr_closing_refs("feat: core logic", body_single)
+    assert is_valid is True
+    assert violations == []
+
+    # 2. Valid multiple closing references in ## Linked Issue
+    body_multiple = "## Summary\n\nFixes both items.\n\n## Linked Issue\n\nCloses #30\nCloses #43\n"
+    is_valid, violations = validate_pr_closing_refs("feat: multi-fix", body_multiple)
+    assert is_valid is True
+    assert violations == []
+
+    # 3. Valid non-closing mentions outside ## Linked Issue
+    body_mentions = (
+        "## Summary\n\n"
+        "Part of #10, see #20, addresses #30, and relates to #40.\n\n"
+        "## Linked Issue\n\n"
+        "Closes #29\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("feat: mentions", body_mentions)
+    assert is_valid is True
+    assert violations == []
+
+    # 4. Closing reference in PR title -> FAIL
+    is_valid, violations = validate_pr_closing_refs("fix: resolves #123", body_single)
+    assert is_valid is False
+    assert any("found in PR title" in v for v in violations)
+
+    # 5. Stray closing reference in ## Summary (negation trap) -> FAIL
+    body_negation = (
+        "## Summary\n\n"
+        "This implements part 1 but does not close #123.\n\n"
+        "## Linked Issue\n\n"
+        "Closes #29\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("feat: part 1", body_negation)
+    assert is_valid is False
+    assert any("Stray closing reference" in v and "negation" in v for v in violations)
+
+    # 6. Missing ## Linked Issue section -> FAIL unless allow_no_issue=True
+    body_missing_section = "## Summary\n\nNo linked issue section anywhere.\n"
+    is_valid, violations = validate_pr_closing_refs("feat: no section", body_missing_section, allow_no_issue=False)
+    assert is_valid is False
+    assert any("Missing '## Linked Issue' section" in v for v in violations)
+
+    is_valid, violations = validate_pr_closing_refs("feat: no section", body_missing_section, allow_no_issue=True)
+    assert is_valid is True
+    assert violations == []
+
+    # 7. Stray reference with allow_no_issue=True still FAILS
+    body_stray_with_allow = "## Summary\n\nDoes not close #123.\n"
+    is_valid, violations = validate_pr_closing_refs("feat: override", body_stray_with_allow, allow_no_issue=True)
+    assert is_valid is False
+    assert any("Stray closing reference" in v for v in violations)
+
+    # 8. Unpopulated placeholder -> FAIL when issue required
+    body_placeholder = "## Summary\n\nDesc.\n\n## Linked Issue\n\nCloses #<issue-number>\n"
+    is_valid, violations = validate_pr_closing_refs("feat: placeholder", body_placeholder, allow_no_issue=False)
+    assert is_valid is False
+    assert any("unpopulated placeholder" in v for v in violations)
+
+    # 9. Verify .github/PULL_REQUEST_TEMPLATE.md preserves non-numeric placeholder
+    root_dir = Path(__file__).parent.parent
+    pr_template = (root_dir / '.github' / 'PULL_REQUEST_TEMPLATE.md').read_text(encoding='utf-8')
+    assert "Closes #<issue-number>" in pr_template
+    assert not re.search(r'Closes #\d+', pr_template), "PR template should never contain a real numeric issue number"
+
+    # 10. Closing references inside fenced code blocks do NOT count as strays
+    body_fenced_code = (
+        "## Summary\n\n"
+        "Here is an example:\n"
+        "```markdown\n"
+        "Closes #123\n"
+        "Fixes #456\n"
+        "```\n\n"
+        "## Linked Issue\n\n"
+        "Closes #29\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("docs: update rules", body_fenced_code)
+    assert is_valid is True
+    assert violations == []
+
+    # 11. Closing references inside inline code spans do NOT count as strays
+    body_inline_code = (
+        "## Summary\n\n"
+        "Be sure to put `Closes #123` or `Fixes #456` in the linked issue section.\n\n"
+        "## Linked Issue\n\n"
+        "Closes #29\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("docs: update rules", body_inline_code)
+    assert is_valid is True
+    assert violations == []
+
+    # 12. Closing references inside blockquotes and <details> blocks ARE caught as strays
+    # (GitHub parses both as standard markdown, so they would trigger accidental closure)
+    body_quote = (
+        "## Summary\n\n"
+        "> Quote discussing Fixes #123\n\n"
+        "## Linked Issue\n\n"
+        "Closes #29\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("docs: quote test", body_quote)
+    assert is_valid is False
+    assert any("Stray closing reference 'Fixes #123'" in v for v in violations)
+
+    body_details = (
+        "## Summary\n\n"
+        "<details open>\n"
+        "<summary>Release notes</summary>\n"
+        "- Fixes #789\n"
+        "</details>\n\n"
+        "## Linked Issue\n\n"
+        "Closes #29\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("docs: details test", body_details)
+    assert is_valid is False
+    assert any("Stray closing reference 'Fixes #789'" in v for v in violations)
+
+    # 13. Closing references wrapped in code spans inside ## Linked Issue fail as non-closing
+    # (GitHub ignores backticks/fences, so it would fail to link/close the issue on merge)
+    body_code_linked = (
+        "## Summary\n\n"
+        "Implements feature.\n\n"
+        "## Linked Issue\n\n"
+        "`Closes #29`\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("feat: code linked", body_code_linked)
+    assert is_valid is False
+    assert any("does not contain a valid closing reference" in v for v in violations)
+
+    # 14. Automated bot PRs (e.g. dependabot[bot]) are exempted from checks
+    body_bot = (
+        "Bumps dependency from 1.0 to 2.0\n\n"
+        "Changelog:\n"
+        "Fixes #555 in upstream repo\n"
+    )
+    is_valid, violations = validate_pr_closing_refs("bump dep", body_bot, actor="dependabot[bot]")
+    assert is_valid is True
+    assert violations == []
+
+    is_valid, violations = validate_pr_closing_refs("bump dep", body_bot, is_bot=True)
+    assert is_valid is True
+    assert violations == []
+
+    # 15. Verify .github/workflows/issue-link-check.yml uses actions/checkout@v7
+    issue_link_workflow = (root_dir / '.github' / 'workflows' / 'issue-link-check.yml').read_text(encoding='utf-8')
+    assert "uses: actions/checkout@v7" in issue_link_workflow
