@@ -78,4 +78,3 @@ Before a high-commitment action (merging, deploying, tagging, applying a ruleset
 ---
 
 *Last Updated: 2026-08-19* | *Last Reviewed: 2026-08-19*
-

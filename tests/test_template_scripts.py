@@ -117,5 +117,3 @@ def test_setup_branch_protection_dry_run(tmp_path):
 
     assert validate_ruleset_file(ruleset_file) == ruleset_data
     assert apply_branch_protection(ruleset_file, dry_run=True) is True
-
-

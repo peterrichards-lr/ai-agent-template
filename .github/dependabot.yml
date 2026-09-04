@@ -8,6 +8,14 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    # An explicit `labels:` REPLACES GitHub's automatic per-ecosystem labels
+    # rather than adding to them, so "dependencies"/"github_actions" must be
+    # re-listed here. Without "no-issue-needed", every Dependabot PR fails the
+    # required Issue Link Check forever -- Dependabot never writes `Closes #N`.
+    labels:
+      - "dependencies"
+      - "github_actions"
+      - "no-issue-needed"
 
   # Maintain Python development dependencies
   - package-ecosystem: "pip"
@@ -15,3 +23,7 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+      - "no-issue-needed"

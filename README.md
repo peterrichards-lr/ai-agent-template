@@ -106,4 +106,3 @@ This template is open source and available under the [MIT License](LICENSE).
 <!-- markdownlint-disable MD049 -->
 ---
 *Last Updated: 2026-08-19* | *Last Reviewed: 2026-08-19*
-
