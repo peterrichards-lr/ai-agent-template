@@ -2,7 +2,7 @@
 """
 setup_branch_protection.py - Automated GitHub Branch Protection Ruleset Setup
 
-Applies the repository branch protection ruleset (.github/rulesets/main-protection.json)
+Applies the repository branch protection ruleset (.github/rulesets/protect-main-branch.json)
 to the current GitHub repository using gh CLI api.
 Supports --dry-run for offline payload validation.
 """
@@ -77,7 +77,7 @@ def main():
     args = parser.parse_args()
 
     root_dir = Path(__file__).parent.parent.resolve()
-    ruleset_path = Path(args.ruleset) if args.ruleset else root_dir / '.github' / 'rulesets' / 'main-protection.json'
+    ruleset_path = Path(args.ruleset) if args.ruleset else root_dir / '.github' / 'rulesets' / 'protect-main-branch.json'
 
     try:
         success = apply_branch_protection(ruleset_path, dry_run=args.dry_run)

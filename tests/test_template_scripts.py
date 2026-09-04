@@ -6,6 +6,7 @@ Tests append_timestamps.py, check_docs_review.py, bootstrap_template.py, and gh_
 
 import sys
 import json
+import yaml
 import pytest
 from pathlib import Path
 
@@ -172,3 +173,32 @@ def test_setup_branch_protection_dry_run(tmp_path):
 
     assert validate_ruleset_file(ruleset_file) == ruleset_data
     assert apply_branch_protection(ruleset_file, dry_run=True) is True
+
+def test_ruleset_status_checks_match_workflow_jobs():
+    root_dir = Path(__file__).parent.parent
+    rulesets_dir = root_dir / '.github' / 'rulesets'
+    workflows_dir = root_dir / '.github' / 'workflows'
+
+    workflow_jobs = set()
+    for wf in workflows_dir.glob('*.yml'):
+        content = wf.read_text(encoding='utf-8')
+        data = yaml.safe_load(content) or {}
+        for job_id, job_data in data.get('jobs', {}).items():
+            workflow_jobs.add(job_id)
+            if isinstance(job_data, dict) and 'name' in job_data:
+                workflow_jobs.add(job_data['name'])
+
+    ruleset_files = list(rulesets_dir.glob('*.json'))
+    assert ruleset_files, "No ruleset files found in .github/rulesets/"
+
+    for rf in ruleset_files:
+        data = json.loads(rf.read_text(encoding='utf-8'))
+        for rule in data.get('rules', []):
+            if rule.get('type') == 'required_status_checks':
+                checks = rule.get('parameters', {}).get('required_status_checks', [])
+                for check in checks:
+                    context = check.get('context')
+                    assert context in workflow_jobs, (
+                        f"Ruleset {rf.name} requires status check '{context}', but no matching "
+                        f"job or job name was found in .github/workflows/*. Available: {workflow_jobs}"
+                    )

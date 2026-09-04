@@ -259,12 +259,25 @@ def bootstrap(
 
     # 6. Optionally configure GitHub Branch Protection Ruleset
     if setup_branch_protection:
+        ruleset_file = root_dir / '.github' / 'rulesets' / 'protect-main-branch.json'
+        if not ruleset_file.exists():
+            print(f"❌ Error: Required branch protection ruleset file not found: {ruleset_file}", file=sys.stderr)
+            sys.exit(1)
+
         try:
             from setup_branch_protection import apply_branch_protection
-            ruleset_file = root_dir / '.github' / 'rulesets' / 'main-protection.json'
-            apply_branch_protection(ruleset_file)
+            if not apply_branch_protection(ruleset_file):
+                print(
+                    "  ⚠️ Warning: Branch protection ruleset could not be applied automatically (requires admin PAT).\n"
+                    f"     Run manually: gh api --method POST repos/<owner>/<repo>/rulesets --input {ruleset_file}",
+                    file=sys.stderr
+                )
         except Exception as e:
-            print(f"  ⚠️ Could not apply branch protection ruleset: {e}", file=sys.stderr)
+            print(
+                f"  ⚠️ Warning: Could not apply branch protection ruleset: {e}\n"
+                f"     Run manually: gh api --method POST repos/<owner>/<repo>/rulesets --input {ruleset_file}",
+                file=sys.stderr
+            )
 
     # 7. Pre-commit setup readiness & local verification check
     pre_commit_config = root_dir / '.pre-commit-config.yaml'

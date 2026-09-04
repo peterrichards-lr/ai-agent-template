@@ -33,6 +33,9 @@ several of this template's conventions into real, unbypassable gates.
 - **No bypass actors** -- not even repo admins can override these rules. If a
   check is wrong, fix the check; don't route around it.
 
+> [!WARNING]
+> **Solo Maintainer Trap**: A solo maintainer importing this ruleset as-is cannot merge anything -- GitHub prohibits self-approval on pull requests, and `bypass_actors: []` means admin override is not available either. Set `required_approving_review_count` to `0` before importing, or add yourself as a bypass actor.
+
 ## `protect-version-tags.json`
 
 - Version tags (`v*`) can't be deleted or moved once pushed. Only relevant
@@ -74,4 +77,4 @@ not apply it silently.
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-01* | *Last Reviewed: 2026-08-01*
+*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
