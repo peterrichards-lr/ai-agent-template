@@ -22,6 +22,9 @@ The agent MUST explicitly halt and request human approval before executing any o
 
 Opening a Pull Request itself is not gated here -- it's cheap and fully reversible (just close it if it turns out to be wrong). Lumping it in with genuinely irreversible actions dilutes the seriousness of the ones that actually matter. The gate that matters is merging.
 
+**Client-Side Harness Enforcement (`.claude/settings.json`)**:
+Prose rules alone do not guarantee execution safety. This repository pairs these prose gates with client-side harness enforcement in `.claude/settings.json`, explicitly denying destructive commands (`rm -rf`, `git push --force`, `docker system prune`, `DROP DATABASE`, `gh repo delete`) and requiring interactive confirmation (`ask`) for high-risk actions (`gh pr merge`, `git tag`, `gh release create`).
+
 ### 2. Secret & Credentials Safety
 - **No Plaintext Secrets**: The agent is FORBIDDEN from asking the user to provide plain text passwords, API keys, or private certificates in chat.
 - **Local Generation**: Temporary development certificates or keys must be generated locally using standard non-interactive CLI tools.

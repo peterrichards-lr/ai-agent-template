@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf ~/*)",
+      "Bash(rm -rf $HOME)",
+      "Bash(rm -rf $HOME/*)",
+      "Bash(git push -f)",
+      "Bash(git push -f *)",
+      "Bash(git push * -f)",
+      "Bash(git push * -f *)",
+      "Bash(git push --force)",
+      "Bash(git push --force *)",
+      "Bash(git push * --force)",
+      "Bash(git push * --force *)",
+      "Bash(docker system prune*)",
+      "Bash(*DROP DATABASE*)",
+      "Bash(gh repo delete*)"
+    ],
+    "ask": [
+      "Bash(git reset --hard*)",
+      "Bash(gh pr merge*)",
+      "Bash(git tag*)",
+      "Bash(gh release create*)"
+    ],
+    "allow": [
+      "Bash(gh issue list*)",
+      "Bash(gh issue view*)",
+      "Bash(gh pr list*)",
+      "Bash(gh pr view*)",
+      "Bash(gh pr checks*)",
+      "Bash(gh run list*)",
+      "Bash(gh run view*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(pytest*)",
+      "Bash(pre-commit run*)"
+    ]
+  }
+}
