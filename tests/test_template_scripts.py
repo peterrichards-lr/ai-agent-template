@@ -621,3 +621,23 @@ def test_check_closing_refs():
     # 15. Verify .github/workflows/issue-link-check.yml uses actions/checkout@v7
     issue_link_workflow = (root_dir / '.github' / 'workflows' / 'issue-link-check.yml').read_text(encoding='utf-8')
     assert "uses: actions/checkout@v7" in issue_link_workflow
+
+def test_unit_testing_skill_fail_first_gate():
+    root_dir = Path(__file__).parent.parent
+    skill_content = (root_dir / '.agents' / 'skills' / 'unit-testing' / 'SKILL.md').read_text(encoding='utf-8')
+
+    # Assert directive heading exists
+    assert "### 2. Fail-First Verification Gate (TDD Empirical Evidence)" in skill_content
+
+    # Assert failure observation and citation mandate
+    assert "cite the exact failing assertion output" in skill_content
+    assert "terminal snippet showing the red failure" in skill_content
+
+    # Assert mutate-to-confirm fallback and reversion gate
+    assert "mutate or temporarily disable the new logic" in skill_content
+    assert "Mutation Reversion & Clean Pass Gate" in skill_content
+    assert "revert the intentional mutation immediately" in skill_content
+
+    # Assert PR description logging mandate
+    assert "Durable Citation in Pull Request" in skill_content
+    assert "PR description" in skill_content
