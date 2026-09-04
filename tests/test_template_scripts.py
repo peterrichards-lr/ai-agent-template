@@ -356,4 +356,3 @@ def test_non_md_redirects_timestamp_and_review(tmp_path):
     assert "Last Updated:" in (tmp_path / '.cursorrules').read_text(encoding='utf-8')
     assert "Last Updated:" in (tmp_path / '.windsurfrules').read_text(encoding='utf-8')
     assert check_docs(max_review_days=30, max_update_days=30, max_gap_days=30, root_dir=tmp_path) is True
-
