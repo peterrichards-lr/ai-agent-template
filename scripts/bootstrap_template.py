@@ -269,13 +269,13 @@ def bootstrap(
             if not apply_branch_protection(ruleset_file):
                 print(
                     "  ⚠️ Warning: Branch protection ruleset could not be applied automatically (requires admin PAT).\n"
-                    f"     Run manually: gh api --method POST repos/<owner>/<repo>/rulesets --input {ruleset_file}",
+                    f"     Run manually: gh api --method POST 'repos/{{owner}}/{{repo}}/rulesets' --input {ruleset_file}",
                     file=sys.stderr
                 )
         except Exception as e:
             print(
                 f"  ⚠️ Warning: Could not apply branch protection ruleset: {e}\n"
-                f"     Run manually: gh api --method POST repos/<owner>/<repo>/rulesets --input {ruleset_file}",
+                f"     Run manually: gh api --method POST 'repos/{{owner}}/{{repo}}/rulesets' --input {ruleset_file}",
                 file=sys.stderr
             )
 
