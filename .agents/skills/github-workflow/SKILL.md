@@ -1,8 +1,8 @@
 ---
 name: github-workflow
 description: >-
-  Standardizes GitHub CLI usage, mandatory issue linking (Closes #<issue>), repository SEO, and CI run cleanup.
-  Load when managing issues, opening PRs, or handling CI failures.
+  Standardizes GitHub CLI usage, mandatory issue linking (Closes #<issue>), the PR review feedback loop, repository SEO, and CI run cleanup.
+  Load when managing issues, opening PRs, responding to review comments, or handling CI failures.
 ---
 
 # Skill: GitHub Workflow & Issue Synchronization
@@ -34,10 +34,20 @@ fact just means going back to create one anyway. Once this check has proven
 out, add it to the repo's required status checks in branch protection
 settings -- that step can't be done from a workflow file alone.
 
-### 3. CI Failure Analysis & Cleanup
-- If a GitHub Actions CI job fails, view logs via `gh run list` and `gh run view <run-id> --log`.
-- Fix the underlying cause and push a verified fix.
-- Once a fix is verified green, delete the historical record of failed runs (`gh run delete <run-id>`) to keep the build history clean.
+### 3. PR Review & CI Feedback Loop
+
+Opening the PR is the middle of the task, not the end of it. A single call returns both the human feedback and the machine feedback on an open PR:
+
+```bash
+gh pr view --json reviews,comments,statusCheckRollup
+```
+
+- **Retrieve feedback directly.** Never ask the user to paste review comments, check names, or CI logs into the chat. The agent has the same `gh` access the human does; asking them to relay it wastes their turn and loses the file/line context. `statusCheckRollup` in the query above is the CI status, so this one call is the entry point for both "what did the reviewer say" and "is the build green" -- reach for `gh run list` only to resolve a failing check into a run id.
+- **Close the loop on every comment.** Map each comment to the specific file and line it concerns, state the plan for addressing it, apply the fix, then re-run the query above and report back which comments were addressed and how. **A review comment left neither actioned nor answered is an open thread, not a resolved one** -- it becomes something the PR author has to chase.
+- **Answering counts; silence does not.** Disagreeing with a comment, deferring it to a follow-up issue, or explaining why it does not apply are all legitimate closures -- provided the reasoning is posted on the PR (`gh pr comment`), not just narrated in chat. Only a comment nobody replied to and nobody actioned is unresolved.
+- **CI failure analysis and cleanup.** When `statusCheckRollup` reports a failing check, pull the logs (`gh run view <run-id> --log`), fix the underlying cause, and push a verified fix -- never re-run a job hoping for a different result. Once the fix is verified green, delete the historical record of failed runs (`gh run delete <run-id>`) to keep build history clean.
+
+**Interaction with `human-in-the-loop/SKILL.md`**: pushing fixes in response to review is routine and needs no approval gate -- it is cheap and reversible, exactly like opening the PR was. Resolving a reviewer's thread on their behalf is not routine: marking a conversation resolved is the reviewer's own signal that they are satisfied with the answer. Push the fix, reply on the thread, and leave it to the reviewer to close.
 
 ### 4. Technical Debt Issue Creation
 Tech debt you notice but don't fix as part of the current task must still be tracked -- untracked debt is debt that never gets paid down. This is the single canonical place tech debt is tracked in this template: as a GitHub issue labeled `tech-debt`. Do not also maintain a separate registry elsewhere (`GEMINI.md` points back here rather than keeping its own list, for exactly this reason).
@@ -88,4 +98,4 @@ To ensure high visibility, search discoverability, and SEO positioning on GitHub
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
+*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
