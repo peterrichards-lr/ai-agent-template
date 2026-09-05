@@ -956,3 +956,34 @@ def test_bootstrap_substitutes_community_health_placeholders(tmp_path):
 def test_bootstrap_placeholder_substitution_tolerates_missing_files(tmp_path):
     """Substitution must not fail when a downstream repo has deleted a community health file."""
     assert substitute_community_health_placeholders(tmp_path, project_name='empty-repo') == []
+def test_github_workflow_skill_pr_review_feedback_loop():
+    """Verify github-workflow/SKILL.md defines the post-`gh pr create` review feedback loop."""
+    root_dir = Path(__file__).parent.parent
+    skill = (root_dir / '.agents' / 'skills' / 'github-workflow' / 'SKILL.md').read_text(encoding='utf-8')
+
+    # 1. Directive heading exists (without brittle section numbering prefix)
+    assert "PR Review & CI Feedback Loop" in skill
+
+    # 2. Feedback is pulled by the agent, never requested from the human
+    assert "gh pr view --json reviews,comments,statusCheckRollup" in skill
+    assert "Never ask the user to paste review comments" in skill
+
+    # 3. Comment-by-comment closure protocol
+    assert "Map each comment to the specific file and line" in skill
+    assert "report back which comments were addressed and how" in skill
+    assert "neither actioned nor answered is an open thread" in skill
+
+    # 4. CI status retrieval consolidated into the same call, drill-down + cleanup retained
+    assert "statusCheckRollup" in skill
+    assert "gh run view <run-id> --log" in skill
+    assert "gh run delete <run-id>" in skill
+
+    # 5. Boundary with human-in-the-loop: pushing fixes is routine, resolving threads is not
+    assert "human-in-the-loop/SKILL.md" in skill
+    assert "Resolving a reviewer's thread on their behalf" in skill
+
+    # 6. Routing tables describe the widened skill scope (doc drift guard)
+    agents_content = (root_dir / 'AGENTS.md').read_text(encoding='utf-8')
+    guide_content = (root_dir / 'docs' / 'TEMPLATE_GUIDE.md').read_text(encoding='utf-8')
+    assert "PR review feedback loop" in agents_content
+    assert "PR review feedback loop" in guide_content

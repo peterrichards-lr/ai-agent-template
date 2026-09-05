@@ -95,7 +95,7 @@ The bootstrapper will:
 │   ├── coding-standards/              # DRY code, self-documenting code & error safety
 │   ├── unit-testing/                  # TDD & non-interactive test rules
 │   ├── documentation/                 # Timestamp & doc maintenance rules
-│   ├── github-workflow/               # Issue sync, PR constraints & CI cleanup
+│   ├── github-workflow/               # Issue sync, PR review feedback loop & CI cleanup
 │   ├── tool-use-react/                # ReAct reasoning & CLI command boundaries
 │   ├── multi-agent-orchestration/     # Subagent delegation directives
 │   ├── rule-adherence/                # Self-verification & checkable artifact rules
@@ -128,4 +128,4 @@ This template is open source and available under the [MIT License](LICENSE).
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
+*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
