@@ -1160,9 +1160,22 @@ def test_github_workflow_skill_pr_review_feedback_loop():
     # 1. Directive heading exists (without brittle section numbering prefix)
     assert "PR Review & CI Feedback Loop" in skill
 
-    # 2. Feedback is pulled by the agent, never requested from the human
-    assert "gh pr view --json reviews,comments,statusCheckRollup" in skill
+    # 2. Feedback is pulled by the agent, never requested from the human. Retrieval takes
+    #    TWO calls: `gh pr view --json` exposes no field carrying inline review comments
+    #    (`comments` is the conversation timeline, `reviews` is review summaries), so the
+    #    file/line-anchored threads the rule acts on are only reachable via `gh api`.
+    assert "gh pr view <number> --json reviews,comments,statusCheckRollup" in skill
+    assert "gh api 'repos/{owner}/{repo}/pulls/<number>/comments'" in skill
     assert "Never ask the user to paste review comments" in skill
+
+    # 2b. The reason two calls are needed is recorded in the rule itself, so a later edit
+    #     cannot "simplify" it back to one and leave "map each comment to file and line"
+    #     unsatisfiable again.
+    assert "two calls, not one" in skill
+    assert 'Do not "simplify" this back to a single command' in skill
+    assert "no field for inline review comments" in skill
+    assert "`path`, `line` and `body`" in skill
+    assert "bare `gh pr view` resolves the PR from the currently checked-out branch" in skill
 
     # 3. Comment-by-comment closure protocol
     assert "Map each comment to the specific file and line" in skill
@@ -1183,3 +1196,5 @@ def test_github_workflow_skill_pr_review_feedback_loop():
     guide_content = (root_dir / 'docs' / 'TEMPLATE_GUIDE.md').read_text(encoding='utf-8')
     assert "PR review feedback loop" in agents_content
     assert "PR review feedback loop" in guide_content
+    assert "pulls/<number>/comments" in agents_content
+    assert "pulls/<number>/comments" in guide_content

@@ -36,14 +36,30 @@ settings -- that step can't be done from a workflow file alone.
 
 ### 3. PR Review & CI Feedback Loop
 
-Opening the PR is the middle of the task, not the end of it. A single call returns both the human feedback and the machine feedback on an open PR:
+Opening the PR is the middle of the task, not the end of it. Retrieving the feedback on an open PR takes **two calls, not one** -- they return different data, and neither is a substitute for the other:
 
 ```bash
-gh pr view --json reviews,comments,statusCheckRollup
+# Review summaries, conversation comments, and CI status.
+gh pr view <number> --json reviews,comments,statusCheckRollup
+
+# Inline review threads -- the comments anchored to a file and line.
+gh api 'repos/{owner}/{repo}/pulls/<number>/comments'
 ```
 
-- **Retrieve feedback directly.** Never ask the user to paste review comments, check names, or CI logs into the chat. The agent has the same `gh` access the human does; asking them to relay it wastes their turn and loses the file/line context. `statusCheckRollup` in the query above is the CI status, so this one call is the entry point for both "what did the reviewer say" and "is the build green" -- reach for `gh run list` only to resolve a failing check into a run id.
-- **Close the loop on every comment.** Map each comment to the specific file and line it concerns, state the plan for addressing it, apply the fix, then re-run the query above and report back which comments were addressed and how. **A review comment left neither actioned nor answered is an open thread, not a resolved one** -- it becomes something the PR author has to chase.
+> [!IMPORTANT]
+> **Do not "simplify" this back to a single command.** `gh pr view` has
+> no field for inline review comments. Its `comments` field is the PR conversation
+> timeline and `reviews` is review *summaries* (author, state, top-level body); the
+> complete set of review-related `--json` fields is `comments`, `latestReviews`,
+> `reviewDecision`, `reviewRequests`, `reviews`, and not one of them carries a `path`
+> or a `line`. The `gh api` call is the only source of the `path`, `line` and `body`
+> that the "map each comment to the specific file and line" instruction below operates
+> on. An agent running just the first command sees a review summary, finds nothing
+> anchored to a file, and reports the loop closed while inline comments sit unanswered.
+> Pass `<number>` explicitly in both: bare `gh pr view` resolves the PR from the currently checked-out branch, which is not where you are when reviewing someone else's PR.
+
+- **Retrieve feedback directly.** Never ask the user to paste review comments, check names, or CI logs into the chat. The agent has the same `gh` access the human does; asking them to relay it wastes their turn and loses the file/line context. `statusCheckRollup` in the first query is the CI status, so this pair covers both "what did the reviewer say" and "is the build green" -- reach for `gh run list` only to resolve a failing check into a run id.
+- **Close the loop on every comment.** Map each comment to the specific file and line it concerns (`path` and `line` from the `gh api` response), state the plan for addressing it, apply the fix, then re-run both queries above and report back which comments were addressed and how. **A review comment left neither actioned nor answered is an open thread, not a resolved one** -- it becomes something the PR author has to chase.
 - **Answering counts; silence does not.** Disagreeing with a comment, deferring it to a follow-up issue, or explaining why it does not apply are all legitimate closures -- provided the reasoning is posted on the PR (`gh pr comment`), not just narrated in chat. Only a comment nobody replied to and nobody actioned is unresolved.
 - **CI failure analysis and cleanup.** When `statusCheckRollup` reports a failing check, pull the logs (`gh run view <run-id> --log`), fix the underlying cause, and push a verified fix -- never re-run a job hoping for a different result. Once the fix is verified green, delete the historical record of failed runs (`gh run delete <run-id>`) to keep build history clean.
 

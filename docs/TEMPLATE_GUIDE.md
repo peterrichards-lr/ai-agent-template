@@ -114,7 +114,7 @@ When bootstrapping this template for a specific programming language, follow the
 | **`coding-standards`** | Mandates DRY code discovery (using the agent's available code-search tool), self-documenting code, defensive safety guards, language idiom alignment, and scope-sprawl anti-churn limits. |
 | **`unit-testing`** | Enforces test-driven development, fail-first verification gates (citing red-to-green empirical evidence), non-interactive execution, and prohibits superficial test deletion. |
 | **`documentation`** | Governs timestamp footers (`*Last Updated* \| *Last Reviewed*`), post-feature doc updates, and staleness policy checks. |
-| **`github-workflow`** | Standardizes `gh` CLI usage, forces PRs to link `Closes #<issue>`, drives the PR review feedback loop (pull review comments and CI status with `gh pr view`, close the loop on each one), logs tech-debt, and cleans up historical CI failures. |
+| **`github-workflow`** | Standardizes `gh` CLI usage, forces PRs to link `Closes #<issue>`, drives the PR review feedback loop (pull review summaries and CI status with `gh pr view`, inline file/line comments with `gh api repos/{owner}/{repo}/pulls/<number>/comments`, close the loop on each one), logs tech-debt, and cleans up historical CI failures. |
 | **`tool-use-react`** | Enforces reasoning before tool activation, non-interactive flags, and asynchronous task lifecycle management. |
 | **`multi-agent-orchestration`** | Governs subagent delegation criteria, clear prompt framing, and asynchronous result synthesis. |
 | **`rule-adherence`** | Addresses agents not reliably following prose rules: re-read before acting, prefer checkable artifacts, and self-correct visibly. |
