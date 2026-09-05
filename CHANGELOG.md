@@ -24,11 +24,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/agent_push.py` behind `make push`: refuses no-op pushes and trees with tracked
   changes left unstaged, rejects flag-shaped commit messages, runs the pre-commit gate
   rather than bypassing it, and checks commit attribution before a commit exists (#46).
+- Per-language CI workflow profiles in `.agents/templates/ci/<lang>.yml`, one for every
+  `--lang` choice. `scripts/bootstrap_template.py` installs the matching profile over
+  `.github/workflows/ci.yml` on every run, so a Go project no longer ships CI that
+  installs Python and runs the template's own test suite (#42).
+- `Build & Test` job and its same-named `build-and-test-skip` twin behind a
+  change-detection `filter` job, plus `{ "context": "Build & Test" }` in
+  `.github/rulesets/protect-main-branch.json`. A failed filter exits non-zero through the
+  skip twin rather than leaving the required context unreported (#42, #44).
 
 ### Changed
 
 - `.github/workflows/ci.yml` runs `make verify` instead of restating pytest, `doctor.py`,
   `check_docs_review.py` and `pre-commit`, so the local and CI gates cannot drift (#46).
+- `make verify` is now split across two CI jobs rather than one step: `lint-tooling` and
+  `docs` always run under the required `Code & Documentation Quality Verification`
+  context, while `lint-lang` and `test` run under `Build & Test` behind the paths filter.
+  The union is still exactly `make verify`, with nothing dropped and nothing run twice.
+  The filter's documentation exclusions ship commented out, because this template's own
+  tests read its documentation and excluding `**/*.md` would disable them for precisely
+  the pull requests they exist to catch (#42, #44).
+- `--clean-template` also removes `.agents/templates/ci/` once the selected profile has
+  been installed, alongside the Python scaffolding it already removed (#42, #55).
 - The Go profile exports `GOTMPDIR` with `:=` and guards the resolved value before
   building. `GOTMPDIR`, not `-o`, decides where an unsigned test binary first appears on
   disk; `.agents/skills/unit-testing/SKILL.md` taught the incomplete `-o`-only form (#46).

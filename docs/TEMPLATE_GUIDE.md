@@ -63,6 +63,21 @@ This template solves these failure modes out of the box, providing a standardize
 - **Problem**: Each ecosystem's commands get restated in `AGENTS.md`, `CONTRIBUTING.md`, the skill files and the CI workflow. The copies drift, and an agent that reads the wrong one runs the wrong command -- or, in Go's case, an EDR-unsafe one.
 - **Pattern**: A root `Makefile` exposes seven fixed verbs (`setup`, `lint`, `test`, `docs`, `verify`, `push`, `help`) in every language. Only a marked profile block varies, filled in by `scripts/bootstrap_template.py --lang <stack>`. `make verify` is invoked *by* `.github/workflows/ci.yml`, so local and CI gates cannot drift. A knock-on effect: once the sanctioned Go test path is `make test` rather than something starting with `go test`, `.claude/settings.json` can deny `Bash(go test*)` wholesale -- deny beats allow, and "`go test*` except `-c`" is inexpressible in the permission patterns.
 
+### 12. Per-Language CI Profiles Instead of One Language's CI For Everyone
+- **Problem**: The template shipped a single `ci.yml` that installed Python and ran the template's *own* pytest suite. `--lang go` rewrote the Makefile and `AGENTS.md` but left that workflow untouched, so a Go repository had a check named "CI Quality Gate" that never compiled a line of Go -- and reported green while doing it. Every downstream project wrote its CI from scratch, so the template contributed nothing reusable at exactly the point where a mistake is most expensive.
+- **Pattern**: `.agents/templates/ci/<lang>.yml` holds one workflow profile per `--lang` choice, and `configure_ci_workflow()` installs the matching one over `.github/workflows/ci.yml` on every bootstrap (not only with `--clean-template`); the unused profiles are removed by `--clean-template`. Each profile is two layers, and only the second is path-filtered:
+
+  | Job | `name:` | Runs |
+  | :--- | :--- | :--- |
+  | `quality-gate` | `Code & Documentation Quality Verification` | Always. `make lint-tooling docs`. |
+  | `filter` | `Detect Buildable Changes` | Always. Change detection only. |
+  | `build-and-test` | `Build & Test` | When the filter reports changed code. `make lint-lang test`. |
+  | `build-and-test-skip` | `Build & Test` | Otherwise, *and* when `filter` failed -- see below. |
+
+  Only the toolchain setup step differs between profiles; the commands are the `Makefile`'s, so a profile cannot restate and then drift from a recipe. The union of the two jobs is exactly `make verify` (`lint-tooling` + `docs` in one, `lint-lang` + `test` in the other), with nothing dropped and nothing run twice. Both contexts are **required** in `protect-main-branch.json` -- a build job whose failure nobody must act on is decoration -- with a documented one-line removal for a project that cannot build yet. `--lang generic` deliberately has no green path: `make test` exits non-zero until a real command is configured, so an unconfigured project gets a red reminder rather than a passing build over a test suite that does not exist.
+- **Why the doc checks are never filtered**: an earlier attempt filtered the whole workflow and was reverted before merge. `ci.yml` was *entirely* documentation validation at the time, so excluding `**/*.md` disabled markdownlint, the provider-redirect check, the doc-footer guard and the skill-routing drift test for precisely the pull requests those exist to catch. The lesson is not "do not filter" but "filter the heavy build, never the doc checks". The filter's exclusion list therefore ships **commented out** rather than active: this template's own test suite reads its documentation, so an exclusion that looks harmless in a Go repository is a live regression here. The wiring is complete; enabling it is a deliberate, per-project act.
+- **What a failed `filter` reports**: a failed `needs:` job skips its dependents whatever their `if:` says, so a naive filter would take *both* jobs down with it and the required context would never report -- the deadlock relocated rather than removed. `build-and-test-skip` guards its condition with `always()` for exactly this reason, inspects `needs.filter.result`, and exits non-zero when change detection did not succeed. A broken filter is a red check with a readable message, never a silent absence.
+
 ---
 
 ## Language Customization Guide
@@ -78,7 +93,7 @@ in, and every stack is driven through the same seven verbs:
 | `make lint` | `pre-commit run --all-files` plus the stack's linters. |
 | `make test` | The stack's non-interactive test command. |
 | `make docs` | `append_timestamps.py` then `check_docs_review.py`. |
-| `make verify` | `lint` + `test` + `docs` -- exactly what `.github/workflows/ci.yml` runs. |
+| `make verify` | `lint` + `test` + `docs` -- exactly what `.github/workflows/ci.yml` runs, split across its two jobs. |
 | `make push` | Guarded commit-and-push (`scripts/agent_push.py`). |
 | `make help` | Self-documenting target list; the default goal. |
 
@@ -86,6 +101,15 @@ That is the point of the task runner: an agent asked to verify its work runs `ma
 regardless of the stack, and `AGENTS.md`, `CONTRIBUTING.md` and this guide stop carrying their own
 drifting copies of `pytest` / `cargo test` / `npm test`. Edit the profile block freely after
 bootstrap -- it is your project's, not generated code.
+
+The same `--lang` choice also installs `.agents/templates/ci/<lang>.yml` over
+`.github/workflows/ci.yml`, so the pipeline sets up your toolchain and then calls the same verbs.
+The `Build & Test` job it adds is a **required** status check in `protect-main-branch.json`, and it
+will be red until the project has real source and a lockfile or build file -- that is the intended
+signal, not a defect. Remove that one context from the ruleset before importing it if you are not
+there yet; `docs/BRANCH_PROTECTION.md` covers the trade-off. `--clean-template` removes the
+profiles for the stacks you did not choose; re-run bootstrap from a fresh template checkout if you
+later change language.
 
 > [!NOTE]
 > **Make on Windows.** GNU Make is not present on a default Windows install. This is an accepted
