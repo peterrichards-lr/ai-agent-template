@@ -142,12 +142,48 @@ python3 scripts/bootstrap_template.py --name "my-awesome-service" --lang go --cl
   --repo-owner "my-org" --conduct-email "conduct@example.com"
 ```
 
+Add `--dry-run` to print every planned mutation -- file writes, deletions, `gh repo edit`
+calls and hook installation -- without applying any of them.
+
 The bootstrapper script will:
 1. Generate a clean project `README.md` describing your application.
 2. Remove this template-only guide (`docs/TEMPLATE_GUIDE.md`).
-3. Customize `AGENTS.md` with the project name.
-4. Seed the community health stubs with the project name, GitHub owner, and conduct contact.
-5. Run `append_timestamps.py` and install Git pre-commit quality gates.
+3. Remove the template's Python scaffolding (see below).
+4. Customize `AGENTS.md` with the project name.
+5. Seed the community health stubs with the project name, GitHub owner, and conduct contact.
+6. Run `append_timestamps.py` and install Git pre-commit quality gates.
+7. Run `scripts/doctor.py` and fail if any placeholder survived.
+
+### Python Scaffolding Removed by `--clean-template`
+
+The template is written in Python and tests itself in Python, so some of its checked-in
+scaffolding is Python-specific rather than part of what an adopter needs:
+
+| Path | Removed when | Why |
+| :--- | :--- | :--- |
+| `tests/` | always | Tests the bootstrapper that has just finished running; dead weight (and broken imports) in the adopter's repository. |
+| `src/__init__.py` | `--lang` is not `python` | A Python package marker, meaningless in a Go, Rust, Java or Node project. |
+| `requirements-python.txt` | `--lang` is not `python` | Pins `pytest`; irrelevant outside a Python project. |
+
+`requirements-dev.txt` is never removed: it holds only the language-agnostic agent tooling
+(`pre-commit`, `detect-secrets`, `actionlint-py`, `PyYAML`) that every adopter's quality
+gate depends on, regardless of the project's language.
+
+### Post-Bootstrap Verification (`scripts/doctor.py`)
+
+Every bootstrap mutation is a regex substitution or a file copy, and either can miss. The
+doctor is the end-state check that turns a silent miss into a loud failure:
+
+- scans the tree for surviving placeholders (`<..._PLACEHOLDER>`, `your-org`, `my-ai-project`)
+  and exits 1 listing the file and line of each,
+- asserts `.claude/skills` resolves to a **directory** -- on a Windows checkout without
+  `core.symlinks`, git materialises it as a text file and agent skill discovery silently
+  finds nothing,
+- asserts `.agent-state.md` was seeded.
+
+It runs as bootstrap's final step, as the `doctor` pre-commit hook, and in `ci.yml`. This
+repository runs it as `--mode template`, which exempts the un-bootstrapped stubs it is
+supposed to still carry; bootstrap drops that flag so your repository is checked strictly.
 
 ### Community Health & Editor Baseline Stubs
 
@@ -161,8 +197,9 @@ These files ship deliberately short and clearly marked as adopter-customisable:
 | `.github/CODEOWNERS` | Fully commented ownership stub. Makes `"require_code_owner_review"` in `.github/rulesets/protect-main-branch.json` a real, flippable switch instead of a reference to a missing file. | `<GITHUB_OWNER_PLACEHOLDER>` (`--repo-owner`) |
 | `.github/ISSUE_TEMPLATE/config.yml` | Issue chooser: `blank_issues_enabled: false` plus contact links, steering reports into the structured templates the `github-workflow` skill depends on. | `<GITHUB_OWNER_PLACEHOLDER>` (`--repo-owner`) |
 
-Unresolved placeholders are reported by the bootstrapper rather than silently substituted, so
-an adopter who skipped a flag knows exactly which files still need a manual edit.
+`scripts/doctor.py` runs as bootstrap's final step and **fails** the bootstrap when any of
+these placeholders is still live, citing the file and line. Supply `--repo-owner` and
+`--conduct-email`, or edit the cited lines by hand and re-run.
 
 <!-- markdownlint-disable MD049 -->
 ---

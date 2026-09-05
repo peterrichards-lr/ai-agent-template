@@ -1,0 +1,5 @@
+# Python-Project Test Dependencies (Pinned Versions)
+# Only meaningful when the project itself is written in Python.
+# `bootstrap_template.py --clean-template --lang <non-python>` deletes this file
+# along with src/__init__.py and the template's own self-test suite.
+pytest==9.1.1

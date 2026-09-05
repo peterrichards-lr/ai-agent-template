@@ -13,7 +13,8 @@ Whether you are building in **Go**, **Python**, **Rust**, **Java**, **TypeScript
 - 📌 **Persistent Scratchpad State (`.agent-state.md`)**: Shared gitignored scratchpad tracking project status, active goals, and roadmap priorities across provider switches. Seeded from the tracked template `.agents/templates/agent-state.md` during bootstrap, so a fresh clone always starts with one.
 - 🛡️ **Language-Agnostic Quality Gates (`.pre-commit-config.yaml`)**: Out-of-the-box pre-commit configuration supporting secret scanning (`detect-secrets`, `gitleaks`), markdown link validation, document review policies, and modular linting for Go, Python, Rust, Java, and Node.js.
 - ⏱️ **Automated Documentation Hygiene**: Zero-dependency Python 3 tools (`append_timestamps.py` and `check_docs_review.py`) to enforce timestamp footers (`*Last Updated* | *Last Reviewed*`) and prevent documentation decay.
-- ⚙️ **Project Bootstrapper (`scripts/bootstrap_template.py`)**: One-command initialization script that customizes the template for your chosen programming language stack, installs git hooks, and seeds project metadata.
+- ⚙️ **Project Bootstrapper (`scripts/bootstrap_template.py`)**: One-command initialization script that customizes the template for your chosen programming language stack, installs git hooks, and seeds project metadata. `--dry-run` previews every mutation before anything is written.
+- 🩺 **Post-Bootstrap Verification (`scripts/doctor.py`)**: Runs as bootstrap's final step and as a pre-commit hook, exiting non-zero with the file and line of every surviving template placeholder, plus checks that `.claude/skills` resolved to a directory and the agent scratchpad was seeded. A missed substitution fails loudly instead of shipping an unsubstituted test-command placeholder into your agent rules.
 - 🚀 **GitHub CI & Governance (`.github/`)**: GitHub Actions workflow (`ci.yml`), GitHub Issue Forms (Feature, Bug, Tech Debt) with typed required fields and a chooser (`ISSUE_TEMPLATE/config.yml`) that disables blank issues, a commented `CODEOWNERS` stub, and a PR template enforcing task linking (`Closes #<issue>`).
 - 🔎 **Optional Security Scanning (`.github/workflows/security-scan.yml`, `.semgrep.yaml`)**: Non-blocking Semgrep SAST plus `actions/dependency-review-action` on pull requests, with a commented `.semgrep.yaml` stub for turning a prose coding rule into a mechanically enforced one. Neither job is a required status check, so a new project is never broken on day one by a third-party finding.
 - 🤝 **Community Health Stubs (`CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `.editorconfig`)**: Contributor Covenant v2.1, a Keep a Changelog seed, and a shared editor baseline (UTF-8, LF, final newline, trimmed trailing whitespace) that keeps editors from fighting the `trailing-whitespace` and `end-of-file-fixer` pre-commit hooks. Owner and contact placeholders are filled in by the bootstrapper.
@@ -27,7 +28,7 @@ Whether you are building in **Go**, **Python**, **Rust**, **Java**, **TypeScript
 Use this repository as a template on GitHub, or clone it locally:
 
 ```bash
-git clone https://github.com/your-org/ai-agent-template.git my-new-project
+git clone https://github.com/peterrichards-lr/ai-agent-template.git my-new-project
 cd my-new-project
 ```
 
@@ -35,7 +36,7 @@ cd my-new-project
 > **Windows Users (`core.symlinks`)**: Ensure symlink creation is enabled during clone so `.claude/skills` is materialized as a true directory link rather than a text file:
 >
 > ```bash
-> git clone -c core.symlinks=true https://github.com/your-org/ai-agent-template.git my-new-project
+> git clone -c core.symlinks=true https://github.com/peterrichards-lr/ai-agent-template.git my-new-project
 > ```
 
 ### 2. Run the Bootstrap Script
@@ -43,6 +44,9 @@ cd my-new-project
 Run the language-agnostic bootstrapper to configure your project details and setup pre-commit quality gates:
 
 ```bash
+# Preview every planned mutation without changing anything
+python3 scripts/bootstrap_template.py --dry-run
+
 # Interactive setup
 python3 scripts/bootstrap_template.py
 
@@ -55,10 +59,22 @@ The bootstrapper will:
 1. Update project configuration files (`README.md`, `.agent-state.md`, `AGENTS.md`).
 2. Generate language-specific `.gitignore` and `.pre-commit-config.yaml` rules.
 3. Verify or create the `.claude/skills` auto-discovery symlink.
-4. Seed the community health stubs (`CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `.github/CODEOWNERS`, `.github/ISSUE_TEMPLATE/config.yml`) with your project name, and -- when `--repo-owner` / `--conduct-email` are supplied -- the GitHub owner and Code of Conduct contact. Any placeholder left unresolved is reported so you can edit it by hand.
-5. Initialize local Git pre-commit hooks.
-6. Inject initial documentation timestamps.
-7. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
+4. Seed the community health stubs (`CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `.github/CODEOWNERS`, `.github/ISSUE_TEMPLATE/config.yml`) with your project name, the GitHub owner (`--repo-owner`) and the Code of Conduct contact (`--conduct-email`).
+5. With `--clean-template`, remove the template's own meta docs and Python scaffolding (`docs/TEMPLATE_GUIDE.md`, `tests/`, and -- outside `--lang python` -- `src/__init__.py` and `requirements-python.txt`).
+6. Initialize local Git pre-commit hooks.
+7. Inject initial documentation timestamps.
+8. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
+9. Run `scripts/doctor.py` and **fail** if any placeholder survived.
+
+> [!IMPORTANT]
+> Bootstrap finishes with `scripts/doctor.py`, which exits non-zero listing the file and
+> line of every surviving placeholder. Supply `--repo-owner` and `--conduct-email`, or
+> bootstrap will stop rather than hand you a repository whose `CODE_OF_CONDUCT.md` still
+> carries an unsubstituted contact placeholder. Run the check again at any time:
+>
+> ```bash
+> python3 scripts/doctor.py
+> ```
 
 ---
 
@@ -114,8 +130,11 @@ The bootstrapper will:
 │   ├── append_timestamps.py           # Injects markdown footer timestamps
 │   ├── check_docs_review.py           # Validates doc freshness & review age
 │   ├── bootstrap_template.py          # Project initializer script
+│   ├── doctor.py                      # Post-bootstrap placeholder & structure verification
 │   └── gh_issue_sync.py               # GitHub issue & task plan helper
-└── src/                               # Starter source directory placeholder
+├── requirements-dev.txt               # Language-agnostic agent tooling & quality gate deps
+├── requirements-python.txt            # Python-project test deps (removed for other stacks)
+└── src/                               # Starter source directory (Python marker removed for other stacks)
 ```
 
 ---

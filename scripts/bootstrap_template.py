@@ -6,7 +6,9 @@ Configures the template repository for a new project, setting project name,
 language ecosystem profiles, initial .agent-state.md scratchpad, and documentation footers.
 Mutates AGENTS.md with ecosystem test commands, checks system dependencies,
 installs Git hooks, and executes pre-commit quality checks.
-Fails loudly if any required subprocess execution fails.
+Fails loudly if any required subprocess execution fails, if a regex substitution
+matches nothing, or if scripts/doctor.py finds a surviving placeholder at the end.
+Pass --dry-run to print every planned mutation without applying any of them.
 """
 
 import sys
@@ -18,6 +20,11 @@ import subprocess
 import argparse
 from pathlib import Path
 from datetime import datetime
+
+# Allow importing sibling script helpers regardless of invocation working directory
+sys.path.insert(0, str(Path(__file__).parent.resolve()))
+from check_docs_review import FOOTER_REGEX
+from doctor import ADOPTER_MODE, run_doctor_and_report
 
 SUPPORTED_LANGUAGES = ['generic', 'go', 'python', 'rust', 'java', 'node', 'cpp', 'liferay']
 
@@ -57,6 +64,24 @@ CONDUCT_EMAIL_PLACEHOLDER = '<CONDUCT_EMAIL_PLACEHOLDER>'
 AGENT_STATE_SEED_RELPATH = Path('.agents') / 'templates' / 'agent-state.md'
 TEMPLATE_PROJECT_NAME = 'ai-agent-template'
 
+# Python-only scaffolding the template ships for its own benefit. --clean-template
+# removes the self-test suite unconditionally (it tests the bootstrapper that has
+# just finished running) and the Python source/dependency scaffolding for every
+# language except Python. See #55.
+TEMPLATE_SELF_TEST_RELPATH = Path('tests')
+PYTHON_PACKAGE_MARKER_RELPATH = Path('src') / '__init__.py'
+PYTHON_REQUIREMENTS_RELPATH = Path('requirements-python.txt')
+
+# The pre-commit hook that runs the placeholder verification. The template checks
+# itself in template mode; the adopter's repository is checked strictly.
+PRE_COMMIT_CONFIG_RELPATH = Path('.pre-commit-config.yaml')
+DOCTOR_TEMPLATE_MODE_ENTRY = 'scripts/doctor.py --mode template'
+DOCTOR_ADOPTER_MODE_ENTRY = 'scripts/doctor.py'
+
+def announce_planned_write(rel_path, summary: str):
+    """Print the mutation a dry run would have made instead of making it."""
+    print(f"  [dry-run] would update {rel_path}: {summary}")
+
 def check_system_dependencies(strict: bool = False):
     """Verify presence of essential tools: python >= 3.8, git, gh, pre-commit."""
     print("🔍 Checking system dependencies...")
@@ -89,8 +114,13 @@ def check_system_dependencies(strict: bool = False):
             print("❌ Error: pre-commit is required in strict mode.", file=sys.stderr)
             sys.exit(1)
 
-def configure_language_profile(root_dir: Path, language: str):
-    """Update AGENTS.md and ecosystem settings for the selected language stack."""
+def configure_language_profile(root_dir: Path, language: str, dry_run: bool = False):
+    """Update AGENTS.md and ecosystem settings for the selected language stack.
+
+    Aborts when the target line cannot be located: leaving <TEST_COMMAND_PLACEHOLDER>
+    live in AGENTS.md hands every agent a placeholder where the command that gates
+    "work complete" should be, and a warning on stderr is not loud enough for that.
+    """
     print(f"🛠️ Configuring language profile for: {language}...")
 
     if language == 'go':
@@ -121,18 +151,32 @@ def configure_language_profile(root_dir: Path, language: str):
 
     # Mutate AGENTS.md with test_cmd
     agents_path = root_dir / 'AGENTS.md'
-    if agents_path.exists():
-        content = agents_path.read_text(encoding='utf-8')
-        target_line = f"Primary Unit Testing Command: {test_cmd}"
+    if not agents_path.exists():
+        print("❌ Error: AGENTS.md not found; cannot set the primary unit testing command.", file=sys.stderr)
+        sys.exit(1)
 
-        content, n = re.subn(r'Primary Unit Testing Command:\s*`?[^`\n]+`?', target_line, content)
-        if n > 0:
-            agents_path.write_text(content, encoding='utf-8')
-            print(f"  ✓ Mutated AGENTS.md with primary test command: {test_cmd}")
-        else:
-            print(f"  ⚠️ Warning: Could not locate Primary Unit Testing Command placeholder in AGENTS.md", file=sys.stderr)
+    content = agents_path.read_text(encoding='utf-8')
+    target_line = f"Primary Unit Testing Command: {test_cmd}"
 
-def configure_semgrep_rulesets(root_dir: Path, language: str) -> bool:
+    content, n = re.subn(r'Primary Unit Testing Command:\s*`?[^`\n]+`?', target_line, content)
+    if n == 0:
+        print(
+            "❌ Error: Could not locate the 'Primary Unit Testing Command:' line in AGENTS.md.\n"
+            "   Bootstrap cannot leave <TEST_COMMAND_PLACEHOLDER> live: unit-testing/SKILL.md makes\n"
+            "   running that command the gate on declaring work complete. Restore the line from the\n"
+            "   template's AGENTS.md, then re-run bootstrap.",
+            file=sys.stderr
+        )
+        sys.exit(1)
+
+    if dry_run:
+        announce_planned_write('AGENTS.md', f"primary test command -> {test_cmd}")
+        return
+
+    agents_path.write_text(content, encoding='utf-8')
+    print(f"  ✓ Mutated AGENTS.md with primary test command: {test_cmd}")
+
+def configure_semgrep_rulesets(root_dir: Path, language: str, dry_run: bool = False) -> bool:
     """Select the Semgrep registry rulesets for the chosen stack in security-scan.yml.
 
     Rewrites the single SEMGREP_RULESETS env line so the optional SAST workflow scans
@@ -155,18 +199,59 @@ def configure_semgrep_rulesets(root_dir: Path, language: str) -> bool:
         print(f"  ⚠️ Warning: Could not locate the SEMGREP_RULESETS knob in {SECURITY_SCAN_WORKFLOW_RELPATH}.", file=sys.stderr)
         return False
 
+    if dry_run:
+        announce_planned_write(SECURITY_SCAN_WORKFLOW_RELPATH.as_posix(), replacement)
+        return True
+
     workflow_path.write_text(content, encoding='utf-8')
     print(f"  ✓ Selected Semgrep rulesets for {language}: {' '.join(rulesets)}")
     return True
 
-def clean_template_meta_docs(root_dir: Path, project_name: str, language: str):
+def clean_python_scaffolding(root_dir: Path, language: str, dry_run: bool = False) -> list:
+    """Remove the Python-only scaffolding the template ships for its own benefit.
+
+    The self-test suite tests the bootstrapper that has just finished running, so it is
+    dead weight in every adopter's repository. src/__init__.py and requirements-python.txt
+    are Python artefacts and are kept only for --lang python. See #55.
+
+    Returns the sorted relative POSIX paths that were (or, in a dry run, would be) removed.
+    """
+    removable = [TEMPLATE_SELF_TEST_RELPATH]
+    if language != 'python':
+        removable.extend([PYTHON_PACKAGE_MARKER_RELPATH, PYTHON_REQUIREMENTS_RELPATH])
+
+    removed = []
+    for rel_path in removable:
+        target = root_dir / rel_path
+        if not target.exists():
+            continue
+
+        removed.append(rel_path.as_posix())
+        if dry_run:
+            announce_planned_write(rel_path.as_posix(), "remove template Python scaffolding")
+            continue
+
+        if target.is_dir():
+            shutil.rmtree(target)
+        else:
+            target.unlink()
+        print(f"  ✓ Removed template Python scaffolding ({rel_path.as_posix()})")
+
+    return sorted(removed)
+
+def clean_template_meta_docs(root_dir: Path, project_name: str, language: str, dry_run: bool = False):
     """Remove template-only meta docs and generate a clean project README."""
     print("🧹 Cleaning template-specific meta documentation...")
 
     template_guide = root_dir / 'docs' / 'TEMPLATE_GUIDE.md'
     if template_guide.exists():
-        template_guide.unlink()
-        print("  ✓ Removed template meta-doc (docs/TEMPLATE_GUIDE.md)")
+        if dry_run:
+            announce_planned_write('docs/TEMPLATE_GUIDE.md', "remove template meta-doc")
+        else:
+            template_guide.unlink()
+            print("  ✓ Removed template meta-doc (docs/TEMPLATE_GUIDE.md)")
+
+    clean_python_scaffolding(root_dir, language, dry_run=dry_run)
 
     today_str = datetime.today().strftime('%Y-%m-%d')
     clean_readme_content = f"""# {project_name}
@@ -223,6 +308,10 @@ This project is licensed under the [MIT License](LICENSE).
 *Last Updated: {today_str}* | *Last Reviewed: {today_str}*
 """
     readme_path = root_dir / 'README.md'
+    if dry_run:
+        announce_planned_write('README.md', f"replace with a clean project README for '{project_name}'")
+        return
+
     readme_path.write_text(clean_readme_content, encoding='utf-8')
     print(f"  ✓ Generated clean project README.md for '{project_name}'")
 
@@ -230,7 +319,8 @@ def substitute_community_health_placeholders(
     root_dir: Path,
     project_name: str,
     repo_owner: str = None,
-    conduct_email: str = None
+    conduct_email: str = None,
+    dry_run: bool = False
 ) -> list:
     """Seed community health stubs with the project name, GitHub owner and conduct contact.
 
@@ -259,8 +349,11 @@ def substitute_community_health_placeholders(
             content = content.replace(placeholder, value)
 
         if content != original:
-            target.write_text(content, encoding='utf-8')
-            print(f"  ✓ Customized {rel_path}")
+            if dry_run:
+                announce_planned_write(rel_path, "substitute community health placeholders")
+            else:
+                target.write_text(content, encoding='utf-8')
+                print(f"  ✓ Customized {rel_path}")
 
         if OWNER_PLACEHOLDER in content or CONDUCT_EMAIL_PLACEHOLDER in content:
             unresolved.append(rel_path)
@@ -283,8 +376,15 @@ def get_default_topics(language: str) -> list:
         base_topics.append('template-repository')
     return base_topics
 
-def configure_repository_seo(repo_desc: str = None, repo_topics: list = None, language: str = 'generic'):
-    """Configure GitHub repository description and SEO topics via gh CLI if available."""
+def configure_repository_seo(repo_desc: str = None, repo_topics: list = None, language: str = 'generic',
+                             root_dir: Path = None, dry_run: bool = False):
+    """Configure GitHub repository description and SEO topics via gh CLI if available.
+
+    `gh repo edit` resolves its target from the working directory's git remote, so the
+    call is pinned to root_dir. Without that, bootstrapping a project from a different
+    working directory silently rewrites the topics of whichever repository the shell
+    happens to be sitting in -- an irreversible mutation of the wrong remote.
+    """
     gh_bin = shutil.which('gh')
     if not gh_bin:
         print("  ⚠️ Skipping GitHub SEO configuration: gh CLI not found in PATH.")
@@ -298,7 +398,11 @@ def configure_repository_seo(repo_desc: str = None, repo_topics: list = None, la
     if repo_desc:
         cmd.extend(['--description', repo_desc])
 
-    res = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if dry_run:
+        print(f"  [dry-run] would run (in {root_dir}): {' '.join(cmd)}")
+        return
+
+    res = subprocess.run(cmd, cwd=root_dir, check=False, capture_output=True, text=True)
     if res.returncode == 0:
         print(f"  ✓ Updated GitHub repository topics ({topics_csv})")
         if repo_desc:
@@ -306,11 +410,18 @@ def configure_repository_seo(repo_desc: str = None, repo_topics: list = None, la
     else:
         print(f"  ⚠️ Warning: Could not update GitHub repo via gh CLI (Code {res.returncode}): {res.stderr.strip()}")
 
-def ensure_claude_skills_symlink(root_dir: Path) -> bool:
+def ensure_claude_skills_symlink(root_dir: Path, dry_run: bool = False) -> bool:
     """Ensure .claude/skills relative symlink exists and points to ../.agents/skills."""
     claude_dir = root_dir / '.claude'
     claude_skills = claude_dir / 'skills'
     target_rel = '../.agents/skills'
+
+    if dry_run:
+        if claude_skills.is_dir() and claude_skills.is_symlink():
+            print("  [dry-run] .claude/skills symlink already correct; no change")
+        else:
+            announce_planned_write('.claude/skills', f"create symlink -> {target_rel}")
+        return True
 
     claude_dir.mkdir(exist_ok=True)
 
@@ -342,7 +453,21 @@ def ensure_claude_skills_symlink(root_dir: Path) -> bool:
         )
         return False
 
-def ensure_agent_state_scratchpad(root_dir: Path, project_name: str) -> bool:
+def refresh_timestamp_footer(content: str, today_str: str) -> str:
+    """Rewrite an existing Last Updated / Last Reviewed footer to today's date.
+
+    The seed's footer is frozen at the date the seed was last edited, and
+    append_timestamps.py only injects missing footers -- it never refreshes one. Left
+    alone, a project bootstrapped more than 180 days after the seed was bumped is born
+    violating the documentation review policy, and bootstrap's own pre-commit step then
+    fails on a file bootstrap wrote seconds earlier. See #80.
+
+    Content with no footer is returned unchanged, for append_timestamps.py to inject one.
+    """
+    refreshed_footer = f"*Last Updated: {today_str}* | *Last Reviewed: {today_str}*"
+    return FOOTER_REGEX.sub(refreshed_footer, content)
+
+def ensure_agent_state_scratchpad(root_dir: Path, project_name: str, dry_run: bool = False) -> bool:
     """Seed .agent-state.md from the tracked template when absent, then apply the project name.
 
     In a fresh clone .agent-state.md does not exist (it is gitignored), so this step
@@ -359,6 +484,12 @@ def ensure_agent_state_scratchpad(root_dir: Path, project_name: str) -> bool:
                 file=sys.stderr
             )
             return False
+        if dry_run:
+            announce_planned_write(
+                '.agent-state.md',
+                f"create from {AGENT_STATE_SEED_RELPATH.as_posix()}, set project name and refresh footer"
+            )
+            return True
         try:
             shutil.copyfile(seed_path, agent_state_path)
             print(f"  ✓ Created .agent-state.md from {AGENT_STATE_SEED_RELPATH.as_posix()}")
@@ -366,17 +497,23 @@ def ensure_agent_state_scratchpad(root_dir: Path, project_name: str) -> bool:
             print(f"  ⚠️ Warning: Could not create .agent-state.md: {e}", file=sys.stderr)
             return False
 
+    today_str = datetime.today().strftime('%Y-%m-%d')
     try:
         content = agent_state_path.read_text(encoding='utf-8')
-        agent_state_path.write_text(content.replace(TEMPLATE_PROJECT_NAME, project_name), encoding='utf-8')
+        content = content.replace(TEMPLATE_PROJECT_NAME, project_name)
+        content = refresh_timestamp_footer(content, today_str)
+        if dry_run:
+            announce_planned_write('.agent-state.md', f"set project name and refresh footer to {today_str}")
+            return True
+        agent_state_path.write_text(content, encoding='utf-8')
     except OSError as e:
         print(f"  ⚠️ Warning: Could not customize .agent-state.md: {e}", file=sys.stderr)
         return False
 
-    print(f"  ✓ Customized .agent-state.md with project name ({project_name})")
+    print(f"  ✓ Customized .agent-state.md with project name ({project_name}) and footer date ({today_str})")
     return True
 
-def configure_claude_settings(root_dir: Path, language: str) -> bool:
+def configure_claude_settings(root_dir: Path, language: str, dry_run: bool = False) -> bool:
     """Configure client-side .claude/settings.json permissions per language stack."""
     claude_dir = root_dir / '.claude'
     settings_file = claude_dir / 'settings.json'
@@ -404,12 +541,55 @@ def configure_claude_settings(root_dir: Path, language: str) -> bool:
         if added:
             print(f"  ✓ Configured .claude/settings.json with Go EDR test command deny-list ({', '.join(added)})")
 
+    if dry_run:
+        announce_planned_write('.claude/settings.json', f"apply {language} permission deny-list")
+        return True
+
     try:
         settings_file.write_text(json.dumps(data, indent=2) + '\n', encoding='utf-8')
         return True
     except Exception as e:
         print(f"  ⚠️ Warning: Could not write {settings_file}: {e}", file=sys.stderr)
         return False
+
+def configure_doctor_precommit_hook(root_dir: Path, dry_run: bool = False) -> bool:
+    """Switch the doctor pre-commit hook from template mode to strict adopter mode.
+
+    The template's own config exempts the un-bootstrapped stubs it is supposed to still
+    carry. Once bootstrap has substituted them, the adopter's repository must be checked
+    strictly so a placeholder reintroduced later is caught. Not fatal when the hook is
+    absent: .pre-commit-config.yaml is an adopter-editable file. See #56.
+    """
+    config_path = root_dir / PRE_COMMIT_CONFIG_RELPATH
+
+    if not config_path.exists():
+        print(f"  ⚠️ Skipping doctor hook configuration: {PRE_COMMIT_CONFIG_RELPATH.as_posix()} not found.")
+        return False
+
+    content = config_path.read_text(encoding='utf-8')
+
+    if DOCTOR_TEMPLATE_MODE_ENTRY not in content:
+        if DOCTOR_ADOPTER_MODE_ENTRY in content:
+            print("  ✓ Doctor pre-commit hook already runs in strict adopter mode")
+            return True
+        print(
+            f"  ⚠️ Warning: no doctor hook found in {PRE_COMMIT_CONFIG_RELPATH.as_posix()}; "
+            "placeholders reintroduced later will not be caught on commit.",
+            file=sys.stderr
+        )
+        return False
+
+    if dry_run:
+        announce_planned_write(
+            PRE_COMMIT_CONFIG_RELPATH.as_posix(),
+            f"switch doctor hook to '{DOCTOR_ADOPTER_MODE_ENTRY}' (strict adopter mode)"
+        )
+        return True
+
+    config_path.write_text(
+        content.replace(DOCTOR_TEMPLATE_MODE_ENTRY, DOCTOR_ADOPTER_MODE_ENTRY), encoding='utf-8')
+    print("  ✓ Switched doctor pre-commit hook to strict adopter mode")
+    return True
 
 def bootstrap(
     project_name: str,
@@ -421,13 +601,16 @@ def bootstrap(
     repo_topics: str = None,
     setup_branch_protection: bool = False,
     repo_owner: str = None,
-    conduct_email: str = None
+    conduct_email: str = None,
+    dry_run: bool = False
 ):
     root_dir = Path(__file__).parent.parent.resolve()
     print(f"🚀 Initializing AI Agent Project Template in: {root_dir}")
     print(f"   Project Name  : {project_name}")
     print(f"   Language Stack : {language}")
     print(f"   Non-Interactive Mode: {non_interactive}")
+    if dry_run:
+        print("   Dry Run: no file, repository or hook will be modified")
     print("-" * 50)
 
     check_system_dependencies(strict=install_deps)
@@ -435,57 +618,79 @@ def bootstrap(
 
     # 1. Optionally install dev dependencies if requested
     if install_deps:
-        req_file = root_dir / 'requirements-dev.txt'
-        if req_file.exists():
-            print("📦 Installing development dependencies from requirements-dev.txt...")
-            res = subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', str(req_file)], check=False)
+        req_files = [root_dir / 'requirements-dev.txt']
+        if language == 'python':
+            req_files.append(root_dir / PYTHON_REQUIREMENTS_RELPATH)
+        present = [str(req_file) for req_file in req_files if req_file.exists()]
+        if present and dry_run:
+            print(f"  [dry-run] would run: pip install -r {' -r '.join(present)}")
+        elif present:
+            print(f"📦 Installing development dependencies from {', '.join(present)}...")
+            cmd = [sys.executable, '-m', 'pip', 'install']
+            for req_path in present:
+                cmd.extend(['-r', req_path])
+            res = subprocess.run(cmd, check=False)
             if res.returncode != 0:
                 print("❌ Error: Failed to install python dependencies.", file=sys.stderr)
                 sys.exit(1)
 
     # 2. Configure Language Profile & Clean Template Meta Docs
-    configure_language_profile(root_dir, language)
-    configure_semgrep_rulesets(root_dir, language)
+    configure_language_profile(root_dir, language, dry_run=dry_run)
+    configure_semgrep_rulesets(root_dir, language, dry_run=dry_run)
     if clean_template or non_interactive:
-        clean_template_meta_docs(root_dir, project_name, language)
+        clean_template_meta_docs(root_dir, project_name, language, dry_run=dry_run)
 
     # 3. Seed/update .agent-state.md and update AGENTS.md
-    ensure_agent_state_scratchpad(root_dir, project_name)
+    ensure_agent_state_scratchpad(root_dir, project_name, dry_run=dry_run)
 
     agents_path = root_dir / 'AGENTS.md'
     if agents_path.exists():
         content = agents_path.read_text(encoding='utf-8')
         content = content.replace(TEMPLATE_PROJECT_NAME, project_name)
-        agents_path.write_text(content, encoding='utf-8')
-        print(f"  ✓ Customized AGENTS.md with project name ({project_name})")
+        if dry_run:
+            announce_planned_write('AGENTS.md', f"substitute project name ({project_name})")
+        else:
+            agents_path.write_text(content, encoding='utf-8')
+            print(f"  ✓ Customized AGENTS.md with project name ({project_name})")
 
     # 4. Ensure .claude/skills auto-discovery symlink and client settings
-    ensure_claude_skills_symlink(root_dir)
-    configure_claude_settings(root_dir, language)
+    ensure_claude_skills_symlink(root_dir, dry_run=dry_run)
+    configure_claude_settings(root_dir, language, dry_run=dry_run)
 
     # 4b. Seed community health stubs (Code of Conduct, changelog, CODEOWNERS, issue chooser)
     substitute_community_health_placeholders(
         root_dir,
         project_name=project_name,
         repo_owner=repo_owner,
-        conduct_email=conduct_email
+        conduct_email=conduct_email,
+        dry_run=dry_run
     )
 
+    # 4c. Harden the adopter's placeholder verification hook
+    configure_doctor_precommit_hook(root_dir, dry_run=dry_run)
+
     # 5. Append/Update timestamps
-    try:
-        from append_timestamps import append_timestamps
-        append_timestamps(root_dir)
-        print("  ✓ Processed documentation timestamp footers")
-    except Exception as e:
-        print(f"❌ Error running append_timestamps: {e}", file=sys.stderr)
-        sys.exit(1)
+    if dry_run:
+        print("  [dry-run] would inject missing documentation timestamp footers")
+    else:
+        try:
+            from append_timestamps import append_timestamps
+            append_timestamps(root_dir)
+            print("  ✓ Processed documentation timestamp footers")
+        except Exception as e:
+            print(f"❌ Error running append_timestamps: {e}", file=sys.stderr)
+            sys.exit(1)
 
     # 6. Configure GitHub Repository SEO (Description & Topics)
     parsed_topics = [t.strip() for t in repo_topics.split(',')] if repo_topics else None
-    configure_repository_seo(repo_desc=repo_desc, repo_topics=parsed_topics, language=language)
+    configure_repository_seo(
+        repo_desc=repo_desc, repo_topics=parsed_topics, language=language,
+        root_dir=root_dir, dry_run=dry_run)
 
     # 7. Optionally configure GitHub Branch Protection Ruleset
-    if setup_branch_protection:
+    if setup_branch_protection and dry_run:
+        print("  [dry-run] would apply the GitHub branch protection ruleset via gh CLI")
+    elif setup_branch_protection:
         ruleset_file = root_dir / '.github' / 'rulesets' / 'protect-main-branch.json'
         if not ruleset_file.exists():
             print(f"❌ Error: Required branch protection ruleset file not found: {ruleset_file}", file=sys.stderr)
@@ -507,8 +712,10 @@ def bootstrap(
             )
 
     # 8. Pre-commit setup readiness & local verification check
-    pre_commit_config = root_dir / '.pre-commit-config.yaml'
-    if pre_commit_config.exists() and shutil.which('pre-commit'):
+    pre_commit_config = root_dir / PRE_COMMIT_CONFIG_RELPATH
+    if dry_run:
+        print("  [dry-run] would install Git pre-commit hooks and run `pre-commit run --all-files`")
+    elif pre_commit_config.exists() and shutil.which('pre-commit'):
         print("  ✓ Installing Git pre-commit hooks...")
         res_inst = subprocess.run(['pre-commit', 'install'], cwd=root_dir, check=False)
         if res_inst.returncode != 0:
@@ -522,6 +729,23 @@ def bootstrap(
             print("   Please review and resolve pre-commit errors before completing bootstrap.", file=sys.stderr)
             sys.exit(1)
 
+    # 9. Verify the end state. Every mutation above is a regex or copy that can miss;
+    #    without this the script reports success on a repository still carrying live
+    #    placeholders. See #56.
+    if dry_run:
+        print("\n✅ Dry run complete. No files were modified; re-run without --dry-run to apply.")
+        return
+
+    print("  🩺 Verifying no template placeholders survived...")
+    if not run_doctor_and_report(root_dir, mode=ADOPTER_MODE):
+        print(
+            "❌ Error: Bootstrap left unresolved template placeholders (listed above).\n"
+            "   Supply the missing values (e.g. --repo-owner, --conduct-email) or edit the\n"
+            "   cited lines by hand, then re-run bootstrap.",
+            file=sys.stderr
+        )
+        sys.exit(1)
+
     print("\n✅ Bootstrap completed successfully!")
     print(f"   Next step: Edit .agent-state.md to set your initial milestones, then begin coding!")
 
@@ -530,7 +754,8 @@ def main():
     parser.add_argument('--name', type=str, default='my-ai-project', help='Project name')
     parser.add_argument('--lang', type=str, default='generic', choices=SUPPORTED_LANGUAGES, help='Target language stack')
     parser.add_argument('-y', '--non-interactive', action='store_true', help='Run in non-interactive mode')
-    parser.add_argument('--install-deps', action='store_true', help='Automatically pip install requirements-dev.txt')
+    parser.add_argument('--install-deps', action='store_true', help='Automatically pip install requirements-dev.txt (plus requirements-python.txt for --lang python)')
+    parser.add_argument('--dry-run', action='store_true', help='Preview every planned mutation without modifying files, repository settings or Git hooks')
     parser.add_argument('--clean-template', action='store_true', help='Clean up template meta docs and generate clean project README')
     parser.add_argument('--repo-desc', type=str, default=None, help='GitHub repository description for SEO')
     parser.add_argument('--repo-topics', type=str, default=None, help='Comma-separated list of GitHub topics for SEO')
@@ -549,7 +774,8 @@ def main():
         repo_topics=args.repo_topics,
         setup_branch_protection=args.setup_branch_protection,
         repo_owner=args.repo_owner,
-        conduct_email=args.conduct_email
+        conduct_email=args.conduct_email,
+        dry_run=args.dry_run
     )
 
 if __name__ == '__main__':
