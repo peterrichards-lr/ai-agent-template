@@ -41,7 +41,9 @@ from bootstrap_template import (
 )
 
 REPO_ROOT = Path(__file__).parent.parent
-MAKEFILE = REPO_ROOT / 'MAKEFILE'.lower()
+# Spelled exactly as the file is named. macOS is case-insensitive, so a mis-cased path
+# resolves locally and only fails on the Linux CI runner.
+MAKEFILE = REPO_ROOT / MAKEFILE_RELPATH
 
 VOCABULARY_TARGETS = ['setup', 'lint', 'test', 'docs', 'verify', 'push', 'help']
 
@@ -64,7 +66,12 @@ def run_make(*args, cwd=None):
 # --- #46: the target vocabulary itself ---------------------------------------
 
 def test_makefile_is_shipped_at_the_repository_root():
-    assert MAKEFILE.exists(), "the template must ship a root Makefile as the agent entrypoint"
+    """Compares against the real directory entry rather than calling exists(): macOS is
+    case-insensitive, so a mis-cased path passes locally and fails only on Linux CI."""
+    root_entries = {entry.name for entry in REPO_ROOT.iterdir()}
+
+    assert MAKEFILE.name in root_entries, \
+        "the template must ship a root Makefile, spelled exactly, as the agent entrypoint"
 
 
 @pytest.mark.parametrize('target', VOCABULARY_TARGETS)
