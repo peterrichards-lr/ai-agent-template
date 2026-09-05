@@ -84,3 +84,12 @@ out/
 
 # Security scan reports (local `semgrep scan --sarif --output ...` runs)
 *.sarif
+
+# MkDocs (the optional documentation site; see mkdocs.yml)
+site/
+_site/
+# The site home page is copied from README.md at build time -- by
+# .github/workflows/docs.yml in CI, and by hand before a local `mkdocs serve` --
+# so the GitHub landing page and the site home cannot drift apart. Committing it
+# would recreate exactly the duplicate this arrangement exists to avoid.
+docs/index.md
