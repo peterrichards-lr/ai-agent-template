@@ -55,3 +55,14 @@ repos:
         language: system
         files: ^(CLAUDE\.md|GEMINI\.md|\.cursorrules|\.windsurfrules|\.github/copilot-instructions\.md)$
         pass_filenames: false
+
+      # Runs on every commit regardless of staged files: it checks the repository's
+      # author identity, not file content. Blocking here means an unattributable
+      # author email is fixed with `git config` before the commit exists, rather than
+      # by rewriting history after a ruleset blocks the merge.
+      - id: check-commit-attribution
+        name: Check Commit Author Attribution
+        entry: python3 scripts/check_commit_attribution.py
+        language: system
+        always_run: true
+        pass_filenames: false

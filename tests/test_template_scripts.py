@@ -721,3 +721,133 @@ def test_coding_standards_skill_scope_sprawl_rule():
     assert "Scope Sprawl & Anti-Churn Guardrails" in content
     assert "MUST NOT modify more than 10 files" in content
     assert "bypass-sprawl" in content
+
+def test_check_commit_attribution_validation_logic():
+    """Verify the attribution heuristic accepts noreply/allowlisted emails and rejects unknown ones."""
+    from check_commit_attribution import validate_commit_attribution
+
+    # 1. GitHub noreply addresses always attribute (with and without the numeric ID prefix)
+    assert validate_commit_attribution("octocat@users.noreply.github.com", [])[0] is True
+    assert validate_commit_attribution("12345+octocat@users.noreply.github.com", [])[0] is True
+
+    # 2. Matching is case-insensitive and tolerates surrounding whitespace
+    assert validate_commit_attribution("  OctoCat@Users.NoReply.GitHub.com  ", [])[0] is True
+
+    # 3. Lookalike domains must not slip through a naive substring match
+    assert validate_commit_attribution("octocat@users.noreply.github.com.example.org", [])[0] is False
+
+    # 4. Unset email fails with configuration remediation
+    ok, message = validate_commit_attribution("", [])
+    assert ok is False
+    assert "user.email" in message
+
+    # 5. Custom domain fails when it is not allowlisted
+    assert validate_commit_attribution("dev@example.com", [])[0] is False
+
+    # 6. Custom domain passes once allowlisted (case-insensitive, whitespace tolerant)
+    assert validate_commit_attribution("dev@example.com", ["dev@example.com"])[0] is True
+    assert validate_commit_attribution("Dev@Example.com", [" dev@example.com "])[0] is True
+
+def test_check_commit_attribution_allowlist_parsing():
+    """Verify allowlist entries split on commas/whitespace and normalise to lowercase."""
+    from check_commit_attribution import parse_allowlist_entries
+
+    assert parse_allowlist_entries(["a@x.com, b@y.com"]) == ["a@x.com", "b@y.com"]
+    assert parse_allowlist_entries(["a@x.com b@y.com", "c@z.com"]) == ["a@x.com", "b@y.com", "c@z.com"]
+    assert parse_allowlist_entries(["A@X.com"]) == ["a@x.com"]
+    assert parse_allowlist_entries(["", "   ", ","]) == []
+    assert parse_allowlist_entries(None) == []
+
+def test_check_commit_attribution_failure_message_is_heuristic_aware():
+    """The failure message must present itself as a heuristic, not a verdict that the email is wrong."""
+    from check_commit_attribution import validate_commit_attribution, ALLOWLIST_CONFIG_KEY
+
+    ok, message = validate_commit_attribution("dev@verified-custom-domain.example", [])
+    assert ok is False
+
+    lowered = message.lower()
+    # States plainly that this is a heuristic and that a verified address can legitimately fail it
+    assert "heuristic" in lowered
+    assert "verified" in lowered
+    # Offers both escape hatches: the noreply address and the allowlist
+    assert "users.noreply.github.com" in lowered
+    assert ALLOWLIST_CONFIG_KEY in message
+
+def test_check_commit_attribution_ci_environment_detection():
+    """The guard protects local commit creation, so it stands down inside CI runners."""
+    from check_commit_attribution import is_continuous_integration_environment
+
+    assert is_continuous_integration_environment({"CI": "true"}) is True
+    assert is_continuous_integration_environment({"GITHUB_ACTIONS": "true"}) is True
+    assert is_continuous_integration_environment({"CI": "false"}) is False
+    assert is_continuous_integration_environment({}) is False
+
+def test_check_commit_attribution_cli_exit_codes():
+    """Verify the CLI contract: exit 0 when attributable, exit 1 with guidance when not."""
+    script = Path(__file__).parent.parent / 'scripts' / 'check_commit_attribution.py'
+
+    attributable = subprocess.run(
+        [sys.executable, str(script), '--email', 'octocat@users.noreply.github.com'],
+        capture_output=True, text=True
+    )
+    assert attributable.returncode == 0
+
+    unattributable = subprocess.run(
+        [sys.executable, str(script), '--email', 'dev@example.com'],
+        capture_output=True, text=True
+    )
+    assert unattributable.returncode == 1
+    assert "heuristic" in (unattributable.stdout + unattributable.stderr).lower()
+
+    allowlisted = subprocess.run(
+        [sys.executable, str(script), '--email', 'dev@example.com', '--allowlist', 'dev@example.com'],
+        capture_output=True, text=True
+    )
+    assert allowlisted.returncode == 0
+
+def test_pre_commit_config_registers_commit_attribution_hook():
+    """Verify the attribution guard runs as a local pre-commit hook on every commit."""
+    config = Path(__file__).parent.parent / '.pre-commit-config.yaml'
+    data = yaml.safe_load(config.read_text(encoding='utf-8'))
+
+    local_hooks = [hook for repo in data['repos'] if repo['repo'] == 'local' for hook in repo['hooks']]
+    attribution_hook = next((hook for hook in local_hooks if hook['id'] == 'check-commit-attribution'), None)
+
+    assert attribution_hook is not None, "check-commit-attribution hook is not registered in .pre-commit-config.yaml"
+    assert 'scripts/check_commit_attribution.py' in attribution_hook['entry']
+    # The identity being checked is repository-wide, not tied to any staged file
+    assert attribution_hook.get('pass_filenames') is False
+    assert attribution_hook.get('always_run') is True
+
+def test_shipped_rulesets_omit_unattributed_approval_rule():
+    """docs/BRANCH_PROTECTION.md states neither shipped ruleset enables this rule -- keep that true."""
+    ruleset_dir = Path(__file__).parent.parent / '.github' / 'rulesets'
+    ruleset_files = sorted(ruleset_dir.glob('*.json'))
+    assert ruleset_files, "No rulesets found to verify"
+
+    for ruleset_file in ruleset_files:
+        assert 'require_extra_approval_for_unattributed_changes' not in ruleset_file.read_text(encoding='utf-8'), (
+            f"{ruleset_file.name} now enables require_extra_approval_for_unattributed_changes; "
+            "docs/BRANCH_PROTECTION.md must be updated to match."
+        )
+
+def test_branch_protection_docs_covers_unattributed_changes_trap():
+    """Verify the unattributed-changes trap sits alongside the existing solo-maintainer review guidance."""
+    doc = Path(__file__).parent.parent / 'docs' / 'BRANCH_PROTECTION.md'
+    content = doc.read_text(encoding='utf-8')
+    lowered = content.lower()
+
+    assert "require_extra_approval_for_unattributed_changes" in content
+    # Must be accurate about where the trap actually comes from
+    assert "neither ruleset in" in lowered
+    assert "org-level" in lowered
+    # Must point at the local guard as the mitigation
+    assert "scripts/check_commit_attribution.py" in content
+
+def test_contributing_documents_commit_attribution():
+    """Verify CONTRIBUTING.md tells contributors how to satisfy or allowlist the attribution guard."""
+    content = (Path(__file__).parent.parent / 'CONTRIBUTING.md').read_text(encoding='utf-8')
+    assert "Commit Attribution" in content
+    assert "scripts/check_commit_attribution.py" in content
+    assert "user.attributableEmails" in content
+    assert "users.noreply.github.com" in content
