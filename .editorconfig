@@ -1,0 +1,71 @@
+# EditorConfig - shared editor baseline for this repository (https://editorconfig.org)
+#
+# Why this file exists:
+# .pre-commit-config.yaml runs the `trailing-whitespace` and `end-of-file-fixer` hooks.
+# Without a shared baseline, an editor writing CRLF line endings, omitting the final
+# newline, or leaving trailing whitespace produces commits that the hooks immediately
+# rewrite -- a confusing first-commit experience. These settings keep editors and hooks
+# in agreement rather than fighting.
+#
+# Adopter stub: the per-language sections below cover every stack supported by
+# scripts/bootstrap_template.py (SUPPORTED_LANGUAGES). Delete the sections you do not
+# need, but keep the [*] block aligned with the pre-commit hooks.
+
+root = true
+
+# Universal baseline -- must not disagree with the pre-commit hygiene hooks.
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# --lang go: gofmt is non-negotiable about tabs.
+[*.go]
+indent_style = tab
+indent_size = 4
+
+[go.mod]
+indent_style = tab
+
+# --lang python: PEP 8.
+[*.{py,pyi}]
+indent_size = 4
+
+# --lang rust: rustfmt default.
+[*.rs]
+indent_size = 4
+
+# --lang java (also covers --lang liferay Gradle builds).
+[*.{java,kt,kts,gradle,groovy}]
+indent_size = 4
+
+# --lang node: Prettier default.
+[*.{js,jsx,mjs,cjs,ts,tsx}]
+indent_size = 2
+
+# --lang cpp: clang-format LLVM/Google defaults.
+[*.{c,h,cc,cpp,cxx,hh,hpp,hxx}]
+indent_size = 4
+
+# --lang liferay: client-extension.yaml and workflow/config YAML.
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.{json,jsonc}]
+indent_size = 2
+
+[*.{sh,bash,zsh}]
+indent_size = 2
+
+# Tabs are part of the file format, not a style choice.
+[{Makefile,makefile,*.mk}]
+indent_style = tab
+
+# trim_trailing_whitespace stays true here: the pre-commit trailing-whitespace hook trims
+# Markdown as well, so preserving two-space hard line breaks would only be undone on commit.
+# Use a backslash or <br> for hard line breaks instead.
+[*.md]
+trim_trailing_whitespace = true

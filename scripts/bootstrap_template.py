@@ -20,6 +20,20 @@ from datetime import datetime
 
 SUPPORTED_LANGUAGES = ['generic', 'go', 'python', 'rust', 'java', 'node', 'cpp', 'liferay']
 
+# Community health and editor baseline files shipped as adopter-customisable stubs.
+# .editorconfig carries no placeholders but is listed here so this stays the single
+# canonical inventory of these files for tests and downstream tooling.
+COMMUNITY_HEALTH_FILES = [
+    'CODE_OF_CONDUCT.md',
+    'CHANGELOG.md',
+    '.editorconfig',
+    '.github/CODEOWNERS',
+    '.github/ISSUE_TEMPLATE/config.yml',
+]
+
+# Placeholders substituted at bootstrap time, mirroring how README/SEO metadata are seeded.
+OWNER_PLACEHOLDER = '<GITHUB_OWNER_PLACEHOLDER>'
+CONDUCT_EMAIL_PLACEHOLDER = '<CONDUCT_EMAIL_PLACEHOLDER>'
 # Tracked seed for the gitignored .agent-state.md scratchpad, and the placeholder
 # project name substituted out of it (and out of AGENTS.md) during bootstrap.
 AGENT_STATE_SEED_RELPATH = Path('.agents') / 'templates' / 'agent-state.md'
@@ -168,6 +182,54 @@ This project is licensed under the [MIT License](LICENSE).
     readme_path.write_text(clean_readme_content, encoding='utf-8')
     print(f"  ✓ Generated clean project README.md for '{project_name}'")
 
+def substitute_community_health_placeholders(
+    root_dir: Path,
+    project_name: str,
+    repo_owner: str = None,
+    conduct_email: str = None
+) -> list:
+    """Seed community health stubs with the project name, GitHub owner and conduct contact.
+
+    Mirrors how the project name is seeded into AGENTS.md/.agent-state.md. Placeholders whose
+    value was not supplied are deliberately left in place so an adopter can spot and edit them.
+
+    Returns the sorted relative paths of files still containing an unresolved placeholder.
+    """
+    print("🤝 Seeding community health files...")
+
+    replacements = [(TEMPLATE_PROJECT_NAME, project_name)]
+    if repo_owner:
+        replacements.append((OWNER_PLACEHOLDER, repo_owner))
+    if conduct_email:
+        replacements.append((CONDUCT_EMAIL_PLACEHOLDER, conduct_email))
+
+    unresolved = []
+    for rel_path in COMMUNITY_HEALTH_FILES:
+        target = root_dir / rel_path
+        if not target.exists():
+            continue
+
+        original = target.read_text(encoding='utf-8')
+        content = original
+        for placeholder, value in replacements:
+            content = content.replace(placeholder, value)
+
+        if content != original:
+            target.write_text(content, encoding='utf-8')
+            print(f"  ✓ Customized {rel_path}")
+
+        if OWNER_PLACEHOLDER in content or CONDUCT_EMAIL_PLACEHOLDER in content:
+            unresolved.append(rel_path)
+
+    if unresolved:
+        print(
+            "  ⚠️ Warning: unresolved placeholders remain in: " + ", ".join(sorted(unresolved)) + "\n"
+            "     Re-run with --repo-owner and/or --conduct-email, or edit the files by hand.",
+            file=sys.stderr
+        )
+
+    return sorted(unresolved)
+
 def get_default_topics(language: str) -> list:
     """Return default GitHub SEO topics based on language stack."""
     base_topics = ['ai-agent', 'developer-tools']
@@ -313,7 +375,9 @@ def bootstrap(
     clean_template: bool = False,
     repo_desc: str = None,
     repo_topics: str = None,
-    setup_branch_protection: bool = False
+    setup_branch_protection: bool = False,
+    repo_owner: str = None,
+    conduct_email: str = None
 ):
     root_dir = Path(__file__).parent.parent.resolve()
     print(f"🚀 Initializing AI Agent Project Template in: {root_dir}")
@@ -353,6 +417,14 @@ def bootstrap(
     # 4. Ensure .claude/skills auto-discovery symlink and client settings
     ensure_claude_skills_symlink(root_dir)
     configure_claude_settings(root_dir, language)
+
+    # 4b. Seed community health stubs (Code of Conduct, changelog, CODEOWNERS, issue chooser)
+    substitute_community_health_placeholders(
+        root_dir,
+        project_name=project_name,
+        repo_owner=repo_owner,
+        conduct_email=conduct_email
+    )
 
     # 5. Append/Update timestamps
     try:
@@ -418,6 +490,8 @@ def main():
     parser.add_argument('--repo-desc', type=str, default=None, help='GitHub repository description for SEO')
     parser.add_argument('--repo-topics', type=str, default=None, help='Comma-separated list of GitHub topics for SEO')
     parser.add_argument('--setup-branch-protection', action='store_true', help='Apply GitHub branch protection ruleset via gh CLI')
+    parser.add_argument('--repo-owner', type=str, default=None, help='GitHub org/user owning the repository (seeds CODEOWNERS and issue chooser links)')
+    parser.add_argument('--conduct-email', type=str, default=None, help='Code of Conduct enforcement contact email address')
 
     args = parser.parse_args()
     bootstrap(
@@ -428,7 +502,9 @@ def main():
         clean_template=args.clean_template,
         repo_desc=args.repo_desc,
         repo_topics=args.repo_topics,
-        setup_branch_protection=args.setup_branch_protection
+        setup_branch_protection=args.setup_branch_protection,
+        repo_owner=args.repo_owner,
+        conduct_email=args.conduct_email
     )
 
 if __name__ == '__main__':

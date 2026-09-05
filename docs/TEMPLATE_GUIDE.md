@@ -135,14 +135,31 @@ Prose rules alone don't reliably bind agent behavior. This template enforces def
 When initializing a new repository from this template:
 
 ```bash
-python3 scripts/bootstrap_template.py --name "my-awesome-service" --lang go --clean-template
+python3 scripts/bootstrap_template.py --name "my-awesome-service" --lang go --clean-template \
+  --repo-owner "my-org" --conduct-email "conduct@example.com"
 ```
 
 The bootstrapper script will:
 1. Generate a clean project `README.md` describing your application.
 2. Remove this template-only guide (`docs/TEMPLATE_GUIDE.md`).
 3. Customize `AGENTS.md` with the project name.
-4. Run `append_timestamps.py` and install Git pre-commit quality gates.
+4. Seed the community health stubs with the project name, GitHub owner, and conduct contact.
+5. Run `append_timestamps.py` and install Git pre-commit quality gates.
+
+### Community Health & Editor Baseline Stubs
+
+These files ship deliberately short and clearly marked as adopter-customisable:
+
+| File | Purpose | Placeholders |
+| :--- | :--- | :--- |
+| `CODE_OF_CONDUCT.md` | Contributor Covenant v2.1. | `<CONDUCT_EMAIL_PLACEHOLDER>` (`--conduct-email`) |
+| `CHANGELOG.md` | Keep a Changelog seed feeding the `release-management` skill. | `<GITHUB_OWNER_PLACEHOLDER>` (`--repo-owner`) |
+| `.editorconfig` | UTF-8 / LF / final-newline / trimmed-whitespace baseline plus per-language indent rules for every `--lang` stack. Prevents editors from producing commits that the `trailing-whitespace` and `end-of-file-fixer` hooks immediately rewrite. | none |
+| `.github/CODEOWNERS` | Fully commented ownership stub. Makes `"require_code_owner_review"` in `.github/rulesets/protect-main-branch.json` a real, flippable switch instead of a reference to a missing file. | `<GITHUB_OWNER_PLACEHOLDER>` (`--repo-owner`) |
+| `.github/ISSUE_TEMPLATE/config.yml` | Issue chooser: `blank_issues_enabled: false` plus contact links, steering reports into the structured templates the `github-workflow` skill depends on. | `<GITHUB_OWNER_PLACEHOLDER>` (`--repo-owner`) |
+
+Unresolved placeholders are reported by the bootstrapper rather than silently substituted, so
+an adopter who skipped a flag knows exactly which files still need a manual edit.
 
 <!-- markdownlint-disable MD049 -->
 ---

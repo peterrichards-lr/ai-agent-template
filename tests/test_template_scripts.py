@@ -4,6 +4,7 @@ test_template_scripts.py - Unit Test Suite for Template Automation Scripts
 Tests append_timestamps.py, check_docs_review.py, bootstrap_template.py, and gh_issue_sync.py.
 """
 
+import fnmatch
 import os
 import re
 import subprocess
@@ -17,6 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 
 from append_timestamps import append_timestamps, should_ignore
+from check_docs_review import check_docs, parse_date, EXTRA_DOC_FILES
 from check_docs_review import check_docs, parse_date
 from bootstrap_template import (
     configure_language_profile,
@@ -24,6 +26,12 @@ from bootstrap_template import (
     get_default_topics,
     ensure_claude_skills_symlink,
     configure_claude_settings,
+    substitute_community_health_placeholders,
+    SUPPORTED_LANGUAGES,
+    COMMUNITY_HEALTH_FILES,
+    OWNER_PLACEHOLDER,
+    CONDUCT_EMAIL_PLACEHOLDER,
+    TEMPLATE_PROJECT_NAME,
     ensure_agent_state_scratchpad,
     AGENT_STATE_SEED_RELPATH,
     TEMPLATE_PROJECT_NAME,
@@ -731,6 +739,227 @@ def test_coding_standards_skill_scope_sprawl_rule():
     assert "MUST NOT modify more than 10 files" in content
     assert "bypass-sprawl" in content
 
+# --- Community health & editor baseline files (issue #53) -------------------
+
+# Sample filenames representing each stack in bootstrap_template.SUPPORTED_LANGUAGES.
+# Keyed by language so a newly supported language without an .editorconfig rule fails loudly.
+LANGUAGE_SAMPLE_FILES = {
+    'generic': 'notes.txt',
+    'go': 'main.go',
+    'python': 'app.py',
+    'rust': 'lib.rs',
+    'java': 'Service.java',
+    'node': 'index.ts',
+    'cpp': 'engine.cpp',
+    'liferay': 'client-extension.yaml',
+}
+
+def _expand_editorconfig_globs(pattern: str) -> list:
+    """Expand an EditorConfig brace list ({py,pyi}) into plain fnmatch globs."""
+    match = re.search(r'\{([^{}]*)\}', pattern)
+    if not match:
+        return [pattern]
+    expanded = []
+    for option in match.group(1).split(','):
+        expanded.extend(
+            _expand_editorconfig_globs(pattern[:match.start()] + option.strip() + pattern[match.end():])
+        )
+    return expanded
+
+def _parse_editorconfig(content: str) -> tuple:
+    """Parse .editorconfig into (preamble properties, ordered [(section glob, properties)])."""
+    preamble = {}
+    sections = []
+    current = None
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#') or line.startswith(';'):
+            continue
+        if line.startswith('[') and line.endswith(']'):
+            current = (line[1:-1], {})
+            sections.append(current)
+            continue
+        if '=' not in line:
+            continue
+        key, value = (part.strip() for part in line.split('=', 1))
+        target = current[1] if current else preamble
+        target[key] = value
+    return preamble, sections
+
+def _matching_section_globs(sections: list, filename: str) -> list:
+    return [
+        glob_pattern for glob_pattern, _ in sections
+        if any(fnmatch.fnmatch(filename, g) for g in _expand_editorconfig_globs(glob_pattern))
+    ]
+
+def _resolve_editorconfig(sections: list, filename: str) -> dict:
+    """Resolve effective EditorConfig properties for a filename (later sections win)."""
+    resolved = {}
+    for glob_pattern, properties in sections:
+        if any(fnmatch.fnmatch(filename, g) for g in _expand_editorconfig_globs(glob_pattern)):
+            resolved.update(properties)
+    return resolved
+
+def test_community_health_files_exist_as_adopter_stubs():
+    """All five community health files ship, each marked as an adopter-customisable stub."""
+    root_dir = Path(__file__).parent.parent
+
+    for rel_path in COMMUNITY_HEALTH_FILES:
+        assert (root_dir / rel_path).exists(), f"Missing community health file: {rel_path}"
+
+    conduct = (root_dir / 'CODE_OF_CONDUCT.md').read_text(encoding='utf-8')
+    assert 'Contributor Covenant' in conduct
+    assert CONDUCT_EMAIL_PLACEHOLDER in conduct, "Code of Conduct must keep a substitutable contact placeholder"
+
+    changelog = (root_dir / 'CHANGELOG.md').read_text(encoding='utf-8')
+    assert 'Keep a Changelog' in changelog
+    assert 'Semantic Versioning' in changelog
+    assert '## [Unreleased]' in changelog
+
+    codeowners = (root_dir / '.github' / 'CODEOWNERS').read_text(encoding='utf-8')
+    active_rules = [line for line in codeowners.splitlines() if line.strip() and not line.strip().startswith('#')]
+    assert not active_rules, f"CODEOWNERS must ship fully commented out, found active rules: {active_rules}"
+    assert 'require_code_owner_review' in codeowners, "CODEOWNERS stub must explain the ruleset interaction"
+    assert OWNER_PLACEHOLDER in codeowners
+
+    config = yaml.safe_load((root_dir / '.github' / 'ISSUE_TEMPLATE' / 'config.yml').read_text(encoding='utf-8'))
+    assert config.get('blank_issues_enabled') is False
+    contact_links = config.get('contact_links')
+    assert isinstance(contact_links, list) and contact_links, "config.yml must define contact_links"
+    for link in contact_links:
+        assert {'name', 'url', 'about'} <= set(link), f"Incomplete contact link: {link}"
+        assert link['url'].startswith('https://'), f"Contact link must be https: {link['url']}"
+
+def test_editorconfig_baseline_covers_supported_languages():
+    """.editorconfig defines the shared baseline plus an indent rule per supported language."""
+    root_dir = Path(__file__).parent.parent
+    preamble, sections = _parse_editorconfig((root_dir / '.editorconfig').read_text(encoding='utf-8'))
+
+    assert preamble.get('root') == 'true', ".editorconfig must declare root = true"
+
+    universal = _resolve_editorconfig(sections, 'notes.txt')
+    assert universal.get('charset') == 'utf-8'
+    assert universal.get('end_of_line') == 'lf'
+    assert universal.get('insert_final_newline') == 'true'
+    assert universal.get('trim_trailing_whitespace') == 'true'
+
+    assert set(LANGUAGE_SAMPLE_FILES) == set(SUPPORTED_LANGUAGES), (
+        "LANGUAGE_SAMPLE_FILES drifted from bootstrap_template.SUPPORTED_LANGUAGES: "
+        f"only in map: {set(LANGUAGE_SAMPLE_FILES) - set(SUPPORTED_LANGUAGES)}; "
+        f"only supported: {set(SUPPORTED_LANGUAGES) - set(LANGUAGE_SAMPLE_FILES)}"
+    )
+
+    for language, sample_file in LANGUAGE_SAMPLE_FILES.items():
+        matched = _matching_section_globs(sections, sample_file)
+        if language == 'generic':
+            assert matched, "generic stacks must at least inherit the universal [*] section"
+            continue
+        assert [g for g in matched if g != '*'], (
+            f"No language-specific .editorconfig section matches {sample_file} ({language})"
+        )
+
+    assert _resolve_editorconfig(sections, 'main.go').get('indent_style') == 'tab', "Go must use tabs (gofmt)"
+    assert _resolve_editorconfig(sections, 'app.py').get('indent_size') == '4', "Python must use 4 spaces (PEP 8)"
+
+    # The pre-commit trailing-whitespace hook trims Markdown too, so .editorconfig must not
+    # disagree with it: an editor preserving Markdown hard breaks would fight the hook.
+    assert _resolve_editorconfig(sections, 'README.md').get('trim_trailing_whitespace') == 'true'
+
+def test_non_markdown_community_files_are_not_timestamped(tmp_path):
+    """.editorconfig, CODEOWNERS and config.yml must never receive Markdown timestamp footers."""
+    non_markdown = [f for f in COMMUNITY_HEALTH_FILES if not f.endswith('.md')]
+    assert non_markdown, "Expected non-Markdown community health files"
+
+    for rel_path in non_markdown:
+        assert rel_path not in EXTRA_DOC_FILES, f"{rel_path} must not be treated as a timestamped doc"
+
+    original = {}
+    for rel_path in non_markdown:
+        target = tmp_path / rel_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text('# stub content\n', encoding='utf-8')
+        original[rel_path] = target.read_bytes()
+
+    append_timestamps(tmp_path)
+
+    for rel_path in non_markdown:
+        assert (tmp_path / rel_path).read_bytes() == original[rel_path], (
+            f"{rel_path} was rewritten by append_timestamps"
+        )
+
+    root_dir = Path(__file__).parent.parent
+    for rel_path in non_markdown:
+        assert 'Last Reviewed' not in (root_dir / rel_path).read_text(encoding='utf-8')
+
+def test_community_health_files_documented_in_readme_tree():
+    """README.md's repository-structure tree must list the community health files."""
+    root_dir = Path(__file__).parent.parent
+    readme_content = (root_dir / 'README.md').read_text(encoding='utf-8')
+    tree_match = re.search(r'## Repository Structure\s*```text(.*?)```', readme_content, re.DOTALL)
+    assert tree_match, "Could not locate the repository structure tree in README.md"
+    tree = tree_match.group(1)
+
+    for rel_path in COMMUNITY_HEALTH_FILES:
+        assert Path(rel_path).name in tree, f"README.md tree missing '{rel_path}'"
+
+    # Guard the sibling drift test's anchor: the skills block must stay between these markers.
+    assert re.search(r'├── \.agents/skills/.*?(?=├── scripts/)', readme_content, re.DOTALL)
+
+def test_bootstrap_substitutes_community_health_placeholders(tmp_path):
+    """Bootstrap replaces owner/email/project placeholders and reports unresolved leftovers."""
+    def seed(root: Path):
+        (root / '.github' / 'ISSUE_TEMPLATE').mkdir(parents=True, exist_ok=True)
+        (root / 'CODE_OF_CONDUCT.md').write_text(
+            f"Report conduct concerns to {CONDUCT_EMAIL_PLACEHOLDER}.\n", encoding='utf-8')
+        (root / 'CHANGELOG.md').write_text(
+            f"# Changelog for {TEMPLATE_PROJECT_NAME}\n", encoding='utf-8')
+        (root / '.editorconfig').write_text("root = true\n", encoding='utf-8')
+        (root / '.github' / 'CODEOWNERS').write_text(
+            f"# * @{OWNER_PLACEHOLDER}\n", encoding='utf-8')
+        (root / '.github' / 'ISSUE_TEMPLATE' / 'config.yml').write_text(
+            f"url: https://github.com/{OWNER_PLACEHOLDER}/{TEMPLATE_PROJECT_NAME}/blob/main/CONTRIBUTING.md\n",
+            encoding='utf-8')
+
+    resolved_root = tmp_path / 'resolved'
+    resolved_root.mkdir()
+    seed(resolved_root)
+
+    unresolved = substitute_community_health_placeholders(
+        resolved_root,
+        project_name='my-awesome-service',
+        repo_owner='acme-org',
+        conduct_email='conduct@acme.example',
+    )
+    assert unresolved == [], f"Expected no unresolved placeholders, got {unresolved}"
+
+    conduct = (resolved_root / 'CODE_OF_CONDUCT.md').read_text(encoding='utf-8')
+    assert 'conduct@acme.example' in conduct and CONDUCT_EMAIL_PLACEHOLDER not in conduct
+
+    changelog = (resolved_root / 'CHANGELOG.md').read_text(encoding='utf-8')
+    assert 'my-awesome-service' in changelog and TEMPLATE_PROJECT_NAME not in changelog
+
+    codeowners = (resolved_root / '.github' / 'CODEOWNERS').read_text(encoding='utf-8')
+    assert '@acme-org' in codeowners and OWNER_PLACEHOLDER not in codeowners
+
+    config_text = (resolved_root / '.github' / 'ISSUE_TEMPLATE' / 'config.yml').read_text(encoding='utf-8')
+    assert 'https://github.com/acme-org/my-awesome-service/blob/main/CONTRIBUTING.md' in config_text
+
+    # .editorconfig carries no placeholders and must be left byte-identical.
+    assert (resolved_root / '.editorconfig').read_text(encoding='utf-8') == "root = true\n"
+
+    # Without owner/email arguments the placeholders survive and are reported for manual editing.
+    partial_root = tmp_path / 'partial'
+    partial_root.mkdir()
+    seed(partial_root)
+
+    unresolved = substitute_community_health_placeholders(partial_root, project_name='my-awesome-service')
+    assert unresolved == sorted(['CODE_OF_CONDUCT.md', '.github/CODEOWNERS', '.github/ISSUE_TEMPLATE/config.yml'])
+    assert CONDUCT_EMAIL_PLACEHOLDER in (partial_root / 'CODE_OF_CONDUCT.md').read_text(encoding='utf-8')
+    assert 'my-awesome-service' in (partial_root / 'CHANGELOG.md').read_text(encoding='utf-8')
+
+def test_bootstrap_placeholder_substitution_tolerates_missing_files(tmp_path):
+    """Substitution must not fail when a downstream repo has deleted a community health file."""
+    assert substitute_community_health_placeholders(tmp_path, project_name='empty-repo') == []
 def test_check_commit_attribution_validation_logic():
     """Verify the attribution heuristic accepts noreply/allowlisted emails and rejects unknown ones."""
     from check_commit_attribution import validate_commit_attribution

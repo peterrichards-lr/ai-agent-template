@@ -1,0 +1,33 @@
+# CODEOWNERS - adopter-customisable stub (every rule below is intentionally commented out).
+#
+# GitHub uses this file to request reviews automatically from the owners of the
+# matched paths. Ownership rules are last-match-wins: the final matching pattern
+# in the file is the one that applies.
+#
+# Why an empty stub ships with the template:
+# .github/rulesets/protect-main-branch.json sets "require_code_owner_review": false.
+# That setting is only meaningful once a CODEOWNERS file exists, so this stub makes the
+# ruleset option a real, flippable switch rather than a reference to a missing file.
+#
+# To turn it on:
+#   1. Uncomment and edit the rules below (owners must have write access to the repository).
+#   2. Set "require_code_owner_review": true in .github/rulesets/protect-main-branch.json.
+#   3. Re-apply the ruleset: python3 scripts/setup_branch_protection.py
+#      (see docs/BRANCH_PROTECTION.md).
+#
+# Note: with a single-maintainer repository, requiring code owner review can block your
+# own pull requests, because GitHub will not accept a review from the PR author.
+#
+# Default owner for everything in the repository:
+# * @<GITHUB_OWNER_PLACEHOLDER>
+#
+# Agent rules of engagement and skill definitions:
+# /AGENTS.md              @<GITHUB_OWNER_PLACEHOLDER>
+# /.agents/skills/        @<GITHUB_OWNER_PLACEHOLDER>
+#
+# CI, governance and repository rulesets:
+# /.github/               @<GITHUB_OWNER_PLACEHOLDER>
+#
+# Template automation scripts and their tests:
+# /scripts/               @<GITHUB_OWNER_PLACEHOLDER>
+# /tests/                 @<GITHUB_OWNER_PLACEHOLDER>

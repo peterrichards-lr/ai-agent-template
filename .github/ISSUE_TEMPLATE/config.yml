@@ -1,0 +1,26 @@
+# Issue chooser configuration - adopter-customisable stub.
+#
+# blank_issues_enabled: false steers every new issue into the templates in this directory.
+# This is load-bearing for AI agents: .agents/skills/github-workflow/SKILL.md requires
+# tech-debt issues to be filed in a specific shape, which the templates encode.
+#
+# Replace <GITHUB_OWNER_PLACEHOLDER> (and the repository name) with your own, or let
+# scripts/bootstrap_template.py do it: --repo-owner <org> --name <repo>.
+# Remove any contact link that does not apply to your project; an empty contact_links
+# list is valid, but at least one entry is recommended.
+
+blank_issues_enabled: false
+
+contact_links:
+  - name: 🔐 Report a security vulnerability
+    url: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/security/advisories/new
+    about: Please disclose vulnerabilities privately. Do not open a public issue - see SECURITY.md.
+  - name: 📖 Contributing guidelines
+    url: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/blob/main/CONTRIBUTING.md
+    about: Branch naming, commit conventions, quality gates, and the PR protocol.
+  - name: 🤝 Code of Conduct
+    url: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/blob/main/CODE_OF_CONDUCT.md
+    about: The community standards expected of everyone taking part in this project.
+  - name: 🤖 AI agent rules of engagement
+    url: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/blob/main/AGENTS.md
+    about: Canonical agent context and skill routing - read before filing agent-behaviour issues.
