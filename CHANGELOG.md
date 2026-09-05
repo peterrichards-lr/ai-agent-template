@@ -18,11 +18,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- _Nothing yet._
+- Root `Makefile` task runner exposing one vocabulary in every language stack --
+  `setup`, `lint`, `test`, `docs`, `verify`, `push`, `help`. Only the marked language
+  profile block varies, and `scripts/bootstrap_template.py --lang <stack>` fills it in (#46).
+- `scripts/agent_push.py` behind `make push`: refuses no-op pushes and trees with tracked
+  changes left unstaged, rejects flag-shaped commit messages, runs the pre-commit gate
+  rather than bypassing it, and checks commit attribution before a commit exists (#46).
 
 ### Changed
 
-- _Nothing yet._
+- `.github/workflows/ci.yml` runs `make verify` instead of restating pytest, `doctor.py`,
+  `check_docs_review.py` and `pre-commit`, so the local and CI gates cannot drift (#46).
+- The Go profile exports `GOTMPDIR` with `:=` and guards the resolved value before
+  building. `GOTMPDIR`, not `-o`, decides where an unsigned test binary first appears on
+  disk; `.agents/skills/unit-testing/SKILL.md` taught the incomplete `-o`-only form (#46).
+- Bootstrap now denies `Bash(go test*)` wholesale in `.claude/settings.json` for
+  `--lang go`, replacing the narrow `Bash(go test)` / `Bash(go test ./...)` pair. Safe
+  only because the sanctioned path is now `make test` (#46).
+- `AGENTS.md` rule 5, `CONTRIBUTING.md` §3 and `docs/TEMPLATE_GUIDE.md` defer to
+  `make test` / `make verify` instead of each restating every ecosystem's commands (#46).
+
+### Removed
+
+- **Breaking**: `scripts/bootstrap_template.py` no longer accepts `-y` /
+  `--non-interactive`. The script has never called `input()`, so the flag suppressed
+  nothing; it was quietly a second trigger for template cleanup, so `-y` deleted
+  `docs/TEMPLATE_GUIDE.md`, `tests/` and `src/__init__.py` without being asked.
+  Passing it is now an argparse usage error raised before any file is touched.
+  If you relied on `-y` to clean, pass `--clean-template` explicitly (#90).
 
 ### Fixed
 

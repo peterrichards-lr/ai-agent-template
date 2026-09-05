@@ -35,7 +35,13 @@ The agent is FORBIDDEN from declaring a task resolved or a bug fixed based on fi
 Rule 2 and `e2e-verification/SKILL.md` are the two branches of the same question: rule 2 tightens what a passing test proves; the e2e skill covers changes where a passing test proves nothing about the system.
 
 ### 4. Non-Interactive Test Execution
-Test commands MUST be run in non-interactive mode:
+Test commands MUST be run in non-interactive mode. In a repository bootstrapped from this
+template that command is `make test` for every ecosystem: the `Makefile` holds the stack's
+real invocation, stated once, so an agent does not have to work out which ecosystem it is
+in. `make verify` (lint + test + docs) is exactly what CI runs.
+
+The underlying per-ecosystem commands, for a project without the task runner:
+
 - **Python**: `pytest -v --tb=short`
 - **Go**: see the warning below -- never bare `go test`/`go test ./...`.
 - **Rust**: `cargo test --quiet`
@@ -59,15 +65,33 @@ Test commands MUST be run in non-interactive mode:
 > binary directly:
 >
 > ```bash
-> mkdir -p .test-bin
+> # GOTMPDIR, not -o, is the variable the allowlist depends on. The Go toolchain
+> # links every executable INSIDE GOTMPDIR and only then moves it to the -o path,
+> # so GOTMPDIR decides where the unsigned binary first appears on disk. Setting
+> # only -o leaves the link step in the OS default temp directory -- exactly the
+> # exposure this recipe is meant to remove.
+> #
+> # Export it unconditionally (`:=` in a Makefile, plain assignment here) rather
+> # than defaulting it. With a conditional default, an inherited GOTMPDIR from a
+> # shell profile, direnv or an IDE terminal silently wins and the build leaves
+> # the allowlist while reporting nothing.
+> TEST_DIR="$([ -d /private/tmp ] && echo /private/tmp || echo /tmp)"
+> export GOTMPDIR="$TEST_DIR"
+> [ "$(go env GOTMPDIR)" = "$TEST_DIR" ] || { echo "go will link in $(go env GOTMPDIR)"; exit 1; }
+>
 > for pkg in $(go list -f '{{if .TestGoFiles}}{{.ImportPath}}{{end}}' ./...); do
->   go test -c -o .test-bin/pkg.test "$pkg" || exit 1
->   (cd "$(go list -f '{{.Dir}}' "$pkg")" && "$OLDPWD/.test-bin/pkg.test") || exit 1
+>   go test -c -o "$TEST_DIR/pkg.test" "$pkg" || exit 1
+>   (cd "$(go list -f '{{.Dir}}' "$pkg")" && "$TEST_DIR/pkg.test") || exit 1
 > done
 > ```
 >
-> Wrap this in a `Makefile` target (e.g. `make test`) or a script once the
-> project has one, rather than typing it out each time.
+> On macOS the allowlisted path is the literal `/private/tmp`: `/tmp` is a symlink
+> to the same directory, but a path matcher does not treat the two as equivalent.
+>
+> Do not type this out each time. `make test` in a repository bootstrapped from
+> this template already is this recipe -- see the Go profile in the `Makefile`,
+> which adds an `edr-guard` target asserting the resolved `GOTMPDIR` before
+> anything is built.
 
 ### 5. No Superficial Test Fixes
 Never fix failing tests by commenting out assertions, reducing test thresholds, or deleting test cases. If a test fails, identify why the underlying implementation contract was broken and repair the core logic.
