@@ -131,14 +131,15 @@ MAKEFILE_PROFILE_END_MARKER = '# <<< BOOTSTRAP LANGUAGE PROFILE <<<'
 CI_PROFILE_DIR_RELPATH = Path('.agents') / 'templates' / 'ci'
 CI_WORKFLOW_RELPATH = Path('.github') / 'workflows' / 'ci.yml'
 
-# The two check-run contexts every profile reports.
+# The two check-run contexts every profile reports. Both are required status checks in
+# .github/rulesets/protect-main-branch.json, and neither may be renamed without editing
+# that file too: a ruleset context matching no job name never reports, and the pull
+# request then waits for it forever.
 #
-# QUALITY_GATE_JOB_NAME is a required status check in
-# .github/rulesets/protect-main-branch.json and must not be renamed: a ruleset context
-# that matches no job name never reports, and the pull request waits forever.
-# BUILD_AND_TEST_JOB_NAME ships advisory (absent from the ruleset) because a freshly
-# bootstrapped repository has no build to pass yet -- see docs/BRANCH_PROTECTION.md for
-# promoting it once the project has real code.
+# BUILD_AND_TEST_JOB_NAME is declared by two jobs on purpose -- the real one and its
+# skip twin -- so exactly one of them reports it on any given run. An adopter whose
+# project cannot build yet removes that one context before importing the ruleset; see
+# docs/BRANCH_PROTECTION.md for the trade-off.
 QUALITY_GATE_JOB_NAME = 'Code & Documentation Quality Verification'
 BUILD_AND_TEST_JOB_NAME = 'Build & Test'
 
