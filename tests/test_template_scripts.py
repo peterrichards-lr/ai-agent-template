@@ -635,9 +635,15 @@ def test_check_closing_refs():
     assert is_valid is True
     assert violations == []
 
-    # 15. Verify .github/workflows/issue-link-check.yml uses actions/checkout@v7
+    # 15. Verify .github/workflows/issue-link-check.yml checks out the repository with
+    # actions/checkout pinned to a full commit SHA plus a trailing version comment.
+    # A mutable tag (@v7) would let a retagged release run with this workflow's token;
+    # tests/test_workflow_pinning.py enforces the same rule across every workflow.
     issue_link_workflow = (root_dir / '.github' / 'workflows' / 'issue-link-check.yml').read_text(encoding='utf-8')
-    assert "uses: actions/checkout@v7" in issue_link_workflow
+    assert re.search(
+        r'uses:\s*actions/checkout@[0-9a-f]{40}\s+#\s*v\d+(?:\.\d+)*',
+        issue_link_workflow,
+    ), "Expected issue-link-check.yml to use actions/checkout pinned to a commit SHA with a version comment"
 
 def test_unit_testing_skill_fail_first_gate():
     root_dir = Path(__file__).parent.parent

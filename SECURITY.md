@@ -53,6 +53,38 @@ Uploading Semgrep results to the **Security** tab, and dependency review itself,
 
 ---
 
+## Action Pinning & Update Cooldown
+
+Every `uses:` in [`.github/workflows/`](./.github/workflows) is pinned to a **full 40-character commit SHA**, with the release it corresponds to in a trailing comment:
+
+```yaml
+- name: Checkout repository
+  uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+```
+
+**Why.** A tag such as `@v7` is mutable: whoever controls the action's repository -- or an attacker who compromises a maintainer account -- can repoint it at different code without publishing anything new. Every workflow that references it then executes that code, with this repository's `GITHUB_TOKEN` and any secrets the job can read, on the next run. This is not hypothetical; it is precisely how the `tj-actions/changed-files` and `reviewdog` compromises reached thousands of repositories. A commit SHA is immutable, so the code that ran yesterday is the code that runs today. Semgrep enforces the rule from the outside via `github-actions-mutable-action-tag`, and [`tests/test_workflow_pinning.py`](./tests/test_workflow_pinning.py) enforces it from the inside, so a regression to a mutable tag fails the test suite rather than merely adding a scanner finding.
+
+**Pinning does not freeze you.** This is the obvious objection, and it is wrong: Dependabot understands SHA pins natively. Its `github-actions` ecosystem updater bumps the SHA *and* rewrites the trailing version comment in the same PR, so the automated weekly bumps in [`.github/dependabot.yml`](./.github/dependabot.yml) continue to work exactly as they did with mutable tags -- the only difference is that each bump is now a reviewable diff instead of a silent substitution.
+
+**Cooldown.** Both ecosystems in `.github/dependabot.yml` declare a `cooldown:` (`default-days: 7`, `semver-major-days: 14`). Supply-chain compromises are usually detected and the malicious release yanked within hours to days, so a cooldown ensures this repository is never the canary. Security updates raised from a published advisory are *not* delayed by `cooldown:` and still arrive immediately.
+
+### Updating a pin by hand
+
+Resolve the SHA from the upstream repository rather than copying one from a blog post or another workflow:
+
+```bash
+# Resolve a tag to the commit it points at
+gh api repos/actions/checkout/commits/v7 --jq '.sha'
+
+# Confirm which release that commit is, for the trailing comment
+gh api 'repos/actions/checkout/tags?per_page=100' \
+  --jq '.[] | select(.commit.sha=="<sha>") | .name'
+```
+
+Then update both the SHA and the `# vX.Y.Z` comment together. The commented-out CodeQL job stub at the foot of `security-scan.yml` is pinned too, so uncommenting it does not reintroduce a mutable tag.
+
+---
+
 ## Security Best Practices for AI Agents
 
 All AI assistants pairing in this repository MUST follow the security rules in [`AGENTS.md`](./AGENTS.md) and [`.agents/skills/coding-standards/SKILL.md`](./.agents/skills/coding-standards/SKILL.md):

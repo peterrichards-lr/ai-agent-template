@@ -8,6 +8,13 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    # Wait before adopting a freshly published release. Supply-chain compromises
+    # (tj-actions/changed-files, reviewdog) are typically caught and yanked within
+    # hours-to-days; a cooldown means this repository is never the canary. Security
+    # updates raised from a published advisory are NOT delayed by `cooldown:`.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
     # An explicit `labels:` REPLACES GitHub's automatic per-ecosystem labels
     # rather than adding to them, so "dependencies"/"github_actions" must be
     # re-listed here. Without "no-issue-needed", every Dependabot PR fails the
@@ -23,6 +30,10 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    # See the github-actions entry above for the rationale.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
     labels:
       - "dependencies"
       - "python"

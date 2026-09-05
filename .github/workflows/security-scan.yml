@@ -48,10 +48,10 @@ jobs:
       SEMGREP_SEND_METRICS: 'off'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.10'
 
@@ -114,7 +114,7 @@ jobs:
         # Security. On a private repository without GHAS this step fails; the
         # findings are still printed in the job log above.
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: semgrep.sarif
           category: semgrep
@@ -130,12 +130,12 @@ jobs:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Review dependency changes for known vulnerabilities
         # Requires the dependency graph to be enabled (default on public
         # repositories; needs GitHub Advanced Security on private ones).
-        uses: actions/dependency-review-action@v4
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
         with:
           fail-on-severity: high
           # `comment-summary-in-pr` is left at its default of `never`: any other
@@ -170,12 +170,12 @@ jobs:
 #        language: [ 'python' ]
 #    steps:
 #      - name: Checkout repository
-#        uses: actions/checkout@v7
+#        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 #      - name: Initialize CodeQL
-#        uses: github/codeql-action/init@v4
+#        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
 #        with:
 #          languages: ${{ matrix.language }}
 #      - name: Perform CodeQL analysis
-#        uses: github/codeql-action/analyze@v4
+#        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
 #        with:
 #          category: "/language:${{ matrix.language }}"
