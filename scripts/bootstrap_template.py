@@ -324,8 +324,10 @@ def substitute_community_health_placeholders(
 ) -> list:
     """Seed community health stubs with the project name, GitHub owner and conduct contact.
 
-    Mirrors how the project name is seeded into AGENTS.md/.agent-state.md. Placeholders whose
-    value was not supplied are deliberately left in place so an adopter can spot and edit them.
+    Mirrors how the project name is seeded into AGENTS.md/.agent-state.md. --repo-owner and
+    --conduct-email are required on the command line, so a placeholder surviving here means a
+    direct caller omitted a value; it is left in place and reported, and bootstrap's final
+    doctor run then fails on it rather than shipping it.
 
     Returns the sorted relative paths of files still containing an unresolved placeholder.
     """
@@ -749,9 +751,21 @@ def bootstrap(
     print("\n✅ Bootstrap completed successfully!")
     print(f"   Next step: Edit .agent-state.md to set your initial milestones, then begin coding!")
 
-def main():
-    parser = argparse.ArgumentParser(description="Bootstrap an AI Agent-assisted project.")
-    parser.add_argument('--name', type=str, default='my-ai-project', help='Project name')
+def build_arg_parser() -> argparse.ArgumentParser:
+    """Build the CLI parser. Exposed separately so tests can validate documented invocations."""
+    parser = argparse.ArgumentParser(
+        description="Bootstrap an AI Agent-assisted project.",
+        epilog=(
+            "--name, --repo-owner and --conduct-email are required: each is substituted into "
+            "files the agent rules and community health docs depend on, and bootstrap's final "
+            "verification (scripts/doctor.py) rejects any placeholder left unresolved. Requiring "
+            "them here turns a missing value into a usage error before any file is modified."
+        )
+    )
+    # Required rather than defaulted. A default project name would be written into a dozen
+    # files and then rejected by the doctor as an unresolved placeholder -- the substitution
+    # and the verification must not disagree about what a real value looks like.
+    parser.add_argument('--name', type=str, required=True, help='Project name (required)')
     parser.add_argument('--lang', type=str, default='generic', choices=SUPPORTED_LANGUAGES, help='Target language stack')
     parser.add_argument('-y', '--non-interactive', action='store_true', help='Run in non-interactive mode')
     parser.add_argument('--install-deps', action='store_true', help='Automatically pip install requirements-dev.txt (plus requirements-python.txt for --lang python)')
@@ -760,10 +774,13 @@ def main():
     parser.add_argument('--repo-desc', type=str, default=None, help='GitHub repository description for SEO')
     parser.add_argument('--repo-topics', type=str, default=None, help='Comma-separated list of GitHub topics for SEO')
     parser.add_argument('--setup-branch-protection', action='store_true', help='Apply GitHub branch protection ruleset via gh CLI')
-    parser.add_argument('--repo-owner', type=str, default=None, help='GitHub org/user owning the repository (seeds CODEOWNERS and issue chooser links)')
-    parser.add_argument('--conduct-email', type=str, default=None, help='Code of Conduct enforcement contact email address')
+    parser.add_argument('--repo-owner', type=str, required=True, help='GitHub org/user owning the repository, seeding CODEOWNERS, CHANGELOG links and the issue chooser (required)')
+    parser.add_argument('--conduct-email', type=str, required=True, help='Code of Conduct enforcement contact email address (required)')
 
-    args = parser.parse_args()
+    return parser
+
+def main():
+    args = build_arg_parser().parse_args()
     bootstrap(
         project_name=args.name,
         language=args.lang,
