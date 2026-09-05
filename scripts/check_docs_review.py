@@ -12,9 +12,15 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
+# 'site' and '_site' are the MkDocs output directories (the optional docs site;
+# see mkdocs.yml). A local `mkdocs build` copies Markdown that MkDocs did not
+# convert into the output tree, and a generated artefact is not a document: left
+# in, every local build would turn into a review-policy violation. Shared with
+# append_timestamps.py and doctor.py, which import this set.
 IGNORE_DIRS = {
     '.git', 'node_modules', '.venv', 'venv', 'env', '.smoke_venv',
-    'coverage', 'target', 'build', 'dist', 'bin', '.gemini', '.agent_scratch', '.pytest_cache'
+    'coverage', 'target', 'build', 'dist', 'bin', '.gemini', '.agent_scratch', '.pytest_cache',
+    'site', '_site'
 }
 
 FOOTER_REGEX = re.compile(
