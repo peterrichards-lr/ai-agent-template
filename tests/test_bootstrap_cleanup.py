@@ -8,6 +8,12 @@ Covers the bootstrap behaviours that must not fail silently:
 - --clean-template scrubs the template's Python-only scaffolding (#55).
 """
 
+import hashlib
+import os
+import re
+import shlex
+import shutil
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -224,6 +230,123 @@ def test_repository_seo_makes_no_remote_call_in_dry_run(tmp_path, monkeypatch):
     monkeypatch.setattr(bootstrap_template.subprocess, 'run', forbidden_run)
 
     configure_repository_seo(repo_topics=['ai-agent'], root_dir=tmp_path, dry_run=True)
+
+# --- #56: the documented Quickstart must actually work end to end ------------
+#
+# The unit suite passed while the tool could not bootstrap itself: the default --name
+# was 'my-ai-project', which the doctor rejects as a placeholder. These tests run the
+# real script against a real copy of the tree, which is the only thing that would have
+# caught it.
+
+# Matches both fenced-block and inline-code invocations, following backslash line
+# continuations and stopping at the closing backtick of an inline span.
+BOOTSTRAP_INVOCATION_REGEX = re.compile(
+    r'python3 scripts/bootstrap_template\.py((?:[^\n\\`]*\\\n)*[^\n`]*)')
+
+DOCS_DOCUMENTING_BOOTSTRAP = ['README.md', 'docs/TEMPLATE_GUIDE.md']
+
+QUICKSTART_ARGS = [
+    '--name', 'my-awesome-app',
+    '--lang', 'go',
+    '--repo-owner', 'my-org',
+    '--conduct-email', 'conduct@example.com',
+]
+
+IGNORED_COPY_PATTERNS = shutil.ignore_patterns(
+    '.git', '.pytest_cache', '__pycache__', 'worktrees', '.agent-state.md')
+
+def make_isolated_clone(tmp_path: Path):
+    """Copy the working tree into tmp_path as a fresh clone would look, plus a hermetic PATH.
+
+    The PATH carries git (check_system_dependencies requires it) but neither gh nor
+    pre-commit, so the run cannot reach a remote repository or install hook environments.
+    """
+    project = tmp_path / 'clone'
+    shutil.copytree(REPO_ROOT, project, symlinks=True, ignore=IGNORED_COPY_PATTERNS)
+
+    isolated_bin = tmp_path / 'bin'
+    isolated_bin.mkdir()
+    (isolated_bin / 'git').symlink_to(shutil.which('git'))
+
+    return project, dict(os.environ, PATH=str(isolated_bin))
+
+def run_bootstrap(project: Path, env: dict, args) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [sys.executable, str(project / 'scripts' / 'bootstrap_template.py'), *args],
+        cwd=project, env=env, capture_output=True, text=True, check=False)
+
+def fingerprint_tree(root: Path) -> dict:
+    """Hash every file, symlink target and directory, ignoring Python bytecode caches."""
+    entries = {}
+    for path in sorted(root.rglob('*')):
+        rel = path.relative_to(root).as_posix()
+        if '__pycache__' in rel or rel.endswith('.pyc'):
+            continue
+        if path.is_symlink():
+            entries[rel] = 'symlink:' + os.readlink(path)
+        elif path.is_file():
+            entries[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
+        else:
+            entries[rel] = 'dir'
+    return entries
+
+def documented_bootstrap_invocations() -> list:
+    """Return (source, args) for every bootstrap command documented in the shipped docs."""
+    invocations = []
+    for rel_path in DOCS_DOCUMENTING_BOOTSTRAP:
+        text = (REPO_ROOT / rel_path).read_text(encoding='utf-8')
+        for match in BOOTSTRAP_INVOCATION_REGEX.finditer(text):
+            invocations.append((rel_path, shlex.split(match.group(1).replace('\\\n', ' '))))
+    return invocations
+
+def test_the_docs_document_bootstrap_invocations_in_every_file():
+    sources = {source for source, _ in documented_bootstrap_invocations()}
+    assert sources == set(DOCS_DOCUMENTING_BOOTSTRAP)
+
+def test_every_documented_invocation_satisfies_the_cli_contract():
+    """A documented command that argparse rejects is a broken Quickstart."""
+    for source, args in documented_bootstrap_invocations():
+        parsed = bootstrap_template.build_arg_parser().parse_args(args)
+        assert parsed.name and parsed.repo_owner and parsed.conduct_email, f"{source}: {args}"
+
+def test_documented_quickstart_invocation_bootstraps_successfully(tmp_path):
+    project, env = make_isolated_clone(tmp_path)
+
+    result = run_bootstrap(project, env, QUICKSTART_ARGS)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert 'Bootstrap completed successfully' in result.stdout
+    assert (project / '.agent-state.md').is_file()
+
+    # The gate bootstrap just passed must still pass when run standalone.
+    verification = subprocess.run(
+        [sys.executable, str(project / 'scripts' / 'doctor.py'), '--dir', str(project)],
+        capture_output=True, text=True, check=False)
+    assert verification.returncode == 0, verification.stdout + verification.stderr
+
+def test_documented_dry_run_leaves_the_tree_byte_identical(tmp_path):
+    project, env = make_isolated_clone(tmp_path)
+    before = fingerprint_tree(project)
+
+    result = run_bootstrap(project, env, QUICKSTART_ARGS + ['--dry-run'])
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert fingerprint_tree(project) == before
+
+@pytest.mark.parametrize('omitted', ['--name', '--repo-owner', '--conduct-email'])
+def test_omitting_a_required_flag_fails_before_any_file_is_modified(tmp_path, omitted):
+    project, env = make_isolated_clone(tmp_path)
+    before = fingerprint_tree(project)
+
+    args = list(QUICKSTART_ARGS)
+    del args[args.index(omitted):args.index(omitted) + 2]
+    result = run_bootstrap(project, env, args)
+
+    # argparse exits 2 on a usage error, distinct from the doctor's exit 1.
+    assert result.returncode == 2
+    assert 'the following arguments are required' in result.stderr
+    assert omitted in result.stderr
+    assert fingerprint_tree(project) == before
 
 def test_doctor_precommit_hook_absence_is_reported_not_fatal(tmp_path):
     config_path = tmp_path / PRE_COMMIT_CONFIG_RELPATH

@@ -41,17 +41,29 @@ cd my-new-project
 
 ### 2. Run the Bootstrap Script
 
-Run the language-agnostic bootstrapper to configure your project details and setup pre-commit quality gates:
+Run the language-agnostic bootstrapper to configure your project details and setup pre-commit quality gates.
+
+> [!IMPORTANT]
+> `--name`, `--repo-owner` and `--conduct-email` are **required**. Every one of them is
+> substituted into files the agent rules and community health docs depend on, and bootstrap
+> finishes by running `scripts/doctor.py`, which fails on any placeholder left unresolved.
+> Declaring them required means a missing value is an argparse usage error *before* any file
+> is touched, rather than a failed verification after a dozen files have been rewritten.
 
 ```bash
 # Preview every planned mutation without changing anything
-python3 scripts/bootstrap_template.py --dry-run
+python3 scripts/bootstrap_template.py --name "my-awesome-app" --lang go \
+  --repo-owner "my-org" --conduct-email "conduct@example.com" --dry-run
 
-# Interactive setup
-python3 scripts/bootstrap_template.py
+# Apply it
+python3 scripts/bootstrap_template.py --name "my-awesome-app" --lang go \
+  --repo-owner "my-org" --conduct-email "conduct@example.com"
 
-# Or specify your language stack, GitHub SEO metadata, and community health details directly
-python3 scripts/bootstrap_template.py --name "my-awesome-app" --lang go --repo-desc "High-performance Go service built with AI Agent pair programming" --repo-topics "ai-agent,developer-tools,go" --repo-owner "my-org" --conduct-email "conduct@example.com"
+# Optionally add GitHub SEO metadata and drop the template's own meta docs and self-tests
+python3 scripts/bootstrap_template.py --name "my-awesome-app" --lang go \
+  --repo-owner "my-org" --conduct-email "conduct@example.com" --clean-template \
+  --repo-desc "High-performance Go service built with AI Agent pair programming" \
+  --repo-topics "ai-agent,developer-tools,go"
 ```
 
 The bootstrapper will:
@@ -66,15 +78,11 @@ The bootstrapper will:
 8. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
 9. Run `scripts/doctor.py` and **fail** if any placeholder survived.
 
-> [!IMPORTANT]
-> Bootstrap finishes with `scripts/doctor.py`, which exits non-zero listing the file and
-> line of every surviving placeholder. Supply `--repo-owner` and `--conduct-email`, or
-> bootstrap will stop rather than hand you a repository whose `CODE_OF_CONDUCT.md` still
-> carries an unsubstituted contact placeholder. Run the check again at any time:
->
-> ```bash
-> python3 scripts/doctor.py
-> ```
+Re-run the verification at any time:
+
+```bash
+python3 scripts/doctor.py
+```
 
 ---
 
