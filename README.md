@@ -87,7 +87,7 @@ The bootstrapper will:
 │   ├── coding-standards/              # DRY code, self-documenting code & error safety
 │   ├── unit-testing/                  # TDD & non-interactive test rules
 │   ├── documentation/                 # Timestamp & doc maintenance rules
-│   ├── github-workflow/               # Issue sync, PR constraints & CI cleanup
+│   ├── github-workflow/               # Issue sync, PR review feedback loop & CI cleanup
 │   ├── tool-use-react/                # ReAct reasoning & CLI command boundaries
 │   ├── multi-agent-orchestration/     # Subagent delegation directives
 │   ├── rule-adherence/                # Self-verification & checkable artifact rules
