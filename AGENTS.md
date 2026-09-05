@@ -38,7 +38,7 @@ Project rules are organized into active, modular skill files located under `.age
 
 ## 3. Current Work State
 
-Active, in-flight task state and intra-task scratchpad context are maintained locally in `.agent-state.md` (gitignored).
+Active, in-flight task state and intra-task scratchpad context are maintained locally in `.agent-state.md` (gitignored). `scripts/bootstrap_template.py` seeds it from the tracked template [`.agents/templates/agent-state.md`](./.agents/templates/agent-state.md); if it is missing, recreate it by copying that seed.
 
 - **On Session Startup**: If `.agent-state.md` exists, read it to discover active objectives and resume in-flight work without lost context across AI provider switches.
 - **During Execution**: Update `.agent-state.md` when making progress, encountering blockers, or pausing a workflow.
@@ -73,6 +73,7 @@ Before a high-commitment action (merging, deploying, tagging, applying a ruleset
 | File | Purpose |
 | :--- | :--- |
 | [`.agent-state.md`](./.agent-state.md) | In-flight task state, synced between AI providers. Gitignored. |
+| [`.agents/templates/agent-state.md`](./.agents/templates/agent-state.md) | Tracked seed copied to `.agent-state.md` by `scripts/bootstrap_template.py`. |
 | [`README.md`](./README.md) | Consumer-facing documentation & quick setup. |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Contribution guidelines and quality gate commands. |
 | [`.claude/skills`](./.claude/skills) | Tracked symlink to [`.agents/skills/`](./.agents/skills) for Claude Code auto-discovery. |
@@ -86,4 +87,4 @@ Before a high-commitment action (merging, deploying, tagging, applying a ruleset
 
 ---
 
-*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
+*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*

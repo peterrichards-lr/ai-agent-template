@@ -20,6 +20,11 @@ from datetime import datetime
 
 SUPPORTED_LANGUAGES = ['generic', 'go', 'python', 'rust', 'java', 'node', 'cpp', 'liferay']
 
+# Tracked seed for the gitignored .agent-state.md scratchpad, and the placeholder
+# project name substituted out of it (and out of AGENTS.md) during bootstrap.
+AGENT_STATE_SEED_RELPATH = Path('.agents') / 'templates' / 'agent-state.md'
+TEMPLATE_PROJECT_NAME = 'ai-agent-template'
+
 def check_system_dependencies(strict: bool = False):
     """Verify presence of essential tools: python >= 3.8, git, gh, pre-commit."""
     print("🔍 Checking system dependencies...")
@@ -231,6 +236,40 @@ def ensure_claude_skills_symlink(root_dir: Path) -> bool:
         )
         return False
 
+def ensure_agent_state_scratchpad(root_dir: Path, project_name: str) -> bool:
+    """Seed .agent-state.md from the tracked template when absent, then apply the project name.
+
+    In a fresh clone .agent-state.md does not exist (it is gitignored), so this step
+    must create it rather than skip. Reports created / customized / failed explicitly.
+    """
+    agent_state_path = root_dir / '.agent-state.md'
+    seed_path = root_dir / AGENT_STATE_SEED_RELPATH
+
+    if not agent_state_path.exists():
+        if not seed_path.exists():
+            print(
+                f"  ⚠️ Warning: Could not create .agent-state.md: missing seed template {AGENT_STATE_SEED_RELPATH.as_posix()}\n"
+                "     Restore it from the template repository, then re-run bootstrap.",
+                file=sys.stderr
+            )
+            return False
+        try:
+            shutil.copyfile(seed_path, agent_state_path)
+            print(f"  ✓ Created .agent-state.md from {AGENT_STATE_SEED_RELPATH.as_posix()}")
+        except OSError as e:
+            print(f"  ⚠️ Warning: Could not create .agent-state.md: {e}", file=sys.stderr)
+            return False
+
+    try:
+        content = agent_state_path.read_text(encoding='utf-8')
+        agent_state_path.write_text(content.replace(TEMPLATE_PROJECT_NAME, project_name), encoding='utf-8')
+    except OSError as e:
+        print(f"  ⚠️ Warning: Could not customize .agent-state.md: {e}", file=sys.stderr)
+        return False
+
+    print(f"  ✓ Customized .agent-state.md with project name ({project_name})")
+    return True
+
 def configure_claude_settings(root_dir: Path, language: str) -> bool:
     """Configure client-side .claude/settings.json permissions per language stack."""
     claude_dir = root_dir / '.claude'
@@ -301,18 +340,13 @@ def bootstrap(
     if clean_template or non_interactive:
         clean_template_meta_docs(root_dir, project_name, language)
 
-    # 3. Update .agent-state.md and AGENTS.md
-    agent_state_path = root_dir / '.agent-state.md'
-    if agent_state_path.exists():
-        content = agent_state_path.read_text(encoding='utf-8')
-        content = content.replace('ai-agent-template', project_name)
-        agent_state_path.write_text(content, encoding='utf-8')
-        print(f"  ✓ Customized .agent-state.md with project name ({project_name})")
+    # 3. Seed/update .agent-state.md and update AGENTS.md
+    ensure_agent_state_scratchpad(root_dir, project_name)
 
     agents_path = root_dir / 'AGENTS.md'
     if agents_path.exists():
         content = agents_path.read_text(encoding='utf-8')
-        content = content.replace('ai-agent-template', project_name)
+        content = content.replace(TEMPLATE_PROJECT_NAME, project_name)
         agents_path.write_text(content, encoding='utf-8')
         print(f"  ✓ Customized AGENTS.md with project name ({project_name})")
 

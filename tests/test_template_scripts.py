@@ -18,7 +18,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 
 from append_timestamps import append_timestamps, should_ignore
 from check_docs_review import check_docs, parse_date
-from bootstrap_template import configure_language_profile, clean_template_meta_docs, get_default_topics, ensure_claude_skills_symlink, configure_claude_settings
+from bootstrap_template import (
+    configure_language_profile,
+    clean_template_meta_docs,
+    get_default_topics,
+    ensure_claude_skills_symlink,
+    configure_claude_settings,
+    ensure_agent_state_scratchpad,
+    AGENT_STATE_SEED_RELPATH,
+    TEMPLATE_PROJECT_NAME,
+)
 from gh_issue_sync import sync_issues
 from setup_branch_protection import apply_branch_protection, validate_ruleset_file
 from check_provider_redirects import check_redirects, MAX_REDIRECT_LINES, REDIRECT_FILES
@@ -721,3 +730,67 @@ def test_coding_standards_skill_scope_sprawl_rule():
     assert "Scope Sprawl & Anti-Churn Guardrails" in content
     assert "MUST NOT modify more than 10 files" in content
     assert "bypass-sprawl" in content
+
+def test_agent_state_seed_and_bootstrap(tmp_path, capsys):
+    """Verify the tracked .agent-state.md seed exists and bootstrap creates it in a fresh clone."""
+    root_dir = Path(__file__).parent.parent
+    seed_file = root_dir / AGENT_STATE_SEED_RELPATH
+
+    # 1. Seed template must be tracked by git while .agent-state.md itself stays ignored
+    assert seed_file.exists(), f"Missing tracked scratchpad seed template: {AGENT_STATE_SEED_RELPATH}"
+
+    res_seed = subprocess.run(
+        ['git', 'check-ignore', AGENT_STATE_SEED_RELPATH.as_posix()],
+        cwd=root_dir, capture_output=True, text=True
+    )
+    assert res_seed.returncode == 1, f"Expected {AGENT_STATE_SEED_RELPATH} NOT to be ignored by git"
+
+    res_state = subprocess.run(
+        ['git', 'check-ignore', '.agent-state.md'],
+        cwd=root_dir, capture_output=True, text=True
+    )
+    assert res_state.returncode == 0, "Expected .agent-state.md to remain ignored by git"
+
+    seed_content = seed_file.read_text(encoding='utf-8')
+    # github-workflow/SKILL.md rule 4: tech debt is tracked solely as GitHub issues
+    assert "Technical Debt Registry" not in seed_content, "Seed must not carry a second tech-debt registry"
+    assert TEMPLATE_PROJECT_NAME in seed_content, "Seed must carry the placeholder project name for substitution"
+
+    # 2. Fresh clone case: no .agent-state.md present, bootstrap must create and customize it
+    dummy_root = tmp_path / 'project'
+    (dummy_root / AGENT_STATE_SEED_RELPATH.parent).mkdir(parents=True)
+    (dummy_root / AGENT_STATE_SEED_RELPATH).write_text(seed_content, encoding='utf-8')
+    agent_state = dummy_root / '.agent-state.md'
+    assert not agent_state.exists()
+
+    assert ensure_agent_state_scratchpad(dummy_root, 'my-new-project') is True
+    assert agent_state.exists(), "Bootstrap must create .agent-state.md when it is absent"
+
+    created = agent_state.read_text(encoding='utf-8')
+    assert 'my-new-project' in created
+    assert TEMPLATE_PROJECT_NAME not in created
+
+    # Step must report a real outcome, never skip silently
+    out_created = capsys.readouterr().out
+    assert "Created .agent-state.md" in out_created
+    assert "Customized .agent-state.md" in out_created
+
+    # 3. Idempotency: an existing scratchpad is customized in place, never overwritten
+    agent_state.write_text(
+        "# Existing Scratchpad\n\n- **Repository**: `ai-agent-template`\n- In-flight work preserved.\n",
+        encoding='utf-8'
+    )
+    assert ensure_agent_state_scratchpad(dummy_root, 'my-new-project') is True
+    preserved = agent_state.read_text(encoding='utf-8')
+    assert "In-flight work preserved." in preserved
+    assert "- **Repository**: `my-new-project`" in preserved
+
+    out_existing = capsys.readouterr().out
+    assert "Created .agent-state.md" not in out_existing
+    assert "Customized .agent-state.md" in out_existing
+
+    # 4. Missing seed template must report failure rather than a silent no-op success
+    bare_root = tmp_path / 'bare_project'
+    bare_root.mkdir()
+    assert ensure_agent_state_scratchpad(bare_root, 'my-new-project') is False
+    assert not (bare_root / '.agent-state.md').exists()
