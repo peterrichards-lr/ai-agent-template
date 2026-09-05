@@ -20,7 +20,8 @@ several of this template's conventions into real, unbypassable gates.
 - No direct pushes or force-pushes to the default branch -- all changes go
   through a PR.
 - Requires this template's CI quality-gate job
-  (`Code & Documentation Quality Verification`), the Issue Link Check
+  (`Code & Documentation Quality Verification`), its language build job
+  (`Build & Test` -- see the note below before importing), the Issue Link Check
   (`Verify PR references an issue`, see `.github/workflows/issue-link-check.yml`),
   and the Scope Sprawl Gate (`Verify PR scope sprawl guardrail`, see
   `.github/workflows/pr-scope-check.yml`) to pass before merge.
@@ -86,18 +87,54 @@ one-size-fits-all config to apply blindly:
 - `bypass_actors` is empty by default (nobody can bypass). Add an actor here
   only if you have a real, considered need for an emergency override path,
   and treat that as itself a high-risk change to make deliberately.
-- **Path-Filtered CI Deadlock**: If downstream CI workflows adopt path filters
-  (e.g. skipping heavy builds on docs-only changes), required status checks will
-  stop reporting on filtered PRs, permanently deadlocking them in "Expected — Waiting
-  for status to be reported". When downstream projects introduce heavy builds
-  (such as language-specific compilation or long test suites, see Issue #42),
-  they should adopt the **filter + same-named skip-job pattern**:
-  a lightweight change-detection filter job gates execution, and both the primary
-  heavy build job and a no-op skip job declare the identical display `name:`
-  (e.g. `CI / Build & Test`). In successful filter runs, this allows the required
-  status check context to report whether work was executed or skipped. Note that
-  if the filter job itself fails, dependent jobs are skipped by GitHub Actions
-  unless explicit failure handling is configured.
+- **Path-Filtered CI Deadlock**: A path filter that skips a heavy build on a
+  documentation-only change also stops the filtered job reporting its status,
+  so a pull request requiring that context deadlocks in "Expected — Waiting for
+  status to be reported". `.github/workflows/ci.yml` -- installed from
+  `.agents/templates/ci/<lang>.yml` by
+  `scripts/bootstrap_template.py --lang <stack>` -- ships the **filter +
+  same-named skip-job pattern** that avoids it. Four properties make it work,
+  and each of them has a specific failure behind it:
+  - **The doc checks are never filtered.** `Code & Documentation Quality
+    Verification` carries no `needs:` and no `if:`, so it runs on every push and
+    pull request. An earlier attempt filtered the whole workflow and was reverted
+    before merge, because that workflow was *entirely* documentation validation:
+    excluding `**/*.md` disabled markdownlint, the provider-redirect check, the
+    doc-footer guard and the skill-routing drift test for exactly the pull
+    requests they exist to catch. See Issues #42 and #44.
+  - **Only the heavy build sits behind the filter**, and `build-and-test` and
+    `build-and-test-skip` declare the identical `name: Build & Test`, so exactly
+    one of the pair runs and the context is reported either way. The filter's
+    documentation exclusions themselves ship **commented out**: enable them only
+    once you have checked that nothing behind the filter reads the paths you are
+    excluding. This template's own test suite reads its documentation, which is
+    why they are inert here.
+  - **A broken filter fails loudly.** The skip job's condition is
+    `always() && needs.filter.outputs.code != 'true'`. The `always()` is
+    load-bearing: if the filter job itself fails, GitHub skips its dependent
+    jobs whatever their `if:` says, so without it a failed filter would skip
+    *both* jobs, nothing would report the context, and the deadlock would merely
+    have moved to the filter job. With it, the skip job runs, sees
+    `needs.filter.result != 'success'` and exits non-zero -- a red check with a
+    readable reason instead of a silent absence.
+  - **No `strategy.matrix` on a job supplying a fixed-name context.** GitHub
+    reports a matrix job as `Build & Test (some-value)` and never the bare name,
+    so a ruleset requiring the bare name would wait forever, and
+    `tests/test_template_scripts.py::test_ruleset_status_checks_match_workflow_jobs`
+    would fail it as unmatched. Keep a fixed-name aggregating job as the context
+    and put the matrix in a job beneath it.
+- **`Build & Test` is a required status check, and this is the entry to think
+  twice about.** It is listed in `required_status_checks` deliberately: CI whose
+  failure nobody has to act on is decoration, and a template that ships a build
+  job it does not enforce has repeated the problem it set out to fix. The cost
+  is that a repository which cannot build yet cannot merge anything --
+  `--lang generic` makes `make test` exit non-zero by design, and the Node and
+  Java profiles cannot install dependencies until a lockfile or `pom.xml` is
+  committed. **If your project is not yet building, delete the
+  `{ "context": "Build & Test" }` line before importing this ruleset** and add
+  it back once the job is green. That is a one-line edit made once; the
+  alternative -- shipping the check advisory -- is a permanently weaker gate for
+  every adopter who never gets round to promoting it.
 
 An agent proposing this import to you, or modifying an existing ruleset, is a
 high-risk operation under `.agents/skills/human-in-the-loop/SKILL.md` -- it

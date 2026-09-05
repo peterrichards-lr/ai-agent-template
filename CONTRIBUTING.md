@@ -68,9 +68,13 @@ make verify
 ```
 
 `make verify` is `lint` + `test` + `docs`, and it is **exactly** what `.github/workflows/ci.yml`
-runs -- the workflow invokes this target rather than restating the commands, so the two cannot
-drift. "Did I break CI?" is therefore one local command. The individual targets (`make lint`,
-`make test`, `make docs`) are available when you want to run just one; `make help` lists them all.
+runs -- the workflow invokes these targets rather than restating the commands, so the two cannot
+drift. CI splits the chain across two jobs: `Code & Documentation Quality Verification` always
+runs `lint-tooling` and `docs`, while `Build & Test` runs `lint-lang` and `test` behind a paths
+filter that skips it for documentation-only changes. The union is `make verify`, with nothing
+dropped and nothing run twice. "Did I break CI?" is therefore still one local command. The
+individual targets (`make lint`, `make test`, `make docs`) are available when you want to run
+just one; `make help` lists them all.
 
 Each ecosystem's real test command lives in the `Makefile`'s language profile block, stated once
 and filled in by `scripts/bootstrap_template.py --lang <stack>`. Do not restate it here, in

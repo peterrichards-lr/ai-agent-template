@@ -16,6 +16,7 @@ Whether you are building in **Go**, **Python**, **Rust**, **Java**, **TypeScript
 - 🧰 **One Task Runner Vocabulary (`Makefile`)**: `make setup`, `make lint`, `make test`, `make docs`, `make verify`, `make push` and `make help` mean the same thing in Go, Python, Rust, Java, Node, C++ and Liferay projects. Only a marked profile block varies, filled in by the bootstrapper. `make verify` is invoked *by* `ci.yml`, so "did I break CI" is one local command and the two cannot drift.
 - ⚙️ **Project Bootstrapper (`scripts/bootstrap_template.py`)**: One-command initialization script that customizes the template for your chosen programming language stack, installs git hooks, and seeds project metadata. `--dry-run` previews every mutation before anything is written.
 - 🩺 **Post-Bootstrap Verification (`scripts/doctor.py`)**: Runs as bootstrap's final step and as a pre-commit hook, exiting non-zero with the file and line of every surviving template placeholder, plus checks that `.claude/skills` resolved to a directory and the agent scratchpad was seeded. A missed substitution fails loudly instead of shipping an unsubstituted test-command placeholder into your agent rules.
+- 🏗️ **Per-Language CI Profiles (`.agents/templates/ci/`)**: `--lang go` installs a workflow that builds Go, not one that runs this template's Python self-tests. Every profile calls the same `Makefile` verbs, so no ecosystem command is ever restated in YAML. The always-on `Code & Documentation Quality Verification` job carries the doc and lint checks; only the `Build & Test` job sits behind a paths filter, paired with a same-named skip job so a documentation-only pull request still reports the context instead of deadlocking on it, and a *failed* filter fails loudly rather than silently skipping both.
 - 🚀 **GitHub CI & Governance (`.github/`)**: GitHub Actions workflow (`ci.yml`), GitHub Issue Forms (Feature, Bug, Tech Debt) with typed required fields and a chooser (`ISSUE_TEMPLATE/config.yml`) that disables blank issues, a commented `CODEOWNERS` stub, and a PR template enforcing task linking (`Closes #<issue>`).
 - 🔎 **Optional Security Scanning (`.github/workflows/security-scan.yml`, `.semgrep.yaml`)**: Non-blocking Semgrep SAST plus `actions/dependency-review-action` on pull requests, with a commented `.semgrep.yaml` stub for turning a prose coding rule into a mechanically enforced one. Neither job is a required status check, so a new project is never broken on day one by a third-party finding.
 - 🤝 **Community Health Stubs (`CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `.editorconfig`)**: Contributor Covenant v2.1, a Keep a Changelog seed, and a shared editor baseline (UTF-8, LF, final newline, trimmed trailing whitespace) that keeps editors from fighting the `trailing-whitespace` and `end-of-file-fixer` pre-commit hooks. Owner and contact placeholders are filled in by the bootstrapper.
@@ -166,7 +167,7 @@ is materialized as a text file and agent skill discovery silently finds nothing.
 │   │   ├── feature_request.yml        # Feature form: problem, solution, impact
 │   │   ├── tech_debt.yml              # Tech debt form: canonical 10-category dropdown
 │   │   └── config.yml                 # Issue chooser: blank issues off, contact links
-│   ├── workflows/ci.yml               # GitHub Actions CI workflow
+│   ├── workflows/ci.yml               # GitHub Actions CI workflow (installed from a CI profile)
 │   └── workflows/security-scan.yml    # Optional non-blocking Semgrep & dependency review
 ├── .agents/skills/                    # Modular skill instructions for AI agents
 │   ├── no-assumptions/                # Always-active anti-hallucination protocol
@@ -184,7 +185,8 @@ is materialized as a text file and agent skill discovery silently finds nothing.
 │   └── template-sync/                 # Upstream drift checks & the bidirectional contract
 ├── .agents/templates/                 # Tracked seed files copied into place by bootstrap
 │   ├── agent-state.md                 # Starter scratchpad seed for .agent-state.md
-│   └── template-ref.md                # Seed for the committed .agents/TEMPLATE_REF.md checkpoint
+│   ├── template-ref.md                # Seed for the committed .agents/TEMPLATE_REF.md checkpoint
+│   └── ci/                            # Per-language CI workflow profiles (one per --lang choice)
 ├── scripts/                           # Portable Python 3 helper utilities
 │   ├── append_timestamps.py           # Injects markdown footer timestamps
 │   ├── check_docs_review.py           # Validates doc freshness & review age
