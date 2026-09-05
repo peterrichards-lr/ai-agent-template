@@ -23,10 +23,12 @@ Project rules are organized into active, modular skill files located under `.age
 
 | Skill Name | Skill Path | Trigger Condition / When to Load | Description |
 | :--- | :--- | :--- | :--- |
+| **[no-assumptions](file:///.agents/skills/no-assumptions/SKILL.md)** | [.agents/skills/no-assumptions/SKILL.md](file:///.agents/skills/no-assumptions/SKILL.md) | **Always** -- no trigger condition and no off state; re-read after any context compaction or session resume. | Forbids any technical claim not verified by a tool call made in the current session. |
 | **[reflection-and-planning](file:///.agents/skills/reflection-and-planning/SKILL.md)** | [.agents/skills/reflection-and-planning/SKILL.md](file:///.agents/skills/reflection-and-planning/SKILL.md) | Beginning complex tasks, multi-file edits, or architectural changes. | Enforces logic-first planning, implementation plans, failure analysis, and approval loops. |
 | **[human-in-the-loop](file:///.agents/skills/human-in-the-loop/SKILL.md)** | [.agents/skills/human-in-the-loop/SKILL.md](file:///.agents/skills/human-in-the-loop/SKILL.md) | Deployments, database drops, secrets generation, or opening PRs. | Enforces strict human verification gates before high-risk or irreversible operations. |
 | **[coding-standards](file:///.agents/skills/coding-standards/SKILL.md)** | [.agents/skills/coding-standards/SKILL.md](file:///.agents/skills/coding-standards/SKILL.md) | Writing, refactoring, or reviewing source code logic across any language. | Enforces DRY code, self-documenting style, predictive failure analysis, and safety guards. |
 | **[unit-testing](file:///.agents/skills/unit-testing/SKILL.md)** | [.agents/skills/unit-testing/SKILL.md](file:///.agents/skills/unit-testing/SKILL.md) | Writing tests, running verification, or investigating test failures. | Governs test-driven development, coverage checking, and non-interactive command execution. |
+| **[e2e-verification](file:///.agents/skills/e2e-verification/SKILL.md)** | [.agents/skills/e2e-verification/SKILL.md](file:///.agents/skills/e2e-verification/SKILL.md) | Changes unit tests cannot prove: UI/rendering, process or network boundaries, CLI interaction, config/deployment. | Defines real-system evidence, non-interactive runs with teardown, and specific escalation to human verification. |
 | **[documentation](file:///.agents/skills/documentation/SKILL.md)** | [.agents/skills/documentation/SKILL.md](file:///.agents/skills/documentation/SKILL.md) | After implementing any feature, code change, or bug fix. | Details active documentation review, timestamp hygiene, and staleness checks. |
 | **[github-workflow](file:///.agents/skills/github-workflow/SKILL.md)** | [.agents/skills/github-workflow/SKILL.md](file:///.agents/skills/github-workflow/SKILL.md) | Managing issues, creating PRs, responding to review comments, repository SEO, or resolving CI pipeline failures. | Governs GitHub CLI usage, issue linking (`Closes #<issue>`), the PR review feedback loop (`gh pr view --json reviews,comments,statusCheckRollup`), repository SEO (description & topics), and CI run cleanup. |
 | **[tool-use-react](file:///.agents/skills/tool-use-react/SKILL.md)** | [.agents/skills/tool-use-react/SKILL.md](file:///.agents/skills/tool-use-react/SKILL.md) | Executing terminal commands, file tools, or background tasks. | Enforces ReAct reasoning patterns, non-interactive flags (`-y`), and tool safety boundaries. |
@@ -49,7 +51,7 @@ Active, in-flight task state and intra-task scratchpad context are maintained lo
 ## 4. Universal Rules of Engagement
 
 ### 1. Anti-Hallucination Protocol
-Any technical statement, architecture decision, or bug diagnosis MUST be verified against actual code using search and file viewing tools before taking action. Do not guess variable names, file paths, or API signatures.
+Always active, never waivable: every technical claim MUST be verified by a tool call made in the current session -- see `no-assumptions/SKILL.md` for the full protocol, including the compaction and session-resume corollary.
 
 ### 2. Active Documentation Maintenance Rule
 After completing any feature or code change, the agent MUST inspect the project documentation, execute `scripts/append_timestamps.py` to update timestamp footers, and run `scripts/check_docs_review.py` to ensure document policy compliance.

@@ -33,6 +33,8 @@ Prose rules alone do not guarantee execution safety. This repository pairs these
 ### 3. Visual Modifications & Visual Diffing
 Before finalizing UI component changes or layout edits, the agent MUST explicitly present the proposed modifications using visual markdown diff blocks or code slices and halt for visual approval.
 
+When the change cannot be verified automatically and the human is being asked to *be* the verification step, `e2e-verification/SKILL.md` rule 4 applies: state the exact steps, what to look at, and what a pass looks like. "Please verify this works" is not an acceptable request.
+
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
+*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
