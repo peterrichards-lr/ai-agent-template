@@ -29,6 +29,15 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
 from check_docs_review import FOOTER_REGEX
 from doctor import ADOPTER_MODE, run_doctor_and_report
+from check_template_drift import (
+    TEMPLATE_REFERENCE_RELPATH,
+    TEMPLATE_REFERENCE_SEED_RELPATH,
+    UNKNOWN_STAMP_VALUE,
+    TemplateReferenceError,
+    apply_reference_stamp,
+    parse_template_reference,
+    resolve_local_template_stamp,
+)
 
 SUPPORTED_LANGUAGES = ['generic', 'go', 'python', 'rust', 'java', 'node', 'cpp', 'liferay']
 
@@ -79,6 +88,10 @@ COMMUNITY_HEALTH_FILES = [
 # Placeholders substituted at bootstrap time, mirroring how README/SEO metadata are seeded.
 OWNER_PLACEHOLDER = '<GITHUB_OWNER_PLACEHOLDER>'
 CONDUCT_EMAIL_PLACEHOLDER = '<CONDUCT_EMAIL_PLACEHOLDER>'
+# Substituted out of .agents/templates/template-ref.md by ensure_template_reference().
+# The upstream URL recorded in that seed contains the string 'ai-agent-template', so the
+# project name is applied through this token rather than the blanket rename used elsewhere.
+PROJECT_NAME_PLACEHOLDER = '<PROJECT_NAME_PLACEHOLDER>'
 # Tracked seed for the gitignored .agent-state.md scratchpad, and the placeholder
 # project name substituted out of it (and out of AGENTS.md) during bootstrap.
 AGENT_STATE_SEED_RELPATH = Path('.agents') / 'templates' / 'agent-state.md'
@@ -882,6 +895,86 @@ def ensure_agent_state_scratchpad(root_dir: Path, project_name: str, dry_run: bo
     print(f"  ✓ Customized .agent-state.md with project name ({project_name}) and footer date ({today_str})")
     return True
 
+def ensure_template_reference(root_dir: Path, project_name: str, dry_run: bool = False) -> bool:
+    """Materialise .agents/TEMPLATE_REF.md from its tracked seed and stamp the upstream ref.
+
+    Unlike .agent-state.md the result is a *committed* file: it is the durable record of
+    which template revision this project inherited, and the log of where it has since
+    deliberately diverged. That log is hand-maintained, so an existing file is never
+    overwritten -- re-running bootstrap must not erase it.
+
+    The project name is applied through PROJECT_NAME_PLACEHOLDER rather than the blanket
+    `content.replace(TEMPLATE_PROJECT_NAME, ...)` used elsewhere: the upstream URL recorded
+    in this file contains the string 'ai-agent-template', and a blanket rename would rewrite
+    the one URL the whole mechanism depends on.
+    """
+    reference_path = root_dir / TEMPLATE_REFERENCE_RELPATH
+    seed_path = root_dir / TEMPLATE_REFERENCE_SEED_RELPATH
+
+    if reference_path.exists():
+        print(f"  ✓ Kept existing {TEMPLATE_REFERENCE_RELPATH.as_posix()} (hand-maintained drift log)")
+        return True
+
+    if not seed_path.exists():
+        print(
+            f"  ⚠️ Warning: Could not create {TEMPLATE_REFERENCE_RELPATH.as_posix()}: "
+            f"missing seed template {TEMPLATE_REFERENCE_SEED_RELPATH.as_posix()}\n"
+            "     Restore it from the template repository, then re-run bootstrap.",
+            file=sys.stderr
+        )
+        return False
+
+    today_str = datetime.today().strftime('%Y-%m-%d')
+    try:
+        content = seed_path.read_text(encoding='utf-8')
+    except OSError as e:
+        print(f"  ⚠️ Warning: Could not read {TEMPLATE_REFERENCE_SEED_RELPATH.as_posix()}: {e}",
+              file=sys.stderr)
+        return False
+
+    content = content.replace(PROJECT_NAME_PLACEHOLDER, project_name)
+
+    # Stamp the template revision this project actually started from, when git can prove
+    # it. A "Use this template" repository has an unrelated history and git cannot, so the
+    # seed's honest `unknown` / `never` baseline survives and the drift checker sets it.
+    version, commit, commit_date = resolve_local_template_stamp(root_dir)
+    stamped_from_git = UNKNOWN_STAMP_VALUE not in (version, commit, commit_date)
+    if stamped_from_git:
+        try:
+            upstream_ref = parse_template_reference(content).upstream_ref
+            content = apply_reference_stamp(
+                content, version=version, upstream_ref=upstream_ref,
+                commit=commit, commit_date=commit_date, checked_on=today_str)
+        except TemplateReferenceError as e:
+            print(f"  ⚠️ Warning: Could not stamp the template reference: {e}", file=sys.stderr)
+            stamped_from_git = False
+    if not stamped_from_git:
+        content = refresh_timestamp_footer(content, today_str)
+
+    if dry_run:
+        announce_planned_write(
+            TEMPLATE_REFERENCE_RELPATH.as_posix(),
+            f"create from {TEMPLATE_REFERENCE_SEED_RELPATH.as_posix()}, set project name "
+            f"({project_name}) and stamp the upstream ref"
+        )
+        return True
+
+    try:
+        reference_path.parent.mkdir(parents=True, exist_ok=True)
+        reference_path.write_text(content, encoding='utf-8')
+    except OSError as e:
+        print(f"  ⚠️ Warning: Could not create {TEMPLATE_REFERENCE_RELPATH.as_posix()}: {e}",
+              file=sys.stderr)
+        return False
+
+    if stamped_from_git:
+        print(f"  ✓ Created {TEMPLATE_REFERENCE_RELPATH.as_posix()} "
+              f"stamped at {version} @ {commit} ({commit_date})")
+    else:
+        print(f"  ✓ Created {TEMPLATE_REFERENCE_RELPATH.as_posix()} with an unstamped baseline")
+        print("     Set the baseline with: python3 scripts/check_template_drift.py --update-stamp")
+    return True
+
 def configure_claude_settings(root_dir: Path, language: str, dry_run: bool = False) -> bool:
     """Configure client-side .claude/settings.json permissions per language stack."""
     claude_dir = root_dir / '.claude'
@@ -1014,8 +1107,9 @@ def bootstrap(
         clean_template_meta_docs(root_dir, project_name, language, dry_run=dry_run,
                                  docs_site=docs_site)
 
-    # 3. Seed/update .agent-state.md and update AGENTS.md
+    # 3. Seed/update .agent-state.md and .agents/TEMPLATE_REF.md, and update AGENTS.md
     ensure_agent_state_scratchpad(root_dir, project_name, dry_run=dry_run)
+    ensure_template_reference(root_dir, project_name, dry_run=dry_run)
 
     agents_path = root_dir / 'AGENTS.md'
     if agents_path.exists():

@@ -152,6 +152,7 @@ bootstrap -- it is your project's, not generated code.
 | **`multi-agent-orchestration`** | Governs subagent delegation criteria, clear prompt framing, and asynchronous result synthesis. |
 | **`rule-adherence`** | Addresses agents not reliably following prose rules: re-read before acting, prefer checkable artifacts, and self-correct visibly. |
 | **`release-management`** | Governs semantic versioning, release notes, auditing issue closure, and human verification gates. |
+| **`template-sync`** | Defines the bidirectional contract with the upstream template: consult it before writing a new agent rule locally, contribute reusable guardrails back, and record every real difference in `.agents/TEMPLATE_REF.md` as either linked drift or deliberate divergence. |
 
 ---
 
