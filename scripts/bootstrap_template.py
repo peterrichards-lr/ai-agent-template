@@ -4,11 +4,15 @@ bootstrap_template.py - AI Agent Quickstart Project Initializer
 
 Configures the template repository for a new project, setting project name,
 language ecosystem profiles, initial .agent-state.md scratchpad, and documentation footers.
-Mutates AGENTS.md with ecosystem test commands, checks system dependencies,
-installs Git hooks, and executes pre-commit quality checks.
+Fills the Makefile's language profile block in so `make test` runs the chosen stack's
+command, points AGENTS.md rule 5 at that verb, checks system dependencies, installs Git
+hooks, and executes pre-commit quality checks.
 Fails loudly if any required subprocess execution fails, if a regex substitution
 matches nothing, or if scripts/doctor.py finds a surviving placeholder at the end.
 Pass --dry-run to print every planned mutation without applying any of them.
+
+There is deliberately no -y/--non-interactive flag: nothing here prompts, and the flag
+used to double as an undocumented trigger for --clean-template's deletions. See #90.
 """
 
 import sys
