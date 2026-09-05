@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/agent_push.py` behind `make push`: refuses no-op pushes and trees with tracked
   changes left unstaged, rejects flag-shaped commit messages, runs the pre-commit gate
   rather than bypassing it, and checks commit attribution before a commit exists (#46).
+- `scripts/release.py`: reads the version from `git describe --tags --abbrev=0`, proposes
+  the next one from Conventional Commits, and **refuses to write or tag when a `Closes #N`
+  in the range points at an issue that is still open or cannot be verified** -- the
+  `release-management` rule most likely to be skipped by hand. Drafts the `CHANGELOG.md`
+  section, then stops: tagging is a separate confirmed step and the push stays human (#47).
+- `.github/workflows/release.yml`: on a `v*` tag push, verifies the tag is annotated,
+  well-formed and at the checked-out commit, then publishes the GitHub Release from that
+  version's changelog section. Not a required status check (#47).
 
 ### Changed
 
