@@ -180,14 +180,17 @@ is materialized as a text file and agent skill discovery silently finds nothing.
 │   ├── tool-use-react/                # ReAct reasoning & CLI command boundaries
 │   ├── multi-agent-orchestration/     # Subagent delegation directives
 │   ├── rule-adherence/                # Self-verification & checkable artifact rules
-│   └── release-management/            # Semantic versioning & release auditing
+│   ├── release-management/            # Semantic versioning & release auditing
+│   └── template-sync/                 # Upstream drift checks & the bidirectional contract
 ├── .agents/templates/                 # Tracked seed files copied into place by bootstrap
-│   └── agent-state.md                 # Starter scratchpad seed for .agent-state.md
+│   ├── agent-state.md                 # Starter scratchpad seed for .agent-state.md
+│   └── template-ref.md                # Seed for the committed .agents/TEMPLATE_REF.md checkpoint
 ├── scripts/                           # Portable Python 3 helper utilities
 │   ├── append_timestamps.py           # Injects markdown footer timestamps
 │   ├── check_docs_review.py           # Validates doc freshness & review age
 │   ├── bootstrap_template.py          # Project initializer script
 │   ├── agent_push.py                  # Guarded commit-and-push behind `make push`
+│   ├── check_template_drift.py        # Compares this repo against the upstream template
 │   ├── doctor.py                      # Post-bootstrap placeholder & structure verification
 │   └── gh_issue_sync.py               # GitHub issue & task plan helper
 ├── requirements-dev.txt               # Language-agnostic agent tooling & quality gate deps

@@ -44,6 +44,7 @@ KNOWN_PLACEHOLDER_TOKENS = (
     '<GITHUB_OWNER_PLACEHOLDER>',
     '<CONDUCT_EMAIL_PLACEHOLDER>',
     '<TEST_COMMAND_PLACEHOLDER>',
+    '<PROJECT_NAME_PLACEHOLDER>',
 ) + LITERAL_PLACEHOLDER_TOKENS
 
 # Files that legitimately contain the tokens in every mode because they define,
