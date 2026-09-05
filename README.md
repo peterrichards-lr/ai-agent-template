@@ -90,10 +90,12 @@ The bootstrapper will:
 │   │   └── config.yml                 # Issue chooser: blank issues off, contact links
 │   └── workflows/ci.yml               # GitHub Actions CI workflow
 ├── .agents/skills/                    # Modular skill instructions for AI agents
+│   ├── no-assumptions/                # Always-active anti-hallucination protocol
 │   ├── reflection-and-planning/       # Logic-first planning & approval loops
 │   ├── human-in-the-loop/             # Safety verification gates for risky operations
 │   ├── coding-standards/              # DRY code, self-documenting code & error safety
 │   ├── unit-testing/                  # TDD & non-interactive test rules
+│   ├── e2e-verification/              # Real-app evidence when unit tests aren't proof
 │   ├── documentation/                 # Timestamp & doc maintenance rules
 │   ├── github-workflow/               # Issue sync, PR review feedback loop & CI cleanup
 │   ├── tool-use-react/                # ReAct reasoning & CLI command boundaries

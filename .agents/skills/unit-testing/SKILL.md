@@ -27,7 +27,12 @@ The agent is FORBIDDEN from declaring a bug fixed or a new behavior verified bas
    - The agent MUST document the observed red-to-green transition (including the cited failing assertion snippet and subsequent passing verification) in the PR description so reviewers can verify proof of failure without requiring access to local agent scratchpads.
 
 ### 3. Empirical Verification Gate
-The agent is FORBIDDEN from declaring a task resolved or a bug fixed based on file edits alone. The corresponding test suite command MUST be executed, and clean passing output MUST be verified.
+The agent is FORBIDDEN from declaring a task resolved or a bug fixed based on file edits alone. The stopping condition is **the appropriate verification for this change**, executed and its output verified -- not merely "the test suite passed".
+
+- For changes unit tests can prove, that is the test suite command, run with clean passing output verified, subject to rule 2 above.
+- For changes unit tests cannot prove -- UI and rendering, anything crossing a process or network boundary, CLI interaction, configuration and deployment -- a green suite is a precondition, not the proof. `e2e-verification/SKILL.md` governs what real-system evidence is required, and how to escalate to `human-in-the-loop/SKILL.md` when it cannot be automated.
+
+Rule 2 and `e2e-verification/SKILL.md` are the two branches of the same question: rule 2 tightens what a passing test proves; the e2e skill covers changes where a passing test proves nothing about the system.
 
 ### 4. Non-Interactive Test Execution
 Test commands MUST be run in non-interactive mode:
@@ -69,4 +74,4 @@ Never fix failing tests by commenting out assertions, reducing test thresholds, 
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
+*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
