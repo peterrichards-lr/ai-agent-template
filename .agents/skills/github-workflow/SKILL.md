@@ -94,7 +94,7 @@ Duplication
 EOF
 ```
 
-`Category` must be one of the 10 catalogued values verbatim; the other two headings above are the form's remaining required fields. A human at a terminal should prefer the real form, which GitHub does validate: `gh issue create --web --template tech_debt.yml`.
+`Category` (verbatim, one of the 10 catalogued values), `Location` and `Debt Description` are the form's required fields; `Proposed Remediation` is optional in the form but nearly always worth filling in. A human at a terminal should prefer the real form, which GitHub does validate: `gh issue create --web --template tech_debt.yml`.
 
 ### 5. Fine-Grained PAT & Authentication Setup
 
