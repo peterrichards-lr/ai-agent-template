@@ -13,6 +13,7 @@ Whether you are building in **Go**, **Python**, **Rust**, **Java**, **TypeScript
 - 📌 **Persistent Scratchpad State (`.agent-state.md`)**: Shared gitignored scratchpad tracking project status, active goals, and roadmap priorities across provider switches. Seeded from the tracked template `.agents/templates/agent-state.md` during bootstrap, so a fresh clone always starts with one.
 - 🛡️ **Language-Agnostic Quality Gates (`.pre-commit-config.yaml`)**: Out-of-the-box pre-commit configuration supporting secret scanning (`detect-secrets`, `gitleaks`), markdown link validation, document review policies, and modular linting for Go, Python, Rust, Java, and Node.js.
 - ⏱️ **Automated Documentation Hygiene**: Zero-dependency Python 3 tools (`append_timestamps.py` and `check_docs_review.py`) to enforce timestamp footers (`*Last Updated* | *Last Reviewed*`) and prevent documentation decay.
+- 🧰 **One Task Runner Vocabulary (`Makefile`)**: `make setup`, `make lint`, `make test`, `make docs`, `make verify`, `make push` and `make help` mean the same thing in Go, Python, Rust, Java, Node, C++ and Liferay projects. Only a marked profile block varies, filled in by the bootstrapper. `make verify` is invoked *by* `ci.yml`, so "did I break CI" is one local command and the two cannot drift.
 - ⚙️ **Project Bootstrapper (`scripts/bootstrap_template.py`)**: One-command initialization script that customizes the template for your chosen programming language stack, installs git hooks, and seeds project metadata. `--dry-run` previews every mutation before anything is written.
 - 🩺 **Post-Bootstrap Verification (`scripts/doctor.py`)**: Runs as bootstrap's final step and as a pre-commit hook, exiting non-zero with the file and line of every surviving template placeholder, plus checks that `.claude/skills` resolved to a directory and the agent scratchpad was seeded. A missed substitution fails loudly instead of shipping an unsubstituted test-command placeholder into your agent rules.
 - 🚀 **GitHub CI & Governance (`.github/`)**: GitHub Actions workflow (`ci.yml`), GitHub Issue Forms (Feature, Bug, Tech Debt) with typed required fields and a chooser (`ISSUE_TEMPLATE/config.yml`) that disables blank issues, a commented `CODEOWNERS` stub, and a PR template enforcing task linking (`Closes #<issue>`).
@@ -69,21 +70,67 @@ python3 scripts/bootstrap_template.py --name "my-awesome-app" --lang go \
 The bootstrapper will:
 
 1. Update project configuration files (`README.md`, `.agent-state.md`, `AGENTS.md`).
-2. Generate language-specific `.gitignore` and `.pre-commit-config.yaml` rules.
-3. Verify or create the `.claude/skills` auto-discovery symlink.
-4. Seed the community health stubs (`CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `.github/CODEOWNERS`, `.github/ISSUE_TEMPLATE/config.yml`) with your project name, the GitHub owner (`--repo-owner`) and the Code of Conduct contact (`--conduct-email`).
-5. With `--clean-template`, remove the template's own meta docs and Python scaffolding (`docs/TEMPLATE_GUIDE.md`, `tests/`, and -- outside `--lang python` -- `src/__init__.py` and `requirements-python.txt`).
-6. With `--docs-site`, enable the optional MkDocs Material documentation site (`mkdocs.yml`, `.github/workflows/docs.yml`, `requirements-docs.txt`) and arm its GitHub Pages deploy; without it, `--clean-template` removes that scaffold entirely. See [docs/TEMPLATE_GUIDE.md](docs/TEMPLATE_GUIDE.md).
-7. Initialize local Git pre-commit hooks.
-8. Inject initial documentation timestamps.
-9. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
-10. Run `scripts/doctor.py` and **fail** if any placeholder survived.
+2. Fill the `Makefile`'s language profile block in, so `make test` runs your stack's command.
+3. Generate language-specific `.gitignore` and `.pre-commit-config.yaml` rules.
+4. Verify or create the `.claude/skills` auto-discovery symlink.
+5. Seed the community health stubs (`CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `.github/CODEOWNERS`, `.github/ISSUE_TEMPLATE/config.yml`) with your project name, the GitHub owner (`--repo-owner`) and the Code of Conduct contact (`--conduct-email`).
+6. With `--clean-template`, remove the template's own meta docs and Python scaffolding (`docs/TEMPLATE_GUIDE.md`, `tests/`, and -- outside `--lang python` -- `src/__init__.py` and `requirements-python.txt`). This is the **only** way to request those deletions; there is no `-y` shortcut.
+7. With `--docs-site`, enable the optional MkDocs Material documentation site (`mkdocs.yml`, `.github/workflows/docs.yml`, `requirements-docs.txt`) and arm its GitHub Pages deploy; without it, `--clean-template` removes that scaffold entirely. See [docs/TEMPLATE_GUIDE.md](docs/TEMPLATE_GUIDE.md).
+8. Initialize local Git pre-commit hooks.
+9. Inject initial documentation timestamps.
+10. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
+11. Run `scripts/doctor.py` and **fail** if any placeholder survived.
 
 Re-run the verification at any time:
 
 ```bash
 python3 scripts/doctor.py
 ```
+
+### 3. Use the Task Runner
+
+Everything after bootstrap goes through seven verbs that mean the same thing in every
+language stack, so an agent never has to work out which ecosystem's commands apply:
+
+```bash
+make help      # self-documenting target list (the default goal)
+make setup     # install dev dependencies and the pre-commit git hooks
+make lint      # pre-commit run --all-files, plus this stack's linters
+make test      # this stack's non-interactive test command
+make docs      # refresh and verify documentation timestamp footers
+make verify    # lint + test + docs -- the full local quality gate
+make push MESSAGE="feat(scope): what changed"
+```
+
+`make verify` is **exactly** what `.github/workflows/ci.yml` runs: the workflow invokes
+this target rather than restating the commands, so the two cannot drift and "did I break
+CI?" is one local command. The ecosystem's real invocation lives in one marked block in
+the `Makefile`, which `scripts/bootstrap_template.py --lang <stack>` fills in — it is
+yours to edit afterwards.
+
+`make push` is the guarded git entrypoint (`scripts/agent_push.py`). It refuses a no-op
+push, refuses to commit while tracked files are still modified but unstaged, rejects a
+flag-shaped commit message such as a bare `-m`, and runs the pre-commit gate instead of
+bypassing it. `--force-with-lease` is the sanctioned force form
+(`make push PUSH_ARGS=--force-with-lease`); bare `--force` is denied client-side in
+`.claude/settings.json`.
+
+### Windows Notes
+
+Two things need attention on a Windows checkout.
+
+**Symlinks (`core.symlinks`)**: see the clone command above — without it `.claude/skills`
+is materialized as a text file and agent skill discovery silently finds nothing.
+`scripts/doctor.py` checks for this explicitly.
+
+> [!NOTE]
+> **Make**: GNU Make is not installed by default on Windows, so `make verify` needs it
+> provided. This is an accepted, documented limitation rather than a papered-over one:
+> Make is the lowest common denominator that agents already know, and shipping a second
+> PowerShell shim would recreate the two-vocabularies problem the task runner exists to
+> remove. Install it through Git Bash, MSYS2, WSL, or `winget install GnuWin32.Make`.
+> Everything the targets call is Python 3 and runs natively either way, so the individual
+> commands remain available if you would rather not install Make.
 
 ---
 
@@ -105,6 +152,7 @@ python3 scripts/doctor.py
 ├── SECURITY.md                        # Vulnerability disclosure policy
 ├── README.md                          # This file
 ├── LICENSE                            # MIT License
+├── Makefile                           # Task runner: setup/lint/test/docs/verify/push/help
 ├── .gitignore                         # Language-agnostic ignore rules
 ├── .editorconfig                      # Shared editor baseline (UTF-8, LF, final newline)
 ├── .pre-commit-config.yaml            # Pre-commit quality gate configuration
@@ -139,6 +187,7 @@ python3 scripts/doctor.py
 │   ├── append_timestamps.py           # Injects markdown footer timestamps
 │   ├── check_docs_review.py           # Validates doc freshness & review age
 │   ├── bootstrap_template.py          # Project initializer script
+│   ├── agent_push.py                  # Guarded commit-and-push behind `make push`
 │   ├── doctor.py                      # Post-bootstrap placeholder & structure verification
 │   └── gh_issue_sync.py               # GitHub issue & task plan helper
 ├── requirements-dev.txt               # Language-agnostic agent tooling & quality gate deps

@@ -160,6 +160,7 @@ def test_clean_template_meta_docs(tmp_path):
     assert "# TestApp" in readme.read_text(encoding='utf-8')
 
 def test_configure_language_profile_mutates_agents_md(tmp_path):
+    """Rule 5 now names the task runner verb; the Go recipe itself lives in the Makefile."""
     agents_md = tmp_path / 'AGENTS.md'
     initial_text = "# Rules\n\nPrimary Unit Testing Command: `<TEST_COMMAND_PLACEHOLDER>`\n"
     agents_md.write_text(initial_text, encoding='utf-8')
@@ -168,9 +169,8 @@ def test_configure_language_profile_mutates_agents_md(tmp_path):
 
     updated_content = agents_md.read_text(encoding='utf-8')
     assert updated_content != initial_text
-    assert "go test -v -race ./..." not in updated_content
-    assert "go test -c -o" in updated_content
-    assert "never bare `go test`" in updated_content
+    assert "Primary Unit Testing Command: `make test`" in updated_content
+    assert "go test" not in updated_content
     assert "<TEST_COMMAND_PLACEHOLDER>" not in updated_content
 
 def test_get_default_topics():
@@ -457,21 +457,19 @@ def test_claude_settings_structure_and_bootstrap(tmp_path):
     # Non-Go stack should not add go test deny
     assert configure_claude_settings(dummy_root, 'python') is True
     res_py = json.loads((dummy_claude / 'settings.json').read_text(encoding='utf-8'))
-    assert "Bash(go test)" not in res_py["permissions"]["deny"]
-    assert "Bash(go test ./...)" not in res_py["permissions"]["deny"]
+    assert "Bash(go test*)" not in res_py["permissions"]["deny"]
 
-    # Go stack should inject narrow bare go test denies, not broad go test*
+    # Go stack denies `go test` wholesale. The pair this replaced left `go test -v ./...`,
+    # `go test -race ./...` and `go test ./pkg/...` permitted, all carrying the identical
+    # EDR exposure. It is only safe because `make test` no longer starts with `go test`.
     assert configure_claude_settings(dummy_root, 'go') is True
     res_go = json.loads((dummy_claude / 'settings.json').read_text(encoding='utf-8'))
-    assert "Bash(go test)" in res_go["permissions"]["deny"]
-    assert "Bash(go test ./...)" in res_go["permissions"]["deny"]
-    assert "Bash(go test*)" not in res_go["permissions"]["deny"]
+    assert "Bash(go test*)" in res_go["permissions"]["deny"]
 
     # Idempotency check: running again should not duplicate
     assert configure_claude_settings(dummy_root, 'go') is True
     res_idempotent = json.loads((dummy_claude / 'settings.json').read_text(encoding='utf-8'))
-    assert res_idempotent["permissions"]["deny"].count("Bash(go test)") == 1
-    assert res_idempotent["permissions"]["deny"].count("Bash(go test ./...)") == 1
+    assert res_idempotent["permissions"]["deny"].count("Bash(go test*)") == 1
 
     # 3. Test defensive error handling
     # Missing settings.json: return False and do not create empty stub

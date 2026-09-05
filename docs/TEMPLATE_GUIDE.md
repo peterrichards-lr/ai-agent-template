@@ -37,7 +37,7 @@ This template solves these failure modes out of the box, providing a standardize
 
 ### 5. Empirical Test-Driven Verification Gate
 - **Problem**: Agents declaring success ("I have fixed the bug") without running the compiler or test suite, or asserting tautologies on tests that pass vacuously without proving they had the power to fail.
-- **Pattern**: Agents are forbidden from claiming completion based on file edits alone, or claiming verification from an immediate pass. For bug fixes, the reproduction test must be observed and cited failing red before implementing the fix; for new features, logic must be mutated/disabled to confirm the test fails red before concluding. In both cases, the agent must revert any mutation, execute the project's non-interactive test command for its ecosystem (`pytest`, `cargo test`, `mvn test`, or the EDR-safe compiled-binary pattern for Go -- see `.agents/skills/unit-testing/SKILL.md`), and document the red-to-green transition before concluding work. For pure refactorings, the existing test suite serves as the invariant baseline that must stay continuously green.
+- **Pattern**: Agents are forbidden from claiming completion based on file edits alone, or claiming verification from an immediate pass. For bug fixes, the reproduction test must be observed and cited failing red before implementing the fix; for new features, logic must be mutated/disabled to confirm the test fails red before concluding. In both cases, the agent must revert any mutation, run `make test` (or `make verify` for the full gate -- the ecosystem's actual command lives in the `Makefile` language profile, stated once), and document the red-to-green transition before concluding work. For pure refactorings, the existing test suite serves as the invariant baseline that must stay continuously green.
 
 ### 6. Automated Documentation Hygiene & Decay Prevention
 - **Problem**: Documentation staleness as code evolves.
@@ -59,46 +59,77 @@ This template solves these failure modes out of the box, providing a standardize
 - **Problem**: Large codebase surveys or parallel research blocking the primary developer agent.
 - **Pattern**: Delegates background exploration or static analysis to specialized subagents, synthesizing results asynchronously without polling.
 
+### 11. One Task Runner Vocabulary Across Every Stack
+- **Problem**: Each ecosystem's commands get restated in `AGENTS.md`, `CONTRIBUTING.md`, the skill files and the CI workflow. The copies drift, and an agent that reads the wrong one runs the wrong command -- or, in Go's case, an EDR-unsafe one.
+- **Pattern**: A root `Makefile` exposes seven fixed verbs (`setup`, `lint`, `test`, `docs`, `verify`, `push`, `help`) in every language. Only a marked profile block varies, filled in by `scripts/bootstrap_template.py --lang <stack>`. `make verify` is invoked *by* `.github/workflows/ci.yml`, so local and CI gates cannot drift. A knock-on effect: once the sanctioned Go test path is `make test` rather than something starting with `go test`, `.claude/settings.json` can deny `Bash(go test*)` wholesale -- deny beats allow, and "`go test*` except `-c`" is inexpressible in the permission patterns.
+
 ---
 
 ## Language Customization Guide
 
-When bootstrapping this template for a specific programming language, follow these ecosystem customization steps:
+When bootstrapping this template for a specific programming language, follow these ecosystem
+customization steps. In every case the test command itself is **not** restated below: it lives in
+the `Makefile`'s language profile block, which `scripts/bootstrap_template.py --lang <stack>` fills
+in, and every stack is driven through the same seven verbs:
+
+| Target | Contract |
+| :--- | :--- |
+| `make setup` | Install dev dependencies and the pre-commit Git hooks. |
+| `make lint` | `pre-commit run --all-files` plus the stack's linters. |
+| `make test` | The stack's non-interactive test command. |
+| `make docs` | `append_timestamps.py` then `check_docs_review.py`. |
+| `make verify` | `lint` + `test` + `docs` -- exactly what `.github/workflows/ci.yml` runs. |
+| `make push` | Guarded commit-and-push (`scripts/agent_push.py`). |
+| `make help` | Self-documenting target list; the default goal. |
+
+That is the point of the task runner: an agent asked to verify its work runs `make verify`
+regardless of the stack, and `AGENTS.md`, `CONTRIBUTING.md` and this guide stop carrying their own
+drifting copies of `pytest` / `cargo test` / `npm test`. Edit the profile block freely after
+bootstrap -- it is your project's, not generated code.
+
+> [!NOTE]
+> **Make on Windows.** GNU Make is not present on a default Windows install. This is an accepted
+> limitation rather than a papered-over one: Make is the lowest common denominator that agents
+> already know, and shipping a second shim would recreate the two-vocabularies problem the task
+> runner exists to remove. Install it via Git Bash, MSYS2, WSL, or `winget install GnuWin32.Make`.
+> The helper scripts the targets call are all Python 3 and run natively either way.
 
 ### 1. Go (`--lang go`)
 - **Initialization**: `python3 scripts/bootstrap_template.py --name "my-service" --lang go --clean-template --repo-owner "my-org" --conduct-email "conduct@example.com"`
 - **Source Layout**: Create `go.mod` in project root (`go mod init my-service`) and place source packages in `pkg/` or `cmd/`.
 - **Pre-Commit Hooks**: Append `gofmt` and `golangci-lint` to `.pre-commit-config.yaml`.
-- **Test Command**: Never bare `go test`/`go test ./...` -- see the EDR-safety
-  warning in `.agents/skills/unit-testing/SKILL.md`. Build named test
-  binaries into a project-controlled directory instead, ideally wrapped in a
-  `Makefile` target (e.g. `make test`) once the project has one.
+- **EDR-Safe Testing**: The Go profile exports `GOTMPDIR` with `:=` and guards it with an
+  `edr-guard` target before building. `GOTMPDIR` -- not `-o` -- decides where an unsigned test
+  binary first appears on disk, because the toolchain links inside it and only then moves the
+  file to the `-o` path. Because `make test` no longer starts with `go test`, bootstrap denies
+  `Bash(go test*)` wholesale in `.claude/settings.json`. See `.agents/skills/unit-testing/SKILL.md`.
 
 ### 2. Python (`--lang python`)
 - **Initialization**: `python3 scripts/bootstrap_template.py --name "my-app" --lang python --clean-template --repo-owner "my-org" --conduct-email "conduct@example.com"`
 - **Source Layout**: Create `pyproject.toml` or `requirements.txt` and place packages in `src/`.
 - **Pre-Commit Hooks**: Append `ruff` (`ruff check --fix`) and `mypy` to `.pre-commit-config.yaml`.
-- **Test Command**: Ensure `.agents/skills/unit-testing/SKILL.md` specifies `pytest -v --tb=short`.
 
 ### 3. Rust (`--lang rust`)
 - **Initialization**: `python3 scripts/bootstrap_template.py --name "my-crate" --lang rust --clean-template --repo-owner "my-org" --conduct-email "conduct@example.com"`
 - **Source Layout**: Run `cargo init` in project root to generate `Cargo.toml` and `src/main.rs` / `src/lib.rs`.
-- **Pre-Commit Hooks**: Append `cargo fmt --check` and `cargo clippy -- -D warnings` to `.pre-commit-config.yaml`.
-- **Test Command**: Ensure `.agents/skills/unit-testing/SKILL.md` specifies `cargo test --quiet`.
+- **Pre-Commit Hooks**: `make lint` already runs `cargo fmt --check` and `cargo clippy -- -D warnings`.
 
 ### 4. Java / Kotlin (`--lang java`)
 - **Initialization**: `python3 scripts/bootstrap_template.py --name "my-java-service" --lang java --clean-template --repo-owner "my-org" --conduct-email "conduct@example.com"`
 - **Source Layout**: Setup standard Maven (`pom.xml`) or Gradle (`build.gradle`) structure under `src/main/java` and `src/test/java`.
 - **Pre-Commit Hooks**: Append `checkstyle` or SpotBugs hooks to `.pre-commit-config.yaml`.
-- **Test Command**: Ensure `.agents/skills/unit-testing/SKILL.md` specifies `mvn test -B` or `./gradlew test --no-daemon`.
 
 ### 5. TypeScript / Node.js (`--lang node`)
 - **Initialization**: `python3 scripts/bootstrap_template.py --name "my-node-app" --lang node --clean-template --repo-owner "my-org" --conduct-email "conduct@example.com"`
 - **Source Layout**: Create `package.json` and `tsconfig.json` placing source code in `src/`.
 - **Pre-Commit Hooks**: Append `eslint` and `prettier` to `.pre-commit-config.yaml`.
-- **Test Command**: Ensure `.agents/skills/unit-testing/SKILL.md` specifies `npm test -- --ci` or `npx vitest run`.
 
-### 6. Liferay Client Extensions (`--lang liferay`)
+### 6. C++ (`--lang cpp`)
+- **Initialization**: `python3 scripts/bootstrap_template.py --name "my-engine" --lang cpp --clean-template --repo-owner "my-org" --conduct-email "conduct@example.com"`
+- **Source Layout**: Maintain `CMakeLists.txt` at root; `make setup` configures the `build/` tree.
+- **Pre-Commit Hooks**: Append `clang-format` and `clang-tidy` to `.pre-commit-config.yaml`.
+
+### 7. Liferay Client Extensions (`--lang liferay`)
 - **Initialization**: `python3 scripts/bootstrap_template.py --name "my-cx-project" --lang liferay --clean-template --repo-owner "my-org" --conduct-email "conduct@example.com"`
 - **Source Layout**: Maintain `client-extension.yaml` at root and place microservices/assets in dedicated folders.
 - **Rules Alignment**: Enforce `Liferay.authToken` usage (no hardcoded secrets) and LDM integration commands.

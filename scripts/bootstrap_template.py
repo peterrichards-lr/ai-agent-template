@@ -4,11 +4,15 @@ bootstrap_template.py - AI Agent Quickstart Project Initializer
 
 Configures the template repository for a new project, setting project name,
 language ecosystem profiles, initial .agent-state.md scratchpad, and documentation footers.
-Mutates AGENTS.md with ecosystem test commands, checks system dependencies,
-installs Git hooks, and executes pre-commit quality checks.
+Fills the Makefile's language profile block in so `make test` runs the chosen stack's
+command, points AGENTS.md rule 5 at that verb, checks system dependencies, installs Git
+hooks, and executes pre-commit quality checks.
 Fails loudly if any required subprocess execution fails, if a regex substitution
 matches nothing, or if scripts/doctor.py finds a surviving placeholder at the end.
 Pass --dry-run to print every planned mutation without applying any of them.
+
+There is deliberately no -y/--non-interactive flag: nothing here prompts, and the flag
+used to double as an undocumented trigger for --clean-template's deletions. See #90.
 """
 
 import sys
@@ -94,6 +98,216 @@ PRE_COMMIT_CONFIG_RELPATH = Path('.pre-commit-config.yaml')
 DOCTOR_TEMPLATE_MODE_ENTRY = 'scripts/doctor.py --mode template'
 DOCTOR_ADOPTER_MODE_ENTRY = 'scripts/doctor.py'
 
+# The task runner (#46). Every stack answers to the same seven verbs -- setup, lint,
+# test, docs, verify, push, help -- and only the block between these markers varies by
+# language. Everything else in the Makefile is language agnostic and is never rewritten.
+MAKEFILE_RELPATH = Path('Makefile')
+MAKEFILE_PROFILE_BEGIN_MARKER = '# >>> BOOTSTRAP LANGUAGE PROFILE >>>'
+MAKEFILE_PROFILE_END_MARKER = '# <<< BOOTSTRAP LANGUAGE PROFILE <<<'
+
+# AGENTS.md rule 5 names the command that gates "work complete". It is the task runner
+# verb for every stack now: the ecosystem's actual command lives in the Makefile block
+# below and is stated exactly once, rather than restated in the agent rules, in
+# CONTRIBUTING.md and in docs/TEMPLATE_GUIDE.md where the three copies drift apart.
+PRIMARY_TEST_COMMAND = '`make test`'
+
+# Never a bare `go test`/`go test ./...`: it compiles an unsigned test binary into the
+# OS default temp directory and executes it, which trips behavior-based endpoint
+# security for any package opening a real network listener. GOTMPDIR -- not -o --
+# decides where that binary first appears on disk, which is why it is exported here
+# with := and asserted by edr-guard before anything is built.
+GO_MAKEFILE_PROFILE = """# --- go -----------------------------------------------------------------------
+# EDR-safe test execution directory. /private/tmp on macOS because that is the literal
+# path an allowlist matches on (/tmp is a symlink to the same directory, but the two are
+# not interchangeable to a matcher), /tmp elsewhere, %TEMP% on Windows.
+ifeq ($(OS),Windows_NT)
+TEST_DIR ?= $(subst \\,/,$(TEMP))
+else
+TEST_DIR ?= $(shell [ -d /private/tmp ] && echo /private/tmp || echo /tmp)
+endif
+
+# := rather than ?=, deliberately, and this is the whole point of the recipes below.
+#
+# The Go toolchain links every executable inside GOTMPDIR and only then moves it to the
+# -o path, so GOTMPDIR -- not -o -- decides where an unsigned binary first appears on
+# disk, which is what an EDR allowlist keys on. With ?=, any inherited GOTMPDIR (a shell
+# profile, direnv, an IDE terminal) silently wins and the build leaves the allowlist
+# while reporting nothing. TEST_DIR stays overridable on purpose; GOTMPDIR follows it.
+export GOTMPDIR := $(TEST_DIR)
+
+TEST_BINARY := $(TEST_DIR)/$(notdir $(CURDIR)).test$(shell go env GOEXE)
+GO_PKG ?= ./...
+GO_TEST_FLAGS ?=
+# Flags that must be set when the binary is built -- notably -race -- belong here:
+#   make test GO_TEST_BUILD_FLAGS=-race
+GO_TEST_BUILD_FLAGS ?=
+
+.PHONY: setup-lang lint-lang test-lang edr-guard
+
+setup-lang:
+\tgo mod download
+
+lint-lang:
+\tgo vet $(GO_PKG)
+
+# Asserts that the toolchain will really link inside the allowlisted directory rather
+# than assuming it. The macOS default is resolved by an existence test, so a missing
+# /private/tmp would otherwise fall through to /tmp and compile outside the allowlist
+# while reporting success -- "looks configured, is not working".
+edr-guard:
+\t@mkdir -p $(TEST_DIR)
+\t@if [ "$$(go env GOTMPDIR)" != "$(TEST_DIR)" ]; then \\
+\t\techo "EDR GUARD FAILED: go will link in [$$(go env GOTMPDIR)], not [$(TEST_DIR)]."; \\
+\t\techo "Every executable is written inside that directory before it is moved to -o,"; \\
+\t\techo "so building now would drop an unsigned binary outside the EDR allowlist."; \\
+\t\texit 1; \\
+\tfi
+
+# Builds each package's test binary into TEST_DIR and runs it directly. A package with
+# no _test.go never reaches `go test -c`, so its compile errors would be invisible --
+# hence the explicit build of every package first.
+test-lang: edr-guard
+\tgo build $(GO_PKG)
+\t@for pkg in $$(go list -f '{{if .TestGoFiles}}{{.ImportPath}}{{end}}' $(GO_PKG)); do \\
+\t\trm -f $(TEST_BINARY); \\
+\t\tgo test -c $(GO_TEST_BUILD_FLAGS) -o $(TEST_BINARY) $$pkg || exit 1; \\
+\t\tif [ ! -f $(TEST_BINARY) ]; then \\
+\t\t\techo "FAILED: $$pkg has test files but no binary was produced at $(TEST_BINARY)."; \\
+\t\t\texit 1; \\
+\t\tfi; \\
+\t\t(cd "$$(go list -f '{{.Dir}}' $$pkg)" && $(TEST_BINARY) $(GO_TEST_FLAGS)) || exit 1; \\
+\tdone
+\t@rm -f $(TEST_BINARY)
+"""
+
+PYTHON_MAKEFILE_PROFILE = """# --- python -------------------------------------------------------------------
+PYTEST ?= $(PYTHON) -m pytest
+PYTEST_ARGS ?= -v --tb=short
+
+.PHONY: setup-lang lint-lang test-lang
+
+setup-lang:
+\t@if [ -f requirements-python.txt ]; then $(PYTHON) -m pip install -r requirements-python.txt; fi
+
+lint-lang:
+\t@echo "No extra Python linters configured. Add ruff / mypy to .pre-commit-config.yaml."
+
+test-lang:
+\t$(PYTEST) $(PYTEST_ARGS)
+"""
+
+RUST_MAKEFILE_PROFILE = """# --- rust ---------------------------------------------------------------------
+CARGO ?= cargo
+
+.PHONY: setup-lang lint-lang test-lang
+
+setup-lang:
+\t$(CARGO) fetch
+
+lint-lang:
+\t$(CARGO) fmt --check
+\t$(CARGO) clippy -- -D warnings
+
+test-lang:
+\t$(CARGO) test --quiet
+"""
+
+JAVA_MAKEFILE_PROFILE = """# --- java ---------------------------------------------------------------------
+MAVEN ?= mvn
+
+.PHONY: setup-lang lint-lang test-lang
+
+setup-lang:
+\t$(MAVEN) -B dependency:go-offline
+
+lint-lang:
+\t@echo "No extra Java linters configured. Add checkstyle or SpotBugs to .pre-commit-config.yaml."
+
+test-lang:
+\t$(MAVEN) test -B
+"""
+
+NODE_MAKEFILE_PROFILE = """# --- node ---------------------------------------------------------------------
+NPM ?= npm
+
+.PHONY: setup-lang lint-lang test-lang
+
+setup-lang:
+\t$(NPM) ci
+
+lint-lang:
+\t$(NPM) run lint --if-present
+
+test-lang:
+\t$(NPM) test -- --ci
+"""
+
+CPP_MAKEFILE_PROFILE = """# --- cpp ----------------------------------------------------------------------
+CMAKE_BUILD_DIR ?= build
+
+.PHONY: setup-lang lint-lang test-lang
+
+setup-lang:
+\tcmake -S . -B $(CMAKE_BUILD_DIR)
+
+lint-lang:
+\t@echo "No extra C++ linters configured. Add clang-format / clang-tidy to .pre-commit-config.yaml."
+
+test-lang:
+\tctest --test-dir $(CMAKE_BUILD_DIR) --output-on-failure
+"""
+
+LIFERAY_MAKEFILE_PROFILE = """# --- liferay ------------------------------------------------------------------
+GRADLEW ?= ./gradlew
+
+.PHONY: setup-lang lint-lang test-lang
+
+setup-lang:
+\t$(GRADLEW) --no-daemon dependencies
+
+lint-lang:
+\t@echo "No extra Liferay linters configured. Add eslint / checkstyle to .pre-commit-config.yaml."
+
+test-lang:
+\t$(GRADLEW) test --no-daemon
+"""
+
+# `make test` exits non-zero rather than doing nothing. A generic profile that exited 0
+# would report a green test run on a project that has never run a test, which is the
+# exact "declared complete on no evidence" failure unit-testing/SKILL.md rule 3 exists
+# to stop. Fill the block in, or re-run bootstrap with a real --lang.
+GENERIC_MAKEFILE_PROFILE = """# --- generic ------------------------------------------------------------------
+.PHONY: setup-lang lint-lang test-lang
+
+setup-lang:
+\t@echo "No language profile configured. Edit the Makefile block, or re-run bootstrap with --lang <stack>."
+
+lint-lang:
+\t@echo "No language linters configured for --lang generic."
+
+test-lang:
+\t@echo "ERROR: no test command is configured for --lang generic."
+\t@echo "Fill in the language profile block in the Makefile, or re-run bootstrap with --lang <stack>."
+\t@exit 1
+"""
+
+MAKEFILE_LANGUAGE_PROFILES = {
+    'generic': GENERIC_MAKEFILE_PROFILE,
+    'go': GO_MAKEFILE_PROFILE,
+    'python': PYTHON_MAKEFILE_PROFILE,
+    'rust': RUST_MAKEFILE_PROFILE,
+    'java': JAVA_MAKEFILE_PROFILE,
+    'node': NODE_MAKEFILE_PROFILE,
+    'cpp': CPP_MAKEFILE_PROFILE,
+    'liferay': LIFERAY_MAKEFILE_PROFILE,
+}
+
+# `make test` is the sanctioned Go test path now, so the deny no longer has to leave a
+# hole for `go test -c`. Deny beats allow and "`go test*` except -c" is inexpressible in
+# the permission patterns, which is why the narrow pair this replaces could not cover
+# `go test -v ./...`, `go test -race ./...` or `go test ./pkg/...`. See #2 and #46.
+GO_TEST_DENY_PATTERNS = ['Bash(go test*)']
+
 def announce_planned_write(rel_path, summary: str):
     """Print the mutation a dry run would have made instead of making it."""
     print(f"  [dry-run] would update {rel_path}: {summary}")
@@ -130,49 +344,75 @@ def check_system_dependencies(strict: bool = False):
             print("❌ Error: pre-commit is required in strict mode.", file=sys.stderr)
             sys.exit(1)
 
-def configure_language_profile(root_dir: Path, language: str, dry_run: bool = False):
-    """Update AGENTS.md and ecosystem settings for the selected language stack.
+def configure_task_runner(root_dir: Path, language: str, dry_run: bool = False) -> bool:
+    """Rewrite the Makefile's language profile block for the selected stack.
 
-    Aborts when the target line cannot be located: leaving <TEST_COMMAND_PLACEHOLDER>
-    live in AGENTS.md hands every agent a placeholder where the command that gates
-    "work complete" should be, and a warning on stderr is not loud enough for that.
+    Only the marked block is replaced; the setup/lint/test/docs/verify/push/help
+    vocabulary around it is language agnostic and must survive untouched.
+
+    Aborts when the Makefile is present but the markers are not. AGENTS.md rule 5 now
+    names `make test` as the command that gates "work complete", so a Makefile carrying
+    another stack's recipes is exactly as bad as a live placeholder -- and unlike a
+    missing Makefile it looks correct. A missing Makefile is only a warning: adopters
+    are free to delete a file the bootstrapper does not depend on.
+    """
+    makefile_path = root_dir / MAKEFILE_RELPATH
+
+    if not makefile_path.exists():
+        print(
+            f"  ⚠️ Warning: {MAKEFILE_RELPATH.as_posix()} not found, so `make test` -- the command\n"
+            "     AGENTS.md rule 5 names -- will not exist. Restore it from the template.",
+            file=sys.stderr
+        )
+        return False
+
+    profile = MAKEFILE_LANGUAGE_PROFILES[language]
+    content = makefile_path.read_text(encoding='utf-8')
+    begin = content.find(MAKEFILE_PROFILE_BEGIN_MARKER)
+    end = content.find(MAKEFILE_PROFILE_END_MARKER)
+
+    if begin == -1 or end == -1 or end < begin:
+        print(
+            f"❌ Error: Could not locate the language profile markers in {MAKEFILE_RELPATH.as_posix()}.\n"
+            f"   Expected {MAKEFILE_PROFILE_BEGIN_MARKER!r} and {MAKEFILE_PROFILE_END_MARKER!r}.\n"
+            "   Without them bootstrap cannot fit the Makefile to --lang, and `make test` would run\n"
+            "   another ecosystem's command while looking correct. Restore the markers, then re-run.",
+            file=sys.stderr
+        )
+        sys.exit(1)
+
+    rewritten = (
+        content[:begin]
+        + MAKEFILE_PROFILE_BEGIN_MARKER + '\n'
+        + profile.strip('\n') + '\n'
+        + content[end:]
+    )
+
+    if dry_run:
+        announce_planned_write(MAKEFILE_RELPATH.as_posix(), f"install the {language} task runner profile")
+        return True
+
+    makefile_path.write_text(rewritten, encoding='utf-8')
+    print(f"  ✓ Installed the {language} task runner profile in {MAKEFILE_RELPATH.as_posix()}")
+    return True
+
+def configure_language_profile(root_dir: Path, language: str, dry_run: bool = False):
+    """Point AGENTS.md at the task runner and fit the Makefile to the selected stack.
+
+    Aborts when the AGENTS.md target line cannot be located: leaving
+    <TEST_COMMAND_PLACEHOLDER> live hands every agent a placeholder where the command
+    that gates "work complete" should be, and a warning on stderr is not loud enough
+    for that.
     """
     print(f"🛠️ Configuring language profile for: {language}...")
 
-    if language == 'go':
-        # Never bare `go test`/`go test ./...` -- it compiles an unsigned
-        # test binary into the OS default temp dir and executes it, which
-        # trips behavior-based endpoint security (SentinelOne, CrowdStrike,
-        # etc.) for any package under test that opens a real network
-        # listener (httptest.Server, a WebSocket server, ...). Build named
-        # test binaries explicitly into a directory the project controls
-        # instead. See docs/TEMPLATE_GUIDE.md's EDR-safe testing note.
-        test_cmd = ('`go test -c -o <test-dir>/<pkg>.test <import-path>` per package '
-                    '(loop over `go list -f \'{{if .TestGoFiles}}{{.ImportPath}}{{end}}\' ./...`), '
-                    'then run each binary directly -- never bare `go test`/`go test ./...`')
-    elif language == 'python':
-        test_cmd = '`pytest -v --tb=short`'
-    elif language == 'rust':
-        test_cmd = '`cargo test --quiet`'
-    elif language == 'java':
-        test_cmd = '`mvn test -B`'
-    elif language == 'node':
-        test_cmd = '`npm test -- --ci`'
-    elif language == 'cpp':
-        test_cmd = '`ctest --output-on-failure`'
-    elif language == 'liferay':
-        test_cmd = '`./gradlew test`'
-    else:
-        test_cmd = '`the ecosystem non-interactive test command`'
-
-    # Mutate AGENTS.md with test_cmd
     agents_path = root_dir / 'AGENTS.md'
     if not agents_path.exists():
         print("❌ Error: AGENTS.md not found; cannot set the primary unit testing command.", file=sys.stderr)
         sys.exit(1)
 
     content = agents_path.read_text(encoding='utf-8')
-    target_line = f"Primary Unit Testing Command: {test_cmd}"
+    target_line = f"Primary Unit Testing Command: {PRIMARY_TEST_COMMAND}"
 
     content, n = re.subn(r'Primary Unit Testing Command:\s*`?[^`\n]+`?', target_line, content)
     if n == 0:
@@ -186,11 +426,12 @@ def configure_language_profile(root_dir: Path, language: str, dry_run: bool = Fa
         sys.exit(1)
 
     if dry_run:
-        announce_planned_write('AGENTS.md', f"primary test command -> {test_cmd}")
-        return
+        announce_planned_write('AGENTS.md', f"primary test command -> {PRIMARY_TEST_COMMAND}")
+    else:
+        agents_path.write_text(content, encoding='utf-8')
+        print(f"  ✓ Mutated AGENTS.md with primary test command: {PRIMARY_TEST_COMMAND}")
 
-    agents_path.write_text(content, encoding='utf-8')
-    print(f"  ✓ Mutated AGENTS.md with primary test command: {test_cmd}")
+    configure_task_runner(root_dir, language, dry_run=dry_run)
 
 def configure_semgrep_rulesets(root_dir: Path, language: str, dry_run: bool = False) -> bool:
     """Select the Semgrep registry rulesets for the chosen stack in security-scan.yml.
@@ -660,9 +901,8 @@ def configure_claude_settings(root_dir: Path, language: str, dry_run: bool = Fal
     deny_list = permissions.setdefault("deny", [])
 
     if language == 'go':
-        go_denies = ["Bash(go test)", "Bash(go test ./...)"]
         added = []
-        for gd in go_denies:
+        for gd in GO_TEST_DENY_PATTERNS:
             if gd not in deny_list:
                 deny_list.append(gd)
                 added.append(gd)
@@ -722,7 +962,6 @@ def configure_doctor_precommit_hook(root_dir: Path, dry_run: bool = False) -> bo
 def bootstrap(
     project_name: str,
     language: str,
-    non_interactive: bool = False,
     install_deps: bool = False,
     clean_template: bool = False,
     repo_desc: str = None,
@@ -737,7 +976,6 @@ def bootstrap(
     print(f"🚀 Initializing AI Agent Project Template in: {root_dir}")
     print(f"   Project Name  : {project_name}")
     print(f"   Language Stack : {language}")
-    print(f"   Non-Interactive Mode: {non_interactive}")
     if dry_run:
         print("   Dry Run: no file, repository or hook will be modified")
     print("-" * 50)
@@ -768,7 +1006,11 @@ def bootstrap(
     configure_semgrep_rulesets(root_dir, language, dry_run=dry_run)
     if docs_site:
         enable_docs_site(root_dir, project_name, repo_owner=repo_owner, dry_run=dry_run)
-    if clean_template or non_interactive:
+    # --clean-template and nothing else. This used to read `if clean_template or
+    # non_interactive`, so `-y` -- the conventional "do not prompt me" flag, on a script
+    # that has never prompted -- silently deleted docs/TEMPLATE_GUIDE.md, tests/ and
+    # src/__init__.py. Destruction must be asked for by name. See #90.
+    if clean_template:
         clean_template_meta_docs(root_dir, project_name, language, dry_run=dry_run,
                                  docs_site=docs_site)
 
@@ -897,7 +1139,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     # and the verification must not disagree about what a real value looks like.
     parser.add_argument('--name', type=str, required=True, help='Project name (required)')
     parser.add_argument('--lang', type=str, default='generic', choices=SUPPORTED_LANGUAGES, help='Target language stack')
-    parser.add_argument('-y', '--non-interactive', action='store_true', help='Run in non-interactive mode')
+    # There is deliberately no -y/--non-interactive flag. This script has never called
+    # input(), so there was no interactive mode for it to suppress -- it was quietly a
+    # second trigger for --clean-template's deletions. Passing it now is an argparse
+    # usage error, raised before any file is touched. See #90.
     parser.add_argument('--install-deps', action='store_true', help='Automatically pip install requirements-dev.txt (plus requirements-python.txt for --lang python)')
     parser.add_argument('--dry-run', action='store_true', help='Preview every planned mutation without modifying files, repository settings or Git hooks')
     parser.add_argument('--clean-template', action='store_true', help='Clean up template meta docs and generate clean project README')
@@ -918,7 +1163,6 @@ def main():
     bootstrap(
         project_name=args.name,
         language=args.lang,
-        non_interactive=args.non_interactive,
         install_deps=args.install_deps,
         clean_template=args.clean_template,
         repo_desc=args.repo_desc,

@@ -45,18 +45,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt -r requirements-python.txt
 
-      - name: Run Unit Test Suite
+      # One step, deliberately. `make verify` is lint + test + docs, and the whole point
+      # of the task runner (#46) is that this is the *same* command a contributor runs
+      # locally. Restating pytest / doctor / check_docs_review / pre-commit here would
+      # recreate the drift between local and CI gates that the Makefile removes.
+      # scripts/doctor.py --mode template runs inside `make lint` as a pre-commit hook.
+      - name: Run Quality Gate (make verify)
         run: |
-          python -m pytest -v tests/
-
-      - name: Verify No Template Placeholders Survive
-        run: |
-          python scripts/doctor.py --mode template
-
-      - name: Verify Documentation Timestamps & Review Status
-        run: |
-          python scripts/check_docs_review.py --max-review-days 180 --max-update-days 180
-
-      - name: Run Pre-Commit Quality Gate Hooks
-        run: |
-          pre-commit run --all-files
+          make verify

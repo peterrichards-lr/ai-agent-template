@@ -65,6 +65,23 @@ If the agent encounters technical debt during a task (Code Smells, Duplication, 
 ### 5. Primary Unit Testing Command
 Primary Unit Testing Command: `<TEST_COMMAND_PLACEHOLDER>`
 
+The task runner (`Makefile`) is the single entrypoint vocabulary, identical in every
+language stack, so an agent never has to work out which ecosystem's commands apply:
+
+| Target | Contract |
+| :--- | :--- |
+| `make setup` | Install dev dependencies and the pre-commit Git hooks. |
+| `make lint` | `pre-commit run --all-files` plus this stack's linters. |
+| `make test` | This stack's non-interactive test command. |
+| `make docs` | `append_timestamps.py` then `check_docs_review.py` (rule 2). |
+| `make verify` | `lint` + `test` + `docs` -- **exactly** what `.github/workflows/ci.yml` runs. |
+| `make push` | Guarded commit-and-push (`scripts/agent_push.py`): refuses no-op pushes and unstaged trees, never bypasses the hooks. |
+| `make help` | Self-documenting target list; the default goal. |
+
+The ecosystem's real command is stated once, in the `Makefile`'s language profile block,
+which `scripts/bootstrap_template.py --lang <stack>` fills in. `make verify` is therefore
+the answer to "did I break CI", and the two cannot drift because CI invokes this target.
+
 ### 6. Rule Adherence
 Before a high-commitment action (merging, deploying, tagging, applying a ruleset), re-read the specific governing skill file fresh rather than relying on memory. See `rule-adherence/SKILL.md` for full guidance.
 

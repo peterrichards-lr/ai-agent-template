@@ -61,11 +61,31 @@ See [docs/BRANCH_PROTECTION.md](docs/BRANCH_PROTECTION.md) for the ruleset side 
 
 ## 3. Pull Request Protocol
 
-Before opening a Pull Request:
-1. Ensure all unit tests pass cleanly: `pytest`, `cargo test`, `npm test`, or your ecosystem's equivalent. **For Go, never bare `go test`/`go test ./...`** -- see the EDR-safety warning in `.agents/skills/unit-testing/SKILL.md`.
-2. Run pre-commit checks locally: `pre-commit run --all-files`.
-3. Update documentation and inject timestamp footers via `python3 scripts/append_timestamps.py`.
-4. Ensure your PR description references the parent issue (e.g., `Closes #123`).
+Before opening a Pull Request, run the full local quality gate:
+
+```bash
+make verify
+```
+
+`make verify` is `lint` + `test` + `docs`, and it is **exactly** what `.github/workflows/ci.yml`
+runs -- the workflow invokes this target rather than restating the commands, so the two cannot
+drift. "Did I break CI?" is therefore one local command. The individual targets (`make lint`,
+`make test`, `make docs`) are available when you want to run just one; `make help` lists them all.
+
+Each ecosystem's real test command lives in the `Makefile`'s language profile block, stated once
+and filled in by `scripts/bootstrap_template.py --lang <stack>`. Do not restate it here, in
+`AGENTS.md` or in a skill file: that is how the copies drift apart.
+
+Then:
+1. Ensure your PR description references the parent issue (e.g., `Closes #123`).
+2. Push with `make push MESSAGE="feat(scope): what changed"`. It refuses a no-op push, refuses to
+   commit while tracked files are still unstaged, rejects a flag-shaped commit message, and runs
+   the pre-commit gate rather than bypassing it. `--force-with-lease` is the only sanctioned force
+   form (`make push PUSH_ARGS=--force-with-lease`); bare `--force` is denied client-side by
+   `.claude/settings.json`.
+
+> [!NOTE]
+> `make` is not installed by default on Windows. See the note in [README.md](README.md#windows-notes).
 
 ---
 
