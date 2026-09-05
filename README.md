@@ -14,7 +14,8 @@ Whether you are building in **Go**, **Python**, **Rust**, **Java**, **TypeScript
 - 🛡️ **Language-Agnostic Quality Gates (`.pre-commit-config.yaml`)**: Out-of-the-box pre-commit configuration supporting secret scanning (`detect-secrets`, `gitleaks`), markdown link validation, document review policies, and modular linting for Go, Python, Rust, Java, and Node.js.
 - ⏱️ **Automated Documentation Hygiene**: Zero-dependency Python 3 tools (`append_timestamps.py` and `check_docs_review.py`) to enforce timestamp footers (`*Last Updated* | *Last Reviewed*`) and prevent documentation decay.
 - ⚙️ **Project Bootstrapper (`scripts/bootstrap_template.py`)**: One-command initialization script that customizes the template for your chosen programming language stack, installs git hooks, and seeds project metadata.
-- 🚀 **GitHub CI & Governance (`.github/`)**: GitHub Actions workflow (`ci.yml`), issue templates (Feature, Bug, Tech Debt), and a PR template enforcing task linking (`Closes #<issue>`).
+- 🚀 **GitHub CI & Governance (`.github/`)**: GitHub Actions workflow (`ci.yml`), issue templates (Feature, Bug, Tech Debt) with a chooser (`ISSUE_TEMPLATE/config.yml`) that disables blank issues, a commented `CODEOWNERS` stub, and a PR template enforcing task linking (`Closes #<issue>`).
+- 🤝 **Community Health Stubs (`CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `.editorconfig`)**: Contributor Covenant v2.1, a Keep a Changelog seed, and a shared editor baseline (UTF-8, LF, final newline, trimmed trailing whitespace) that keeps editors from fighting the `trailing-whitespace` and `end-of-file-fixer` pre-commit hooks. Owner and contact placeholders are filled in by the bootstrapper.
 
 ---
 
@@ -44,8 +45,8 @@ Run the language-agnostic bootstrapper to configure your project details and set
 # Interactive setup
 python3 scripts/bootstrap_template.py
 
-# Or specify your language stack and GitHub SEO metadata directly
-python3 scripts/bootstrap_template.py --name "my-awesome-app" --lang go --repo-desc "High-performance Go service built with AI Agent pair programming" --repo-topics "ai-agent,developer-tools,go"
+# Or specify your language stack, GitHub SEO metadata, and community health details directly
+python3 scripts/bootstrap_template.py --name "my-awesome-app" --lang go --repo-desc "High-performance Go service built with AI Agent pair programming" --repo-topics "ai-agent,developer-tools,go" --repo-owner "my-org" --conduct-email "conduct@example.com"
 ```
 
 The bootstrapper will:
@@ -53,9 +54,10 @@ The bootstrapper will:
 1. Update project configuration files (`README.md`, `.agent-state.md`, `AGENTS.md`).
 2. Generate language-specific `.gitignore` and `.pre-commit-config.yaml` rules.
 3. Verify or create the `.claude/skills` auto-discovery symlink.
-4. Initialize local Git pre-commit hooks.
-5. Inject initial documentation timestamps.
-6. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
+4. Seed the community health stubs (`CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `.github/CODEOWNERS`, `.github/ISSUE_TEMPLATE/config.yml`) with your project name, and -- when `--repo-owner` / `--conduct-email` are supplied -- the GitHub owner and Code of Conduct contact. Any placeholder left unresolved is reported so you can edit it by hand.
+5. Initialize local Git pre-commit hooks.
+6. Inject initial documentation timestamps.
+7. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
 
 ---
 
@@ -72,14 +74,20 @@ The bootstrapper will:
 │   └── skills                         # Symlink -> ../.agents/skills
 ├── .agent-state.md                    # Gitignored persistent task scratchpad
 ├── CONTRIBUTING.md                    # Guidelines for human & AI agent contributors
+├── CODE_OF_CONDUCT.md                 # Contributor Covenant v2.1 (adopter-customisable stub)
+├── CHANGELOG.md                       # Keep a Changelog release history (adopter stub)
+├── SECURITY.md                        # Vulnerability disclosure policy
 ├── README.md                          # This file
 ├── LICENSE                            # MIT License
 ├── .gitignore                         # Language-agnostic ignore rules
+├── .editorconfig                      # Shared editor baseline (UTF-8, LF, final newline)
 ├── .pre-commit-config.yaml            # Pre-commit quality gate configuration
 ├── .github/                           # CI workflows & GitHub templates
 │   ├── copilot-instructions.md        # Discovery redirect to AGENTS.md (GitHub Copilot)
+│   ├── CODEOWNERS                     # Commented ownership stub (see require_code_owner_review)
 │   ├── PULL_REQUEST_TEMPLATE.md       # PR template with issue linking checks
 │   ├── ISSUE_TEMPLATE/                # Task, Bug, and Tech Debt templates
+│   │   └── config.yml                 # Issue chooser: blank issues off, contact links
 │   └── workflows/ci.yml               # GitHub Actions CI workflow
 ├── .agents/skills/                    # Modular skill instructions for AI agents
 │   ├── reflection-and-planning/       # Logic-first planning & approval loops

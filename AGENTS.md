@@ -75,6 +75,9 @@ Before a high-commitment action (merging, deploying, tagging, applying a ruleset
 | [`.agent-state.md`](./.agent-state.md) | In-flight task state, synced between AI providers. Gitignored. |
 | [`README.md`](./README.md) | Consumer-facing documentation & quick setup. |
 | [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Contribution guidelines and quality gate commands. |
+| [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | Contributor Covenant v2.1 community standards. |
+| [`CHANGELOG.md`](./CHANGELOG.md) | Keep a Changelog history; update under `[Unreleased]` when merging user-visible changes. |
+| [`.editorconfig`](./.editorconfig) | Shared editor baseline (UTF-8, LF, final newline, trimmed trailing whitespace) matching the pre-commit hygiene hooks. |
 | [`.claude/skills`](./.claude/skills) | Tracked symlink to [`.agents/skills/`](./.agents/skills) for Claude Code auto-discovery. |
 | [`CLAUDE.md`](./CLAUDE.md) | Claude CLI discovery redirect. |
 | [`GEMINI.md`](./GEMINI.md) | Gemini CLI discovery redirect. |
