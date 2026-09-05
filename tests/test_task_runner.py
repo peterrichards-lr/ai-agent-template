@@ -10,6 +10,7 @@ Covers the single entrypoint vocabulary introduced by #46:
 - scripts/agent_push.py refuses empty pushes, unstaged trees and flag-shaped messages.
 """
 
+import json
 import re
 import subprocess
 import sys
@@ -236,7 +237,6 @@ def test_go_bootstrap_denies_go_test_wholesale(tmp_path):
 
     assert configure_claude_settings(tmp_path, 'go') is True
 
-    import json
     deny = json.loads((claude_dir / 'settings.json').read_text(encoding='utf-8'))['permissions']['deny']
     assert 'Bash(go test*)' in deny, \
         "once `make test` exists the sanctioned path no longer starts with `go test`"
