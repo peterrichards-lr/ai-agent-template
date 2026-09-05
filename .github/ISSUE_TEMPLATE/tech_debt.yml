@@ -1,0 +1,64 @@
+# GitHub Issue Form - adopter-customisable stub.
+#
+# The `category` dropdown below is the SINGLE SOURCE OF TRUTH for this
+# template's technical debt taxonomy. `.agents/skills/github-workflow/SKILL.md`
+# rule 4 mirrors it in prose for agents composing an issue body from the
+# command line, and tests/test_issue_templates.py fails if the two drift apart.
+# Edit the options here first; do not maintain a separate list elsewhere.
+name: Technical Debt
+description: Record technical debt for future backlog prioritisation
+title: 'Tech Debt: '
+labels: ['tech-debt']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Debt that is not tracked never gets paid down. File one issue per
+        pattern - if a single pass surfaced several instances of the same
+        category, list them all under Location rather than opening one issue
+        each.
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: The catalogued category this debt falls under.
+      options:
+        - Code Smells
+        - Duplication
+        - Over-complexity
+        - Fragile Coupling
+        - Missing Safety Guards
+        - Missing Tests
+        - Security Hygiene
+        - Deprecated Patterns
+        - Config Drift
+        - Documentation Debt
+    validations:
+      required: true
+  - type: textarea
+    id: location
+    attributes:
+      label: Location
+      description: File paths, modules, or symbols affected. Line ranges help; permalinks help more.
+      placeholder: |
+        - `scripts/example.py:42-88`
+        - `src/handlers/user.py` (same duplicated block)
+    validations:
+      required: true
+  - type: textarea
+    id: debt_description
+    attributes:
+      label: Debt Description
+      description: What is wrong and why it is a problem. Be specific enough that a future agent can act on it without rediscovering the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: remediation
+    attributes:
+      label: Proposed Remediation
+      description: How this should be resolved or refactored, if you already know.
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact if Left Unaddressed
+      description: What this costs over time - repeated bugs, blocked refactors, onboarding friction.
