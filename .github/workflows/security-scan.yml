@@ -1,0 +1,157 @@
+name: Security Scan
+
+# Optional, non-blocking security layer: Semgrep SAST plus GitHub's dependency
+# review. Neither job is listed in .github/rulesets/protect-main-branch.json, and
+# both set `continue-on-error: true` on purpose. A template that fails CI on day
+# one because of a finding in somebody else's transitive dependency gets deleted,
+# not triaged. Promote a job to a required status check only once this repository's
+# findings are triaged to zero -- and drop its `continue-on-error` in the same
+# commit, otherwise the required check can never actually fail.
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+# Least privilege by default; each job widens only what it needs.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel-in-progress: true because neither job here supplies a required status
+  # check. This is the deliberate opposite of ci.yml, issue-link-check.yml and
+  # pr-scope-check.yml, which queue rather than cancel so the newest run reports
+  # last against a required context (see #30). Nothing gates on this workflow, so
+  # superseded runs are pure waste and are cancelled.
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    name: Semgrep SAST (non-blocking)
+    runs-on: ubuntu-latest
+    # Report findings, never gate the pull request. See the file header.
+    continue-on-error: true
+    permissions:
+      contents: read
+      # Required by github/codeql-action/upload-sarif to publish into the Security tab.
+      security-events: write
+    env:
+      # Semgrep registry rulesets, space separated. `p/ci` (curated, low false
+      # positive, multi-language) and `p/secrets` are the language-agnostic
+      # baseline shipped by the template. scripts/bootstrap_template.py rewrites
+      # this line for the selected stack, appending e.g. p/python, p/golang,
+      # p/javascript. Add or remove packs here: https://semgrep.dev/explore
+      SEMGREP_RULESETS: "p/ci p/secrets"
+      # Suppress Semgrep telemetry in CI environments.
+      SEMGREP_SEND_METRICS: 'off'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+
+      - name: Install Semgrep
+        run: |
+          python -m pip install --upgrade pip
+          pip install semgrep
+
+      - name: Run Semgrep SAST scan
+        run: |
+          set -euo pipefail
+
+          config_args=()
+          read -ra rulesets <<< "$SEMGREP_RULESETS"
+          for ruleset in "${rulesets[@]}"; do
+            config_args+=(--config "$ruleset")
+          done
+
+          # Project-specific rules. This is the mechanism that turns a prose rule
+          # in .agents/skills/coding-standards/SKILL.md into an enforced one.
+          if [ -f .semgrep.yaml ]; then
+            config_args+=(--config .semgrep.yaml)
+          fi
+
+          # --error exits non-zero on findings so they are visible as a red step
+          # inside this deliberately non-blocking job.
+          semgrep scan "${config_args[@]}" \
+            --sarif --output semgrep.sarif \
+            --error
+
+      - name: Upload Semgrep results to the Security tab
+        # Runs even when the scan step exited non-zero on findings -- uploading
+        # them is the whole point.
+        if: always() && hashFiles('semgrep.sarif') != ''
+        # Code scanning upload requires a public repository or GitHub Advanced
+        # Security. On a private repository without GHAS this step fails; the
+        # findings are still printed in the job log above.
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  dependency-review:
+    name: Dependency Review (non-blocking)
+    # actions/dependency-review-action diffs the dependency manifests between the
+    # base and head of a pull request, so it has nothing to compare on a push.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Review dependency changes for known vulnerabilities
+        # Requires the dependency graph to be enabled (default on public
+        # repositories; needs GitHub Advanced Security on private ones).
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          # `comment-summary-in-pr` is left at its default of `never`: any other
+          # value needs `pull-requests: write`, which this job deliberately does
+          # not request. The job summary carries the same report.
+
+# --------------------------------------------------------------------------
+# Why Semgrep is the shipped default, and how to add CodeQL
+# --------------------------------------------------------------------------
+# CodeQL is first-party and needs no third-party action, but it only covers the
+# languages GitHub supports, and its results upload requires a public repository
+# or GitHub Advanced Security -- a template must also work in a private repo on a
+# free plan. Semgrep OSS runs entirely inside the job, covers every stack this
+# template bootstraps (including `generic`), prints findings to the log with or
+# without GHAS, and is the only one of the two that supports the project-specific
+# rules in .semgrep.yaml. The two are complementary: if this repository is public
+# or has GHAS, enable CodeQL as well via Settings > Code security > CodeQL
+# analysis > Default setup (no workflow file needed), or add the job below.
+#
+#  codeql:
+#    name: CodeQL Analysis (non-blocking)
+#    runs-on: ubuntu-latest
+#    continue-on-error: true
+#    permissions:
+#      contents: read
+#      security-events: write
+#      actions: read
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        # Set to the CodeQL-supported languages this repository actually uses.
+#        language: [ 'python' ]
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v7
+#      - name: Initialize CodeQL
+#        uses: github/codeql-action/init@v3
+#        with:
+#          languages: ${{ matrix.language }}
+#      - name: Perform CodeQL analysis
+#        uses: github/codeql-action/analyze@v3
+#        with:
+#          category: "/language:${{ matrix.language }}"

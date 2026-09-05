@@ -112,7 +112,7 @@ When bootstrapping this template for a specific programming language, follow the
 | **`no-assumptions`** | Always active. Forbids technical claims not backed by a tool call made in the current session; after a compaction or resume, earlier tool results stop counting as evidence. |
 | **`reflection-and-planning`** | Implements Logic-First Planning, written implementation plans, Predictive Failure Analysis, and approval loops. |
 | **`human-in-the-loop`** | Enforces safety gates for deployments, database drops, plain-text secret prohibitions, and visual diff approvals. |
-| **`coding-standards`** | Mandates DRY code discovery (using the agent's available code-search tool), self-documenting code, defensive safety guards, language idiom alignment, and scope-sprawl anti-churn limits. |
+| **`coding-standards`** | Mandates DRY code discovery (using the agent's available code-search tool), self-documenting code, defensive safety guards, language idiom alignment, mechanically enforced rules (`.semgrep.yaml`), and scope-sprawl anti-churn limits. |
 | **`unit-testing`** | Enforces test-driven development, fail-first verification gates (citing red-to-green empirical evidence), non-interactive execution, and prohibits superficial test deletion. |
 | **`e2e-verification`** | Covers changes a green unit suite cannot prove (UI, process/network boundaries, CLI, deployment): what real-system evidence counts, teardown duties, and specific human escalation. |
 | **`documentation`** | Governs timestamp footers (`*Last Updated* \| *Last Reviewed*`), post-feature doc updates, and staleness policy checks. |
@@ -128,6 +128,7 @@ When bootstrapping this template for a specific programming language, follow the
 
 Prose rules alone don't reliably bind agent behavior. This template enforces defense-in-depth at both ends of the development pipe:
 - **Server-Side Enforcement**: Importable GitHub repository rulesets (`docs/BRANCH_PROTECTION.md`) turn repository governance (PR-only changes to main, required CI checks, issue-linking) into gates no one -- human or agent -- can silently skip.
+- **Pattern-Level Enforcement**: Project-specific Semgrep rules (`.semgrep.yaml`, scanned by `.github/workflows/security-scan.yml`) turn a coding rule that a pattern-matcher could check into an enforced one instead of prose an agent can read and still violate. `coding-standards/SKILL.md` directive 5 requires a rule to be added there whenever it is mechanically checkable. The scan is non-blocking (`continue-on-error: true`, not a required status check) so a new rule reports before it gates.
 - **Client-Side Enforcement**: Checked-in harness configuration (`.claude/settings.json`) intercepts and denies irreversibly destructive local shell patterns (`rm -rf`, `git push --force`, `docker system prune`, `DROP DATABASE`, `gh repo delete`) and requires interactive confirmation for high-risk operations (`gh pr merge`, `git tag`, `gh release create`).
 
 ---

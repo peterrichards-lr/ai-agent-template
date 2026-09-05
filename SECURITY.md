@@ -36,6 +36,23 @@ This repository enforces multi-layered pre-commit secret scanning to prevent acc
 
 ---
 
+## Static Analysis & Dependency Review
+
+Secret scanning only proves no credential was committed; it says nothing about the code itself. [`.github/workflows/security-scan.yml`](./.github/workflows/security-scan.yml) adds two scanners on every push and pull request:
+
+| Job | Tool | What it catches |
+| :--- | :--- | :--- |
+| `Semgrep SAST (non-blocking)` | Semgrep OSS (`p/ci`, `p/secrets`, plus the language pack chosen by `scripts/bootstrap_template.py`) | Insecure code patterns, and this project's own rules from [`.semgrep.yaml`](./.semgrep.yaml) |
+| `Dependency Review (non-blocking)` | [`actions/dependency-review-action`](https://github.com/actions/dependency-review-action) | Newly introduced dependencies with known vulnerabilities |
+
+Both jobs are **non-blocking by design**: they set `continue-on-error: true` and are deliberately absent from the required status checks in [`.github/rulesets/protect-main-branch.json`](./.github/rulesets/protect-main-branch.json). A newly bootstrapped project must not fail CI on day one because of a finding in a third-party transitive dependency. Once findings are triaged to zero, promote a job by removing its `continue-on-error` and adding its name to the ruleset in the same change.
+
+Semgrep, not CodeQL, is the shipped default: it runs entirely inside the job (so it reports findings in a private repository without GitHub Advanced Security), covers every stack the template bootstraps, and is the only one of the two that supports the project-specific rules in `.semgrep.yaml`. CodeQL remains complementary for public or GHAS-enabled repositories -- enable it via *Settings > Code security > CodeQL analysis > Default setup*, or uncomment the job stub at the foot of the workflow.
+
+Uploading Semgrep results to the **Security** tab, and dependency review itself, both require a public repository or GitHub Advanced Security. Without it the findings are still printed in the workflow job log.
+
+---
+
 ## Security Best Practices for AI Agents
 
 All AI assistants pairing in this repository MUST follow the security rules in [`AGENTS.md`](./AGENTS.md) and [`.agents/skills/coding-standards/SKILL.md`](./.agents/skills/coding-standards/SKILL.md):
@@ -46,4 +63,4 @@ All AI assistants pairing in this repository MUST follow the security rules in [
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-08-19* | *Last Reviewed: 2026-08-19*
+*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
