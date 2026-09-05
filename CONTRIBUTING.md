@@ -34,6 +34,29 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 > [!CAUTION]
 > **No Bypass Rule**: Never use `git commit --no-verify`. Pre-commit hooks are enforced quality gates. If a specific tool fails due to local missing tools, use targeted skip flags (e.g. `SKIP=detect-secrets git commit`).
 
+### Commit Attribution
+
+Configure a `git config user.email` that GitHub can attribute to your account **before** you commit. A repository ruleset or org policy may require an extra approving review for unattributed changes, and a solo maintainer cannot satisfy that -- leaving history rewriting and force-pushing as the only escape from an already-pushed commit.
+
+The `check-commit-attribution` pre-commit hook (`scripts/check_commit_attribution.py`) catches this while the fix is still a one-liner. It passes when your email is a GitHub noreply address:
+
+```bash
+git config user.email "<ID>+<username>@users.noreply.github.com"
+```
+
+(Your noreply address is shown at GitHub -> Settings -> Emails -> "Keep my email addresses private".)
+
+> [!NOTE]
+> **The check is a heuristic, not a verdict on your email.** It recognises `@users.noreply.github.com` addresses and an explicit allowlist; it cannot see which addresses are verified on your GitHub account. An address on a verified custom domain attributes perfectly well and will still fail the check. If yours is already verified on GitHub, allowlist it rather than changing it:
+>
+> ```bash
+> git config --add user.attributableEmails "you@your-verified-domain.example"
+> ```
+>
+> The key is multi-valued (`git config --get-all user.attributableEmails`), so repeat the command to allowlist several addresses.
+
+See [docs/BRANCH_PROTECTION.md](docs/BRANCH_PROTECTION.md) for the ruleset side of this trap.
+
 ---
 
 ## 3. Pull Request Protocol
@@ -85,4 +108,4 @@ Expired PATs trigger `401 Unauthorized` errors on `gh` commands. Set calendar re
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
+*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*

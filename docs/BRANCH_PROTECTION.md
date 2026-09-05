@@ -66,6 +66,23 @@ one-size-fits-all config to apply blindly:
   or the required check will never be satisfiable and nothing will ever merge.
 - `required_approving_review_count` should reflect a deliberate choice about
   your team's review model, not this file's default.
+- **Unattributed-changes approval** is the same solo-maintainer trap wearing a
+  different hat, and it's the specific tightening to think twice about. The
+  `pull_request` rule accepts a
+  `require_extra_approval_for_unattributed_changes` parameter, which demands an
+  extra approving review for any commit whose author email GitHub can't map to a
+  verified account. **Neither ruleset in `.github/rulesets/` sets it** -- so if
+  you hit this on a repo built from this template, it came from an org-level
+  policy or from a rule someone added later, not from importing these files. Do
+  not add it without an answer to "who approves?": a lone maintainer can't
+  self-approve, `bypass_actors: []` removes the admin override, and the only
+  escape from an already-pushed commit is rewriting history and force-pushing --
+  itself a high-risk operation under
+  `.agents/skills/human-in-the-loop/SKILL.md`. Whether or not you enable the
+  rule, `scripts/check_commit_attribution.py` (wired into
+  `.pre-commit-config.yaml`) catches an unattributable author email *before* the
+  commit exists, when the fix is one `git config` line. See
+  [CONTRIBUTING.md](../CONTRIBUTING.md) for configuring it.
 - `bypass_actors` is empty by default (nobody can bypass). Add an actor here
   only if you have a real, considered need for an emergency override path,
   and treat that as itself a high-risk change to make deliberately.
@@ -89,4 +106,4 @@ not apply it silently.
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
+*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
