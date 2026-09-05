@@ -76,15 +76,39 @@ jobs:
             config_args+=(--config .semgrep.yaml)
           fi
 
-          # --error exits non-zero on findings so they are visible as a red step
-          # inside this deliberately non-blocking job.
+          # Deliberately NOT `--error`. Semgrep exits 0 when it merely found
+          # something, so the job's check run stays green: a template whose very
+          # first pull request shows a red X trains everyone to ignore the
+          # scanner. Findings surface in the log above, in the step summary
+          # below, and as code scanning alerts. `continue-on-error: true` on the
+          # job then covers the other case -- Semgrep itself erroring, e.g. the
+          # registry being unreachable -- which must not gate a PR either.
           semgrep scan "${config_args[@]}" \
-            --sarif --output semgrep.sarif \
-            --error
+            --sarif --output semgrep.sarif
+
+      - name: Summarize findings in the run summary
+        if: always() && hashFiles('semgrep.sarif') != ''
+        run: |
+          set -euo pipefail
+
+          count=$(python -c 'import json,sys; print(sum(len(r.get("results", [])) for r in json.load(open("semgrep.sarif"))["runs"]))')
+
+          {
+            echo "### Semgrep SAST"
+            echo ""
+            if [ "$count" -eq 0 ]; then
+              echo "No findings."
+            else
+              echo "**$count finding(s)** -- see the scan step log above, and the"
+              echo "Security tab if code scanning is available on this repository."
+              echo ""
+              echo "This job is non-blocking by design; it never fails a pull request."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Semgrep results to the Security tab
-        # Runs even when the scan step exited non-zero on findings -- uploading
-        # them is the whole point.
+        # Runs even if the scan step itself errored part way through, as long as
+        # it produced a report -- uploading what was found is the whole point.
         if: always() && hashFiles('semgrep.sarif') != ''
         # Code scanning upload requires a public repository or GitHub Advanced
         # Security. On a private repository without GHAS this step fails; the

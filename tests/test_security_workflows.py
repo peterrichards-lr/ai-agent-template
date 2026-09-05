@@ -168,6 +168,31 @@ def test_semgrep_scan_consumes_the_project_rule_file():
     )
 
 
+def test_semgrep_scan_step_does_not_force_a_nonzero_exit():
+    """`--error` turns every pull request red from day one.
+
+    Verified empirically on PR #87: `continue-on-error: true` keeps the workflow run
+    green and the job non-required, but the job's own check run still reports `fail`
+    in `gh pr checks`, so the scan step must not exit non-zero merely because findings
+    exist. Findings surface through the job log, the step summary and the SARIF upload.
+    """
+    jobs = load_workflow(SECURITY_WORKFLOW).get('jobs', {})
+    semgrep_steps = collect_run_scripts(jobs[SEMGREP_JOB_ID])
+    # Shell comments explain the choice and name the flag, so match commands only.
+    commands = "\n".join(
+        line for line in semgrep_steps.splitlines() if not line.lstrip().startswith('#')
+    )
+
+    assert '--error' not in commands, (
+        "semgrep scan must not run with --error: it would fail the job's check run "
+        "on every pull request that has any finding at all"
+    )
+    assert 'GITHUB_STEP_SUMMARY' in semgrep_steps, (
+        "Without --error the findings need a visible home: write a summary of the "
+        "scan to the run's job summary"
+    )
+
+
 def test_semgrep_stub_ships_exactly_one_worked_example_rule():
     assert SEMGREP_RULES_FILE.exists(), "Expected a .semgrep.yaml project-rule stub"
 
