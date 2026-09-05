@@ -1,5 +1,7 @@
-# Development & Pre-commit Quality Gate Dependencies (Pinned Versions)
-pytest==9.1.1
+# Language-Agnostic Agent Tooling & Pre-commit Quality Gate Dependencies (Pinned Versions)
+# Every project bootstrapped from this template needs these regardless of its stack.
+# Python-project test dependencies live in requirements-python.txt, which
+# `bootstrap_template.py --clean-template` removes for non-Python languages.
 pre-commit==4.6.2
 detect-secrets==1.5.0
 actionlint-py==1.7.12.24

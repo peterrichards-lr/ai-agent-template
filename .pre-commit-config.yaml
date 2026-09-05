@@ -49,6 +49,18 @@ repos:
         files: (\.md|\.cursorrules|\.windsurfrules)$
         pass_filenames: false
 
+      # `--mode template` exempts the un-bootstrapped stubs (AGENTS.md,
+      # CODE_OF_CONDUCT.md, ...) whose placeholders this repository is supposed to
+      # still carry. bootstrap_template.py drops the flag in the adopter's copy so
+      # their repository is checked strictly. pass_filenames: false because the
+      # doctor walks the whole tree, including files no commit touched.
+      - id: doctor
+        name: Verify No Template Placeholders Survive
+        entry: python3 scripts/doctor.py --mode template
+        language: system
+        always_run: true
+        pass_filenames: false
+
       - id: check-provider-redirects
         name: Validate Provider Redirects
         entry: python3 scripts/check_provider_redirects.py
