@@ -18,10 +18,10 @@ drift from it deliberate instead of silent.
 **Reference version at last check**: `unknown` (origin/main @ `unknown`, unknown)
 **Last checked**: never
 
-> A stamp of `unknown` / `never` means no baseline has been recorded yet -- expected
-> immediately after bootstrap, because a repository created with GitHub's "Use this template"
-> has no shared history with the template to read a commit from. Run the drift checker with
-> `--update-stamp` to set the baseline.
+> If the stamp above reads `unknown` / `never`, no baseline has been recorded yet. That is
+> expected when this repository was created with GitHub's "Use this template", which shares
+> no history with the template for bootstrap to read a commit from. Run the drift checker
+> with `--update-stamp` to set the baseline.
 
 ---
 

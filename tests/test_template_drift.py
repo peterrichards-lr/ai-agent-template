@@ -245,6 +245,24 @@ def test_compare_paths_reports_no_drift_for_an_identical_checkout(tmp_path):
     assert comparison.has_drift is False
 
 
+def test_compiled_artefacts_are_never_reported_as_drift(tmp_path):
+    """`scripts/__pycache__/*.pyc` exists in any working checkout and in no git tree;
+    reporting it would put build noise at the top of every Python adopter's report."""
+    upstream_root = tmp_path / 'upstream'
+    local_root = tmp_path / 'local'
+    (upstream_root / 'scripts').mkdir(parents=True)
+    (local_root / 'scripts' / '__pycache__').mkdir(parents=True)
+
+    (upstream_root / 'scripts' / 'doctor.py').write_text('same\n', encoding='utf-8')
+    (local_root / 'scripts' / 'doctor.py').write_text('same\n', encoding='utf-8')
+    (local_root / 'scripts' / '__pycache__' / 'doctor.cpython-314.pyc').write_bytes(b'\x00compiled')
+
+    comparison = compare_paths(upstream_root, local_root, ['scripts'])
+
+    assert comparison.only_local == []
+    assert comparison.has_drift is False
+
+
 def test_a_path_absent_from_both_sides_is_not_drift(tmp_path):
     """Adopters legitimately delete template-only paths; absence on both sides is silence."""
     upstream_root = tmp_path / 'upstream'

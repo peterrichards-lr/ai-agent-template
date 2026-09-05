@@ -71,6 +71,12 @@ GOVERNED_PATHS = (
     '.pre-commit-config.yaml',
 )
 
+# check_docs_review.IGNORE_DIRS is tuned for scanning documentation; a tree comparison
+# must additionally skip artefacts that exist in a working checkout and in no git tree.
+# Left in, `scripts/__pycache__/*.pyc` heads the report for every Python adopter.
+COMPARISON_IGNORE_DIRS = IGNORE_DIRS | {'__pycache__', '.idea', '.vscode'}
+COMPARISON_IGNORE_SUFFIXES = ('.pyc', '.pyo', '.orig', '.rej')
+
 # Git subcommands are cheap; a hung network call is not. Bound every one of them.
 DEFAULT_GIT_TIMEOUT_SECONDS = 120
 
@@ -369,7 +375,9 @@ def _collect_files(root: Path, rel_path: str) -> List[str]:
         if not candidate.is_file():
             continue
         relative = candidate.relative_to(root)
-        if any(part in IGNORE_DIRS for part in relative.parts):
+        if any(part in COMPARISON_IGNORE_DIRS for part in relative.parts):
+            continue
+        if relative.suffix.lower() in COMPARISON_IGNORE_SUFFIXES:
             continue
         collected.append(relative.as_posix())
     return collected
