@@ -49,11 +49,11 @@ This template solves these failure modes out of the box, providing a standardize
 
 ### 8. GitHub Issue & Task Plan Synchronization
 - **Problem**: Disconnect between agent development tasks and team issue trackers.
-- **Pattern**: Standardized issue templates (Feature, Bug, Tech Debt), mandatory PR issue linking (`Closes #<issue>`), GitHub Actions CI quality gates, and automated task plan sync via `gh_issue_sync.py`.
+- **Pattern**: GitHub Issue Forms (`bug_report.yml`, `feature_request.yml`, `tech_debt.yml`) with typed, individually required fields rather than freeform Markdown prompts agents delete; mandatory PR issue linking (`Closes #<issue>`), GitHub Actions CI quality gates, and automated task plan sync via `gh_issue_sync.py`. Each form keeps at most four required fields -- a form demanding a page of mandatory input for a one-line bug gets routed around rather than filled in.
 
 ### 9. Immediate Technical Debt Governance
 - **Problem**: Minor technical debt accumulating unnoticed during agent refactoring.
-- **Pattern**: Agents log technical debt immediately to GitHub Issues (`--label "tech-debt"`) across 10 catalogued categories: *Code Smells, Duplication, Over-complexity, Fragile Coupling, Missing Safety Guards, Missing Tests, Security Hygiene, Deprecated Patterns, Config Drift, Documentation Debt*.
+- **Pattern**: Agents log technical debt immediately to GitHub Issues (`--label "tech-debt"`) across 10 catalogued categories. The taxonomy has exactly one home -- the required `Category` dropdown in [`.github/ISSUE_TEMPLATE/tech_debt.yml`](../.github/ISSUE_TEMPLATE/tech_debt.yml) -- which `.agents/skills/github-workflow/SKILL.md` rule 4 mirrors for command-line filing and `tests/test_issue_templates.py` holds in step. This page deliberately does not restate the list: a third hand-maintained copy is a third thing to forget to update.
 
 ### 10. Multi-Agent Subagent Delegation & Asynchronous Synthesis
 - **Problem**: Large codebase surveys or parallel research blocking the primary developer agent.

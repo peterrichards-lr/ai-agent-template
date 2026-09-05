@@ -1,0 +1,63 @@
+# GitHub Issue Form - adopter-customisable stub.
+#
+# Required fields are kept deliberately few: a form that demands a page of
+# mandatory input for a one-line bug gets routed around rather than filled in.
+# Add stack-specific fields (runtime version, browser, deployment target) as
+# your project grows, and prefer dropdowns over free text where the answer set
+# is closed.
+name: Bug Report
+description: Report a defect so it can be reproduced and fixed
+title: 'fix: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. The three required
+        fields below are what makes a report actionable: what happened, how to
+        make it happen again, and what should have happened instead.
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Running the sync script against an empty directory exits 0 but writes nothing.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: The exact commands or actions that trigger the bug.
+      placeholder: |
+        1. Run `python3 scripts/example.py --flag`
+        2. Observe the output
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen instead.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, language runtime, and version of this project (replace with a dropdown once your supported matrix is fixed).
+      placeholder: macOS 15.3 (Apple Silicon) / Python 3.12.4 / v1.4.0
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log Output / Stack Trace
+      description: Paste any relevant log output. This is rendered as code, so no backticks are needed.
+      render: shell
+  - type: checkboxes
+    id: duplicate_check
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true

@@ -52,7 +52,9 @@ gh pr view --json reviews,comments,statusCheckRollup
 ### 4. Technical Debt Issue Creation
 Tech debt you notice but don't fix as part of the current task must still be tracked -- untracked debt is debt that never gets paid down. This is the single canonical place tech debt is tracked in this template: as a GitHub issue labeled `tech-debt`. Do not also maintain a separate registry elsewhere (`GEMINI.md` points back here rather than keeping its own list, for exactly this reason).
 
-The 10 catalogued categories: Code Smells, Duplication, Over-complexity, Fragile Coupling, Missing Safety Guards, Missing Tests, Security Hygiene, Deprecated Patterns, Config Drift, Documentation Debt.
+The 10 catalogued categories, mirroring the required `Category` dropdown in `.github/ISSUE_TEMPLATE/tech_debt.yml`, which owns this list: Code Smells, Duplication, Over-complexity, Fragile Coupling, Missing Safety Guards, Missing Tests, Security Hygiene, Deprecated Patterns, Config Drift, Documentation Debt.
+
+Change the dropdown first and this sentence second -- `tests/test_issue_templates.py` fails if they drift apart. Everywhere else (`docs/TEMPLATE_GUIDE.md` included) links here rather than restating the categories.
 
 Apply this without derailing the task you're actually doing:
 - **Don't halt mid-task.** Keep working; log tech debt at a natural checkpoint (before opening your PR is fine) rather than interrupting the current edit the moment you spot something.
@@ -60,9 +62,39 @@ Apply this without derailing the task you're actually doing:
 - **Batch related findings into one issue.** If a single pass surfaces several instances of the same category (e.g. three duplicated helper functions), file one issue describing the pattern with all instances listed, not one issue per instance.
 - **Bar for filing.** File it if it's a real, specific problem you can point at -- not a vague "this area could be cleaner." If you can't say what a future agent should do with it, it's not ready to file yet.
 
-```bash
-gh issue create --title "Tech Debt: [Title]" --body "[Details, File Path, Proposed Fix]" --label "tech-debt"
+**Filing it: the forms do not enforce themselves over the API.** The issue forms in `.github/ISSUE_TEMPLATE/` validate required fields in GitHub's web UI only; the REST API -- and therefore `gh` -- applies no validation at all. `gh issue create --template` is an interactive prompt, and it is rejected in both non-interactive shapes an agent can reach (verified against `gh` 2.96.0):
+
+```text
+$ gh issue create --template tech_debt.yml --title "..." --body "..."
+`--template` is not supported when using `--body` or `--body-file`
+
+$ gh issue create --template tech_debt.yml --title "..."     # no TTY
+must provide `--title` and `--body` when not running interactively
 ```
+
+So an agent MUST reproduce the form's shape itself, using the labels from `tech_debt.yml` as the body headings -- an unstructured `--body "[Details, File Path, Proposed Fix]"` blob is what this rule exists to prevent:
+
+```bash
+gh issue create --title "Tech Debt: <short title>" --label "tech-debt" --body-file - <<'EOF'
+### Category
+
+Duplication
+
+### Location
+
+- `scripts/example.py:42-88`
+
+### Debt Description
+
+<what is wrong and why it is a problem>
+
+### Proposed Remediation
+
+<how a future agent should fix it>
+EOF
+```
+
+`Category` must be one of the 10 catalogued values verbatim; the other two headings above are the form's remaining required fields. A human at a terminal should prefer the real form, which GitHub does validate: `gh issue create --web --template tech_debt.yml`.
 
 ### 5. Fine-Grained PAT & Authentication Setup
 

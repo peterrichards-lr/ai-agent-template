@@ -1,0 +1,51 @@
+# GitHub Issue Form - adopter-customisable stub.
+#
+# Only the problem and the proposed solution are mandatory; impact and
+# alternatives are optional so a small, well-understood request is cheap to
+# file. Tighten `required` on the impact field if your team prioritises by
+# business case.
+name: Feature Request
+description: Suggest a new feature or an improvement to an existing one
+title: 'feat: '
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea. Describing the problem before the solution
+        gives maintainers room to propose a better implementation than the one
+        you had in mind.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Use Case
+      description: What problem does this solve? What are you unable to do today?
+      placeholder: When onboarding a new repository I have to hand-edit four files because...
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: The behaviour, interface, or technical design you would like. Implementation steps welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Other approaches you evaluated, including any workaround you use today.
+  - type: textarea
+    id: impact
+    attributes:
+      label: Business / Proof-of-Concept Impact
+      description: Business case, deadline, or productivity impact that helps maintainers weigh this against other work.
+      placeholder: Blocks the customer POC scheduled for 10 July.
+  - type: markdown
+    attributes:
+      value: |
+        ### 👍 Community voting
+
+        Prioritisation follows GitHub's native 👍 reaction on the issue body -
+        ask colleagues who need this to react rather than posting "+1" comments,
+        which push the discussion down without registering a vote.
