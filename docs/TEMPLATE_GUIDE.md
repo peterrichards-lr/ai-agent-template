@@ -25,7 +25,7 @@ This template solves these failure modes out of the box, providing a standardize
 
 ### 2. Provider-Agnostic Routing & Persistent Scratchpad (`.agent-state.md`)
 - **Problem**: AI agent context resets when a new conversation begins, or context is fragmented across provider-specific files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`).
-- **Pattern**: Provider discovery files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`) exist solely as lightweight redirects to `AGENTS.md`. Active in-flight state is managed in `.agent-state.md` (gitignored), ensuring seamless context preservation across AI provider switches (Gemini, Claude, Cursor, Copilot, Windsurf, etc.).
+- **Pattern**: Provider discovery files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`) exist solely as lightweight redirects to `AGENTS.md`. Active in-flight state is managed in `.agent-state.md` (gitignored), ensuring seamless context preservation across AI provider switches (Gemini, Claude, Cursor, Copilot, Windsurf, etc.). Because that file is gitignored, it cannot ship with a clone: `scripts/bootstrap_template.py` seeds it from the tracked template `.agents/templates/agent-state.md`, so a freshly bootstrapped project always has the scratchpad the rules refer to. The seed deliberately carries no technical debt table -- debt is tracked solely as `tech-debt` GitHub issues (`.agents/skills/github-workflow/SKILL.md` rule 4).
 
 ### 3. Logic-First Planning & Predictive Failure Analysis
 - **Problem**: AI agents diving into multi-file code modifications prematurely, creating fragile or broken diffs.

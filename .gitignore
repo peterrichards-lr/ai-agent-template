@@ -11,6 +11,7 @@ Thumbs.db
 .claude/worktrees/
 .gemini/settings.local.json
 .agent-state.md
+# (its tracked seed lives at .agents/templates/agent-state.md and must stay committed)
 .agent_scratch/
 .progress-signal
 scratch/
