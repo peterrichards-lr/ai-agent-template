@@ -10,7 +10,7 @@ Whether you are building in **Go**, **Python**, **Rust**, **Java**, **TypeScript
 
 - 🧠 **Context-Optimized Agent Routing (`AGENTS.md`)**: Decouples agent rules into domain-specific skill files (`.agents/skills/`), preventing prompt bloat and context token exhaustion.
 - 🔀 **Provider Discovery Redirects (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`)**: Lightweight redirects ensuring all AI providers load canonical rules from `AGENTS.md`.
-- 📌 **Persistent Scratchpad State (`.agent-state.md`)**: Shared gitignored scratchpad tracking project status, active goals, and roadmap priorities across provider switches.
+- 📌 **Persistent Scratchpad State (`.agent-state.md`)**: Shared gitignored scratchpad tracking project status, active goals, and roadmap priorities across provider switches. Seeded from the tracked template `.agents/templates/agent-state.md` during bootstrap, so a fresh clone always starts with one.
 - 🛡️ **Language-Agnostic Quality Gates (`.pre-commit-config.yaml`)**: Out-of-the-box pre-commit configuration supporting secret scanning (`detect-secrets`, `gitleaks`), markdown link validation, document review policies, and modular linting for Go, Python, Rust, Java, and Node.js.
 - ⏱️ **Automated Documentation Hygiene**: Zero-dependency Python 3 tools (`append_timestamps.py` and `check_docs_review.py`) to enforce timestamp footers (`*Last Updated* | *Last Reviewed*`) and prevent documentation decay.
 - ⚙️ **Project Bootstrapper (`scripts/bootstrap_template.py`)**: One-command initialization script that customizes the template for your chosen programming language stack, installs git hooks, and seeds project metadata.
@@ -70,7 +70,7 @@ The bootstrapper will:
 ├── .windsurfrules                     # Discovery redirect to AGENTS.md (Windsurf IDE)
 ├── .claude/                           # Claude Code configuration & discovery
 │   └── skills                         # Symlink -> ../.agents/skills
-├── .agent-state.md                    # Gitignored persistent task scratchpad
+├── .agent-state.md                    # Gitignored persistent task scratchpad (seeded by bootstrap)
 ├── CONTRIBUTING.md                    # Guidelines for human & AI agent contributors
 ├── README.md                          # This file
 ├── LICENSE                            # MIT License
@@ -92,6 +92,8 @@ The bootstrapper will:
 │   ├── multi-agent-orchestration/     # Subagent delegation directives
 │   ├── rule-adherence/                # Self-verification & checkable artifact rules
 │   └── release-management/            # Semantic versioning & release auditing
+├── .agents/templates/                 # Tracked seed files copied into place by bootstrap
+│   └── agent-state.md                 # Starter scratchpad seed for .agent-state.md
 ├── scripts/                           # Portable Python 3 helper utilities
 │   ├── append_timestamps.py           # Injects markdown footer timestamps
 │   ├── check_docs_review.py           # Validates doc freshness & review age
