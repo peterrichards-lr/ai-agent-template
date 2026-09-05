@@ -114,7 +114,7 @@ jobs:
         # Security. On a private repository without GHAS this step fails; the
         # findings are still printed in the job log above.
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: semgrep.sarif
           category: semgrep
@@ -172,10 +172,10 @@ jobs:
 #      - name: Checkout repository
 #        uses: actions/checkout@v7
 #      - name: Initialize CodeQL
-#        uses: github/codeql-action/init@v3
+#        uses: github/codeql-action/init@v4
 #        with:
 #          languages: ${{ matrix.language }}
 #      - name: Perform CodeQL analysis
-#        uses: github/codeql-action/analyze@v3
+#        uses: github/codeql-action/analyze@v4
 #        with:
 #          category: "/language:${{ matrix.language }}"
