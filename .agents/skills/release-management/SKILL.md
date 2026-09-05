@@ -28,6 +28,26 @@ Before writing release notes for a batch of merged work, verify -- don't assume 
 ### 4. Tagging Is a High-Commitment Action
 Pushing a version tag or publishing a release belongs alongside merging in `human-in-the-loop/SKILL.md`'s High-Risk Operation Gates -- propose the version number and notes, and get confirmation before pushing, rather than tagging silently. This matters even more once `protect-version-tags.json` (see `docs/BRANCH_PROTECTION.md`) is applied to a repo, since tags become immutable: a wrong tag can't be deleted or moved, only superseded by a new one.
 
+### 5. Git Tags Are the Version; Run the Tooling, Don't Hand-Roll It
+The version lives in the annotated `v*` tags and nowhere else. There is deliberately no `VERSION` file: `scripts/check_template_drift.py` already reads `git describe --tags --abbrev=0`, a second source could disagree with it, and a Go project has no version file at all -- tags *are* its version. Where an ecosystem manifest needs a version at build time (`package.json`, `pyproject.toml`, `Cargo.toml`), that value is a one-way projection *from* the tag, never a second source of truth.
+
+Rules 1-4 above are executed by `scripts/release.py`, which is where they stop being prose you can skip:
+
+```bash
+python3 scripts/release.py --dry-run   # audit + propose the version; writes nothing, tags nothing
+python3 scripts/release.py             # write the CHANGELOG.md section for review
+python3 scripts/release.py --tag       # confirm, then create the annotated tag (never pushes)
+```
+
+- It reads the current version with `git describe --tags --abbrev=0` and **proposes** the next from Conventional Commits in `<last-tag>..HEAD` (`feat:` minor, `fix:` patch, `!`/`BREAKING CHANGE` major). `--bump {major,minor,patch}` overrides the proposal -- rule 1 is a judgement about adopter impact, and the commit types are only evidence for it.
+- It refuses to write or tag when rule 3's audit fails: every `Closes #N` in the range is checked against `gh`, and an issue that is still open -- or whose state cannot be verified -- stops the release (exit code 3).
+- It never pushes and never publishes. Pushing the tag stays a human action (rule 4); `.github/workflows/release.yml` then publishes the GitHub Release from that version's `CHANGELOG.md` section on the tag push, satisfying rule 2 even for a tag pushed by hand.
+
+Curated `[Unreleased]` entries are promoted into the new version section verbatim and the generated lines fill in the rest, so the "what changed and why it matters" prose rule 2 asks for survives the automation. Review the drafted section before committing it.
+
+### 6. Release Branches Need a Version Guard This Template Does Not Ship
+If you add a long-lived `release/*` branch flow, know the failure mode it brings: GitHub's "Update branch" button can silently revert a release branch's version by cleanly resolving the merge in the default branch's favour, and nothing fails. A dedicated version-guard workflow is the fix. This template has no release branches -- tags are cut from `main` -- so the machinery is not shipped here; add it in the same change as the branch flow, not afterwards.
+
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
+*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
