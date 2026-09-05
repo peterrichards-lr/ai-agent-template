@@ -200,6 +200,46 @@ scaffolding is Python-specific rather than part of what an adopter needs:
 (`pre-commit`, `detect-secrets`, `actionlint-py`, `PyYAML`) that every adopter's quality
 gate depends on, regardless of the project's language.
 
+### Optional Documentation Site (`--docs-site`)
+
+Two of this template's sibling projects outgrew "a folder of Markdown files" and
+independently built the same thing: `mkdocs.yml` plus a workflow deploying MkDocs Material
+to GitHub Pages, organised on the [Diátaxis](https://diataxis.fr) model. The template
+carries that scaffold, but a 200-line utility should not inherit a documentation engine it
+never asked for, so it is strictly opt-in:
+
+```bash
+python3 scripts/bootstrap_template.py --name "my-awesome-service" --lang go --clean-template \
+  --repo-owner "my-org" --conduct-email "conduct@example.com" --docs-site
+```
+
+| Path | Without `--docs-site` | With `--docs-site` |
+| :--- | :--- | :--- |
+| `mkdocs.yml` | removed by `--clean-template` | `site_name`, `site_url` and `repo_url` seeded from `--name`/`--repo-owner` |
+| `.github/workflows/docs.yml` | removed by `--clean-template` | the commented `push:` trigger is uncommented, arming the Pages deploy |
+| `requirements-docs.txt` | removed by `--clean-template` | kept; installed only by the docs workflow |
+| `docs/tutorials/`, `docs/how-to/`, `docs/reference/`, `docs/explanation/` | kept | kept |
+
+Three deliberate choices:
+
+- **The workflow ships dormant.** Its only live trigger is `workflow_dispatch`, so a
+  repository that did not opt in never runs it and never assumes GitHub Pages is enabled
+  (it is not, on a fresh repository -- set Settings → Pages → Source to "GitHub Actions"
+  first). The `push:` trigger ships commented out, between markers `--docs-site`
+  uncomments, so a reader can see exactly what enabling it does.
+- **The Diátaxis directories survive either way.** Sorting documentation into tutorials,
+  how-to guides, reference and explanation is worth doing whether or not it is rendered.
+  Where a new page belongs is the decision agents get wrong most often, so the rule lives
+  in `.agents/skills/documentation/SKILL.md` and, at length, in `docs/explanation/`.
+- **`mkdocs-material` is not in `requirements-dev.txt`.** That file is installed by every
+  adopter on every CI run; the docs site owns `requirements-docs.txt` instead, so a project
+  without a published site pays nothing for one.
+
+The site home page is generated from `README.md` at build time (`cp README.md
+docs/index.md`, run by the workflow and gitignored) so the GitHub landing page and the site
+home are one document. Timestamp footers are rendered rather than hidden: they are the
+repository's freshness contract, and the published site is where a reader can act on it.
+
 ### Post-Bootstrap Verification (`scripts/doctor.py`)
 
 Every bootstrap mutation is a regex substitution or a file copy, and either can miss. The

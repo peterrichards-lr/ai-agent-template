@@ -49,6 +49,22 @@ SEMGREP_LANGUAGE_RULESETS = {
 }
 SECURITY_SCAN_WORKFLOW_RELPATH = Path('.github') / 'workflows' / 'security-scan.yml'
 
+# The optional MkDocs Material documentation site (see #58). It ships dormant:
+# .github/workflows/docs.yml carries no automatic trigger until --docs-site
+# uncomments the push block between DOCS_SITE_OPT_IN_MARKER lines, and without
+# --docs-site the whole scaffold is deleted by --clean-template. Everything a
+# project without a published site would otherwise carry for nothing -- a Pages
+# workflow, mkdocs-material in a requirements file -- lives in these three paths.
+DOCS_SITE_WORKFLOW_RELPATH = Path('.github') / 'workflows' / 'docs.yml'
+DOCS_SITE_CONFIG_RELPATH = Path('mkdocs.yml')
+DOCS_SITE_REQUIREMENTS_RELPATH = Path('requirements-docs.txt')
+DOCS_SITE_SCAFFOLD_RELPATHS = (
+    DOCS_SITE_WORKFLOW_RELPATH,
+    DOCS_SITE_CONFIG_RELPATH,
+    DOCS_SITE_REQUIREMENTS_RELPATH,
+)
+DOCS_SITE_OPT_IN_MARKER = 'OPT-IN PUSH TRIGGER'
+
 # Community health and editor baseline files shipped as adopter-customisable stubs.
 # .editorconfig carries no placeholders but is listed here so this stays the single
 # canonical inventory of these files for tests and downstream tooling.
@@ -448,6 +464,114 @@ def configure_semgrep_rulesets(root_dir: Path, language: str, dry_run: bool = Fa
     print(f"  ✓ Selected Semgrep rulesets for {language}: {' '.join(rulesets)}")
     return True
 
+def uncomment_marked_block(content: str, marker: str) -> tuple:
+    """Uncomment the lines between the two `marker` lines, dropping the markers.
+
+    The template ships opt-in YAML commented out rather than absent so a reader can
+    see exactly what enabling it does, and so `actionlint` and `check-yaml` still
+    parse the file. Returns (content, number of lines uncommented); a zero count
+    means the marked block was not found.
+    """
+    lines = content.splitlines(keepends=True)
+    bounds = [index for index, line in enumerate(lines) if marker in line]
+    if len(bounds) != 2:
+        return content, 0
+
+    start, end = bounds
+    body = [re.sub(r'^(\s*)#[ ]?', r'\1', line) for line in lines[start + 1:end]]
+    return ''.join(lines[:start] + body + lines[end + 1:]), len(body)
+
+
+def enable_docs_site(root_dir: Path, project_name: str, repo_owner: str = None,
+                     dry_run: bool = False) -> bool:
+    """Activate the opt-in MkDocs site: seed mkdocs.yml and arm the Pages workflow.
+
+    Aborts when a shipped file is present but its knob has gone missing. The adopter
+    asked for a documentation site by name; silently handing them a workflow that
+    never fires would be a worse outcome than a failed bootstrap.
+    """
+    print("📚 Enabling the optional documentation site...")
+
+    workflow_path = root_dir / DOCS_SITE_WORKFLOW_RELPATH
+    config_path = root_dir / DOCS_SITE_CONFIG_RELPATH
+
+    missing = [rel.as_posix() for rel in (DOCS_SITE_WORKFLOW_RELPATH, DOCS_SITE_CONFIG_RELPATH)
+               if not (root_dir / rel).exists()]
+    if missing:
+        print(f"  ⚠️ Skipping --docs-site: {', '.join(missing)} not found.", file=sys.stderr)
+        return False
+
+    workflow, uncommented = uncomment_marked_block(
+        workflow_path.read_text(encoding='utf-8'), DOCS_SITE_OPT_IN_MARKER)
+    if uncommented == 0:
+        print(f"❌ Error: Could not find the '{DOCS_SITE_OPT_IN_MARKER}' block in "
+              f"{DOCS_SITE_WORKFLOW_RELPATH.as_posix()}; the site would never deploy.",
+              file=sys.stderr)
+        sys.exit(1)
+
+    config = config_path.read_text(encoding='utf-8')
+    config, named = re.subn(r'^site_name:.*$', lambda _: f'site_name: {project_name}',
+                            config, count=1, flags=re.MULTILINE)
+    if named == 0:
+        print(f"❌ Error: Could not find the site_name knob in "
+              f"{DOCS_SITE_CONFIG_RELPATH.as_posix()}.", file=sys.stderr)
+        sys.exit(1)
+
+    # site_url/repo_url ship commented out: a canonical URL pointing at the template's
+    # own Pages site is worse than no canonical URL at all. Seed them only when the
+    # owner is known.
+    if repo_owner:
+        pages_url = f'https://{repo_owner}.github.io/{project_name}/'
+        repo_url = f'https://github.com/{repo_owner}/{project_name}'
+        config, _ = re.subn(r'^#\s*site_url:.*$', lambda _: f'site_url: {pages_url}',
+                            config, count=1, flags=re.MULTILINE)
+        config, _ = re.subn(r'^#\s*repo_url:.*$', lambda _: f'repo_url: {repo_url}',
+                            config, count=1, flags=re.MULTILINE)
+
+    if dry_run:
+        announce_planned_write(DOCS_SITE_WORKFLOW_RELPATH.as_posix(),
+                               "activate the GitHub Pages push trigger")
+        announce_planned_write(DOCS_SITE_CONFIG_RELPATH.as_posix(),
+                               f"seed site_name/site_url/repo_url for '{project_name}'")
+        return True
+
+    workflow_path.write_text(workflow, encoding='utf-8')
+    config_path.write_text(config, encoding='utf-8')
+    print(f"  ✓ Armed the GitHub Pages push trigger in {DOCS_SITE_WORKFLOW_RELPATH.as_posix()}")
+    print(f"  ✓ Seeded {DOCS_SITE_CONFIG_RELPATH.as_posix()} for '{project_name}'")
+    print("  ℹ️ Set Settings > Pages > Source to 'GitHub Actions' before the first deploy.")
+    return True
+
+
+def clean_docs_site_scaffold(root_dir: Path, docs_site: bool, dry_run: bool = False) -> list:
+    """Remove the optional documentation site unless the adopter opted into it.
+
+    The Diátaxis directories under docs/ are deliberately NOT removed: organising
+    documentation into tutorials/how-to/reference/explanation is worth doing whether
+    or not the result is ever rendered into a site.
+
+    Returns the sorted relative POSIX paths that were (or, in a dry run, would be) removed.
+    """
+    if docs_site:
+        return []
+
+    removed = []
+    for rel_path in DOCS_SITE_SCAFFOLD_RELPATHS:
+        target = root_dir / rel_path
+        if not target.exists():
+            continue
+
+        removed.append(rel_path.as_posix())
+        if dry_run:
+            announce_planned_write(rel_path.as_posix(), "remove the opt-in documentation site")
+            continue
+
+        target.unlink()
+        print(f"  ✓ Removed the opt-in documentation site ({rel_path.as_posix()})")
+
+    return sorted(removed)
+
+
 def clean_python_scaffolding(root_dir: Path, language: str, dry_run: bool = False) -> list:
     """Remove the Python-only scaffolding the template ships for its own benefit.
 
@@ -480,7 +604,8 @@ def clean_python_scaffolding(root_dir: Path, language: str, dry_run: bool = Fals
 
     return sorted(removed)
 
-def clean_template_meta_docs(root_dir: Path, project_name: str, language: str, dry_run: bool = False):
+def clean_template_meta_docs(root_dir: Path, project_name: str, language: str,
+                             dry_run: bool = False, docs_site: bool = False):
     """Remove template-only meta docs and generate a clean project README."""
     print("🧹 Cleaning template-specific meta documentation...")
 
@@ -493,6 +618,7 @@ def clean_template_meta_docs(root_dir: Path, project_name: str, language: str, d
             print("  ✓ Removed template meta-doc (docs/TEMPLATE_GUIDE.md)")
 
     clean_python_scaffolding(root_dir, language, dry_run=dry_run)
+    clean_docs_site_scaffold(root_dir, docs_site, dry_run=dry_run)
 
     today_str = datetime.today().strftime('%Y-%m-%d')
     clean_readme_content = f"""# {project_name}
@@ -843,7 +969,8 @@ def bootstrap(
     setup_branch_protection: bool = False,
     repo_owner: str = None,
     conduct_email: str = None,
-    dry_run: bool = False
+    dry_run: bool = False,
+    docs_site: bool = False
 ):
     root_dir = Path(__file__).parent.parent.resolve()
     print(f"🚀 Initializing AI Agent Project Template in: {root_dir}")
@@ -877,12 +1004,15 @@ def bootstrap(
     # 2. Configure Language Profile & Clean Template Meta Docs
     configure_language_profile(root_dir, language, dry_run=dry_run)
     configure_semgrep_rulesets(root_dir, language, dry_run=dry_run)
+    if docs_site:
+        enable_docs_site(root_dir, project_name, repo_owner=repo_owner, dry_run=dry_run)
     # --clean-template and nothing else. This used to read `if clean_template or
     # non_interactive`, so `-y` -- the conventional "do not prompt me" flag, on a script
     # that has never prompted -- silently deleted docs/TEMPLATE_GUIDE.md, tests/ and
     # src/__init__.py. Destruction must be asked for by name. See #90.
     if clean_template:
-        clean_template_meta_docs(root_dir, project_name, language, dry_run=dry_run)
+        clean_template_meta_docs(root_dir, project_name, language, dry_run=dry_run,
+                                 docs_site=docs_site)
 
     # 3. Seed/update .agent-state.md and update AGENTS.md
     ensure_agent_state_scratchpad(root_dir, project_name, dry_run=dry_run)
@@ -1019,6 +1149,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument('--repo-desc', type=str, default=None, help='GitHub repository description for SEO')
     parser.add_argument('--repo-topics', type=str, default=None, help='Comma-separated list of GitHub topics for SEO')
     parser.add_argument('--setup-branch-protection', action='store_true', help='Apply GitHub branch protection ruleset via gh CLI')
+    # Opt-in, never a default. A project with no documentation site is better served by
+    # not carrying mkdocs.yml, a Pages workflow and mkdocs-material at all than by
+    # carrying them switched off, so --clean-template deletes the scaffold without this.
+    parser.add_argument('--docs-site', action='store_true', help='Enable the optional MkDocs Material documentation site and its GitHub Pages workflow (without this, --clean-template removes mkdocs.yml, .github/workflows/docs.yml and requirements-docs.txt)')
     parser.add_argument('--repo-owner', type=str, required=True, help='GitHub org/user owning the repository, seeding CODEOWNERS, CHANGELOG links and the issue chooser (required)')
     parser.add_argument('--conduct-email', type=str, required=True, help='Code of Conduct enforcement contact email address (required)')
 
@@ -1036,7 +1170,8 @@ def main():
         setup_branch_protection=args.setup_branch_protection,
         repo_owner=args.repo_owner,
         conduct_email=args.conduct_email,
-        dry_run=args.dry_run
+        dry_run=args.dry_run,
+        docs_site=args.docs_site
     )
 
 if __name__ == '__main__':

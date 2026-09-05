@@ -1,0 +1,94 @@
+# MkDocs Material Documentation Site -- OPTIONAL
+#
+# Two of this template's sibling projects (liferay-docker-manager, lfr-tunnel)
+# independently outgrew "a folder of Markdown files" and independently landed on
+# the same answer: mkdocs-material, organised on the Diataxis model. This file is
+# that answer, generalised, and it is strictly opt-in:
+#
+#   python3 scripts/bootstrap_template.py --docs-site ...
+#       seeds site_name/site_url/repo_url below and activates the push trigger in
+#       .github/workflows/docs.yml.
+#   python3 scripts/bootstrap_template.py --clean-template ...   (no --docs-site)
+#       deletes this file, that workflow and requirements-docs.txt outright.
+#
+# A 200-line utility should not inherit a documentation engine it never asked
+# for, so nothing here runs until somebody asks for it. See #58.
+#
+# Build locally with:  pip install -r requirements-docs.txt
+#                      cp README.md docs/index.md && mkdocs serve
+
+site_name: ai-agent-template
+site_description: >-
+  Language-agnostic project template for AI agent-assisted development, with
+  enforced documentation hygiene, agent skills and CI quality gates.
+
+# Seeded by `bootstrap_template.py --docs-site` from --name and --repo-owner.
+# Left commented in the template because a wrong canonical URL is worse than
+# none: it emits <link rel="canonical"> pointing at somebody else's site.
+# site_url: https://OWNER.github.io/PROJECT/
+# repo_url: https://github.com/OWNER/PROJECT
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+  palette:
+    # Respect the reader's OS setting rather than forcing one scheme on them.
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+
+# --------------------------------------------------------------------------
+# Navigation: the Diataxis model (https://diataxis.fr)
+# --------------------------------------------------------------------------
+# Tutorials teach, how-to guides solve, reference describes, explanation
+# justifies. Keeping the four apart is the whole point -- a "how do I ...?"
+# answer buried inside an architecture essay is unfindable. Which division a
+# new page belongs in is documented for agents in
+# .agents/skills/documentation/SKILL.md and, at length, in
+# docs/explanation/index.md.
+#
+# `Home` is generated: .github/workflows/docs.yml copies README.md to
+# docs/index.md at build time so the GitHub landing page and the site home are
+# one document that cannot drift apart. docs/index.md is therefore gitignored,
+# and a local `mkdocs serve` needs the same copy first (see the header above).
+nav:
+  - Home: index.md
+  - Tutorials:
+      - Overview: tutorials/index.md
+  - How-To Guides:
+      - Overview: how-to/index.md
+      - Publish this documentation site: how-to/publish-the-documentation-site.md
+      - Protect the main branch: BRANCH_PROTECTION.md
+  - Reference:
+      - Overview: reference/index.md
+  - Explanation:
+      - Overview: explanation/index.md
+
+# docs/TEMPLATE_GUIDE.md documents the template itself and is deleted by
+# `--clean-template`, so it must not be a nav entry an adopter inherits as a
+# dead link. Listing it here silences the "not included in nav" warning without
+# pretending it is part of the published site.
+not_in_nav: |
+  TEMPLATE_GUIDE.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences

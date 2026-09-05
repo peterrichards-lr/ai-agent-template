@@ -1,0 +1,118 @@
+name: Deploy Documentation
+
+# OPTIONAL, and dormant until the adopter opts in.
+#
+# The only live trigger below is workflow_dispatch. A repository bootstrapped
+# from this template therefore never deploys to GitHub Pages by accident, and
+# never assumes Pages is enabled -- which it is not, on a fresh repository.
+#
+# `python3 scripts/bootstrap_template.py --docs-site` uncomments the push
+# trigger between the OPT-IN markers. Bootstrapping without --docs-site (with
+# --clean-template) deletes this file, mkdocs.yml and requirements-docs.txt.
+# Before the first deploy, set Settings > Pages > Source to "GitHub Actions".
+
+on:
+  # >>> OPT-IN PUSH TRIGGER (uncommented by bootstrap_template.py --docs-site) >>>
+  # push:
+  #   branches: [ main, master ]
+  #   paths:
+  #     - 'docs/**'
+  #     - 'mkdocs.yml'
+  #     - 'README.md'
+  #     - 'requirements-docs.txt'
+  #     - '.github/workflows/docs.yml'
+  # <<< OPT-IN PUSH TRIGGER <<<
+  workflow_dispatch:
+
+# Least privilege at the top level; only the deploy job widens it.
+permissions:
+  contents: read
+
+# LDM-#1053: only one Pages deployment should ever be in flight at a time --
+# unlike most of this repo's other workflows, don't cancel an in-progress
+# deployment (a half-applied deploy would leave the live site broken).
+#
+# This is a THIRD case in this repository's concurrency convention, not an
+# instance of either existing one:
+#
+#   * ci.yml, issue-link-check.yml and pr-scope-check.yml set
+#     cancel-in-progress: false because each supplies a required status check.
+#     The newest run must report last so the final status reflects the latest
+#     commit (see #30).
+#   * security-scan.yml sets cancel-in-progress: true because nothing gates on
+#     it, so a superseded run is pure waste.
+#
+# This workflow is neither. It is NOT a required status check -- deliberately
+# absent from .github/rulesets/protect-main-branch.json, because a Pages outage
+# must never block a merge -- yet cancelling it is not free either. Its unit of
+# work is a mutation of the live site rather than a report about a commit, so an
+# interrupted run does not merely lose information: it leaves whatever partial
+# state the deploy had reached published to real readers. Hence false, for a
+# different reason than the required checks: not "report last", but "never stop
+# half way".
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build MkDocs Site
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: requirements-docs.txt
+
+      # requirements-docs.txt, not requirements-dev.txt: the latter is the
+      # language-agnostic quality gate every adopter installs on every CI run,
+      # and mkdocs-material plus its transitive dependencies have no business
+      # there when the docs site is optional.
+      - name: Install documentation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-docs.txt
+
+      # README.md is both the GitHub landing page and the site home. Copying it
+      # in at build time keeps one source of truth; a tracked docs/index.md copy
+      # would drift within a release or two. docs/index.md is gitignored.
+      - name: Seed the site home page from README.md
+        run: cp README.md docs/index.md
+
+      # Deliberately not `--strict`. A README written for GitHub links to files
+      # outside docs/ (AGENTS.md, LICENSE); those are warnings worth reading, not
+      # a reason to refuse to publish the documentation.
+      - name: Build the site
+        run: mkdocs build --site-dir _site
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+
+    # Scoped to this job so the build above -- the step that runs third-party
+    # code from requirements-docs.txt -- never holds a Pages write token.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

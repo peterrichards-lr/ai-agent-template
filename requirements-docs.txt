@@ -1,0 +1,17 @@
+# Documentation Site Dependencies (Pinned Versions)
+#
+# Installed by .github/workflows/docs.yml only, and only by projects that opted
+# into the docs site with `bootstrap_template.py --docs-site`.
+#
+# Deliberately NOT merged into requirements-dev.txt. That file is the
+# language-agnostic quality gate every bootstrapped project installs on every CI
+# run; mkdocs-material pulls in Jinja2, Babel, Pygments and a dozen more
+# packages, and a repository with no published site should not pay for them --
+# in install time, in dependency-review noise, or in Dependabot churn.
+# `.github/dependabot.yml` already watches the pip ecosystem at the repository
+# root, so this file is kept up to date without further configuration.
+#
+# `bootstrap_template.py --clean-template` without --docs-site deletes this file
+# along with mkdocs.yml and .github/workflows/docs.yml.
+mkdocs==1.6.1
+mkdocs-material==9.7.7

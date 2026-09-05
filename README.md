@@ -75,6 +75,7 @@ The bootstrapper will:
 4. Verify or create the `.claude/skills` auto-discovery symlink.
 5. Seed the community health stubs (`CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `.github/CODEOWNERS`, `.github/ISSUE_TEMPLATE/config.yml`) with your project name, the GitHub owner (`--repo-owner`) and the Code of Conduct contact (`--conduct-email`).
 6. With `--clean-template`, remove the template's own meta docs and Python scaffolding (`docs/TEMPLATE_GUIDE.md`, `tests/`, and -- outside `--lang python` -- `src/__init__.py` and `requirements-python.txt`). This is the **only** way to request those deletions; there is no `-y` shortcut.
+7. With `--docs-site`, enable the optional MkDocs Material documentation site (`mkdocs.yml`, `.github/workflows/docs.yml`, `requirements-docs.txt`) and arm its GitHub Pages deploy; without it, `--clean-template` removes that scaffold entirely. See [docs/TEMPLATE_GUIDE.md](docs/TEMPLATE_GUIDE.md).
 7. Initialize local Git pre-commit hooks.
 8. Inject initial documentation timestamps.
 9. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
