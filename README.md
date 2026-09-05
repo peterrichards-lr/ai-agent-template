@@ -15,6 +15,7 @@ Whether you are building in **Go**, **Python**, **Rust**, **Java**, **TypeScript
 - ⏱️ **Automated Documentation Hygiene**: Zero-dependency Python 3 tools (`append_timestamps.py` and `check_docs_review.py`) to enforce timestamp footers (`*Last Updated* | *Last Reviewed*`) and prevent documentation decay.
 - ⚙️ **Project Bootstrapper (`scripts/bootstrap_template.py`)**: One-command initialization script that customizes the template for your chosen programming language stack, installs git hooks, and seeds project metadata.
 - 🚀 **GitHub CI & Governance (`.github/`)**: GitHub Actions workflow (`ci.yml`), GitHub Issue Forms (Feature, Bug, Tech Debt) with typed required fields and a chooser (`ISSUE_TEMPLATE/config.yml`) that disables blank issues, a commented `CODEOWNERS` stub, and a PR template enforcing task linking (`Closes #<issue>`).
+- 🔎 **Optional Security Scanning (`.github/workflows/security-scan.yml`, `.semgrep.yaml`)**: Non-blocking Semgrep SAST plus `actions/dependency-review-action` on pull requests, with a commented `.semgrep.yaml` stub for turning a prose coding rule into a mechanically enforced one. Neither job is a required status check, so a new project is never broken on day one by a third-party finding.
 - 🤝 **Community Health Stubs (`CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `.editorconfig`)**: Contributor Covenant v2.1, a Keep a Changelog seed, and a shared editor baseline (UTF-8, LF, final newline, trimmed trailing whitespace) that keeps editors from fighting the `trailing-whitespace` and `end-of-file-fixer` pre-commit hooks. Owner and contact placeholders are filled in by the bootstrapper.
 
 ---
@@ -82,6 +83,7 @@ The bootstrapper will:
 ├── .gitignore                         # Language-agnostic ignore rules
 ├── .editorconfig                      # Shared editor baseline (UTF-8, LF, final newline)
 ├── .pre-commit-config.yaml            # Pre-commit quality gate configuration
+├── .semgrep.yaml                      # Project-specific Semgrep rules (commented stub)
 ├── .github/                           # CI workflows & GitHub templates
 │   ├── copilot-instructions.md        # Discovery redirect to AGENTS.md (GitHub Copilot)
 │   ├── CODEOWNERS                     # Commented ownership stub (see require_code_owner_review)
@@ -91,7 +93,8 @@ The bootstrapper will:
 │   │   ├── feature_request.yml        # Feature form: problem, solution, impact
 │   │   ├── tech_debt.yml              # Tech debt form: canonical 10-category dropdown
 │   │   └── config.yml                 # Issue chooser: blank issues off, contact links
-│   └── workflows/ci.yml               # GitHub Actions CI workflow
+│   ├── workflows/ci.yml               # GitHub Actions CI workflow
+│   └── workflows/security-scan.yml    # Optional non-blocking Semgrep & dependency review
 ├── .agents/skills/                    # Modular skill instructions for AI agents
 │   ├── no-assumptions/                # Always-active anti-hallucination protocol
 │   ├── reflection-and-planning/       # Logic-first planning & approval loops

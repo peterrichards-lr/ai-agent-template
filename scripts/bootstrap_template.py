@@ -11,6 +11,7 @@ Fails loudly if any required subprocess execution fails.
 
 import sys
 import os
+import re
 import json
 import shutil
 import subprocess
@@ -19,6 +20,23 @@ from pathlib import Path
 from datetime import datetime
 
 SUPPORTED_LANGUAGES = ['generic', 'go', 'python', 'rust', 'java', 'node', 'cpp', 'liferay']
+
+# Semgrep registry rulesets for the optional SAST layer in
+# .github/workflows/security-scan.yml. The baseline is language agnostic and ships
+# with the template; configure_semgrep_rulesets() appends the pack for the selected
+# stack. Browse packs at https://semgrep.dev/explore
+SEMGREP_BASELINE_RULESETS = ['p/ci', 'p/secrets']
+SEMGREP_LANGUAGE_RULESETS = {
+    'generic': [],
+    'go': ['p/golang'],
+    'python': ['p/python'],
+    'rust': ['p/rust'],
+    'java': ['p/java'],
+    'node': ['p/javascript', 'p/typescript'],
+    'cpp': ['p/c'],
+    'liferay': ['p/java', 'p/javascript'],
+}
+SECURITY_SCAN_WORKFLOW_RELPATH = Path('.github') / 'workflows' / 'security-scan.yml'
 
 # Community health and editor baseline files shipped as adopter-customisable stubs.
 # .editorconfig carries no placeholders but is listed here so this stays the single
@@ -107,13 +125,39 @@ def configure_language_profile(root_dir: Path, language: str):
         content = agents_path.read_text(encoding='utf-8')
         target_line = f"Primary Unit Testing Command: {test_cmd}"
 
-        import re
         content, n = re.subn(r'Primary Unit Testing Command:\s*`?[^`\n]+`?', target_line, content)
         if n > 0:
             agents_path.write_text(content, encoding='utf-8')
             print(f"  ✓ Mutated AGENTS.md with primary test command: {test_cmd}")
         else:
             print(f"  ⚠️ Warning: Could not locate Primary Unit Testing Command placeholder in AGENTS.md", file=sys.stderr)
+
+def configure_semgrep_rulesets(root_dir: Path, language: str) -> bool:
+    """Select the Semgrep registry rulesets for the chosen stack in security-scan.yml.
+
+    Rewrites the single SEMGREP_RULESETS env line so the optional SAST workflow scans
+    with the language pack that matches the project instead of the generic baseline.
+    Returns False (without failing the bootstrap) when the optional security layer has
+    been deleted or the knob cannot be found, since neither is fatal to a new project.
+    """
+    workflow_path = root_dir / SECURITY_SCAN_WORKFLOW_RELPATH
+
+    if not workflow_path.exists():
+        print(f"  ⚠️ Skipping Semgrep ruleset selection: {SECURITY_SCAN_WORKFLOW_RELPATH} not found.")
+        return False
+
+    rulesets = SEMGREP_BASELINE_RULESETS + SEMGREP_LANGUAGE_RULESETS.get(language, [])
+    replacement = f'SEMGREP_RULESETS: "{" ".join(rulesets)}"'
+
+    content = workflow_path.read_text(encoding='utf-8')
+    content, n = re.subn(r'SEMGREP_RULESETS:\s*"[^"]*"', replacement, content)
+    if n == 0:
+        print(f"  ⚠️ Warning: Could not locate the SEMGREP_RULESETS knob in {SECURITY_SCAN_WORKFLOW_RELPATH}.", file=sys.stderr)
+        return False
+
+    workflow_path.write_text(content, encoding='utf-8')
+    print(f"  ✓ Selected Semgrep rulesets for {language}: {' '.join(rulesets)}")
+    return True
 
 def clean_template_meta_docs(root_dir: Path, project_name: str, language: str):
     """Remove template-only meta docs and generate a clean project README."""
@@ -401,6 +445,7 @@ def bootstrap(
 
     # 2. Configure Language Profile & Clean Template Meta Docs
     configure_language_profile(root_dir, language)
+    configure_semgrep_rulesets(root_dir, language)
     if clean_template or non_interactive:
         clean_template_meta_docs(root_dir, project_name, language)
 

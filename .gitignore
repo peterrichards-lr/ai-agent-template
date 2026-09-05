@@ -81,3 +81,6 @@ out/
 *.pem
 *.key
 *.crt
+
+# Security scan reports (local `semgrep scan --sarif --output ...` runs)
+*.sarif

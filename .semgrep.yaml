@@ -1,0 +1,86 @@
+# .semgrep.yaml - Project-specific static analysis rules
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# .agents/skills/coding-standards/SKILL.md states this project's coding rules as
+# prose. Prose is advisory: an agent or a human can read it and still ship the
+# exact thing it forbids, and nothing catches it. A Semgrep rule is mechanical --
+# the same argument docs/BRANCH_PROTECTION.md makes for rulesets over convention.
+# So: when you write a rule that a pattern-matcher could check, add it here as
+# well as in the skill file.
+#
+# HOW IT RUNS
+# -----------
+#   Locally:  pip install semgrep && semgrep scan --config .semgrep.yaml
+#   In CI:    .github/workflows/security-scan.yml passes --config .semgrep.yaml
+#             alongside the registry packs in its SEMGREP_RULESETS env var.
+#   CI is non-blocking on purpose (continue-on-error: true), so a rule added here
+#   reports rather than gates until the repository decides to promote it.
+#
+# ANATOMY OF A RULE
+# -----------------
+#   id            kebab-case and unique; name the thing being banned.
+#   pattern       the match. `...` matches any sequence of statements or
+#   patterns     arguments, `$X` binds a metavariable, `pattern-either` ORs
+#   pattern-either  alternatives, and `pattern-not` / `pattern-not-inside` carve
+#                 out the approved form so the rule fires only on the bad one.
+#   paths.exclude where the approved helper itself lives, so it never flags
+#                 its own implementation.
+#   message       what is wrong AND what to use instead; cite the prose rule so
+#                 the finding teaches rather than nags.
+#   languages     [python], [go], [javascript, typescript], [generic], ...
+#   severity      ERROR | WARNING | INFO.
+#
+#   Reference:  https://semgrep.dev/docs/writing-rules/overview
+#   Playground: https://semgrep.dev/playground  (test a pattern before committing)
+
+rules:
+  # WORKED EXAMPLE -- delete or adapt this once you have rules of your own.
+  #
+  # Mechanises "No Masking Exceptions" from .agents/skills/coding-standards/SKILL.md
+  # rule 3 (Defensive Safety Guards & Exception Handling). That rule is the single
+  # most-violated one in agent-written code, and it is trivially pattern-matchable,
+  # which makes it the ideal demonstration of prose becoming enforcement.
+  - id: no-swallowed-exception
+    pattern-either:
+      - pattern: |
+          try:
+              ...
+          except $EXC:
+              pass
+      - pattern: |
+          try:
+              ...
+          except:
+              pass
+    message: >-
+      Swallowed exception: this `except` block discards the error silently.
+      coding-standards/SKILL.md rule 3 forbids masking exceptions -- handle it,
+      log it with enough context to diagnose, or re-raise. If the data is wrong,
+      trace it back to the upstream provider instead of hiding the symptom here.
+    languages:
+      - python
+    severity: WARNING
+
+  # -------------------------------------------------------------------------
+  # SECOND EXAMPLE, COMMENTED OUT: ban a raw API in favour of an internal safe
+  # helper. This is the shape most project rules take -- copy the structure, not
+  # the specifics. `paths.exclude` keeps the helper's own implementation, which
+  # necessarily calls the raw API, from tripping its own rule.
+  #
+  # - id: enforce-safe-extract
+  #   pattern-either:
+  #     - pattern: $OBJ.extractall(...)
+  #     - pattern: zipfile.ZipFile.extractall(...)
+  #     - pattern: tarfile.TarFile.extractall(...)
+  #   paths:
+  #     exclude:
+  #       - "**/archive_utils.py"
+  #   message: >-
+  #     Unchecked archive extraction is a path traversal risk (Zip Slip / Tar
+  #     Slip): a crafted member path escapes the destination directory. Use
+  #     `archive_utils.safe_extract`, which validates every resolved member path
+  #     before writing it.
+  #   languages:
+  #     - python
+  #   severity: ERROR
