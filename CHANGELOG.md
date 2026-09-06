@@ -16,7 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- `--clean-template` resets `CHANGELOG.md` to an empty Keep a Changelog stub whose link
+  definitions point at the adopter's own repository, so a bootstrapped project no longer
+  inherits this template's release history. The file is an input to shipped tooling --
+  `scripts/release.py` reads it to draft notes and `--extract-notes` publishes a section
+  verbatim -- so an inherited version section collided with the adopter's first release
+  rather than merely reading wrong (#105).
 
 ## [2.0.0] - 2026-09-06
 

@@ -5,7 +5,8 @@ Covers the bootstrap behaviours that must not fail silently:
 - the seeded .agent-state.md footer is rewritten to the bootstrap date (#80),
 - regex substitutions that match nothing abort instead of warning (#56),
 - --dry-run previews every mutation without touching the working tree (#56),
-- --clean-template scrubs the template's Python-only scaffolding (#55).
+- --clean-template scrubs the template's Python-only scaffolding (#55),
+- --clean-template resets CHANGELOG.md so no template release history is inherited (#105).
 """
 
 import hashlib
@@ -31,6 +32,7 @@ from bootstrap_template import (
     PRE_COMMIT_CONFIG_RELPATH,
     PYTHON_PACKAGE_MARKER_RELPATH,
     PYTHON_REQUIREMENTS_RELPATH,
+    TEMPLATE_PROJECT_NAME,
     TEMPLATE_SELF_TEST_RELPATH,
     clean_python_scaffolding,
     configure_doctor_precommit_hook,
@@ -39,6 +41,7 @@ from bootstrap_template import (
     ensure_agent_state_scratchpad,
 )
 from check_docs_review import check_docs
+from release import apply_changelog_release
 
 REPO_ROOT = Path(__file__).parent.parent
 TODAY = datetime.today().strftime('%Y-%m-%d')
@@ -353,3 +356,47 @@ def test_doctor_precommit_hook_absence_is_reported_not_fatal(tmp_path):
     config_path.write_text("repos: []\n", encoding='utf-8')
 
     assert configure_doctor_precommit_hook(tmp_path) is False
+
+# --- #105: --clean-template must not hand over this template's release history ---
+#
+# CHANGELOG.md is an input to shipped tooling: scripts/release.py reads it to draft
+# notes and --extract-notes publishes a section verbatim. An inherited version section
+# therefore does not merely read wrong, it collides with the adopter's first release.
+
+VERSION_HEADING_REGEX = re.compile(r'^## \[[^\]]+\].*$', re.MULTILINE)
+
+CLEANED_PROJECT_NAME = 'my-awesome-app'
+CLEANED_REPO_OWNER = 'my-org'
+CLEANED_REPO_URL = f"https://github.com/{CLEANED_REPO_OWNER}/{CLEANED_PROJECT_NAME}"
+
+@pytest.fixture(scope='module')
+def cleaned_changelog(tmp_path_factory):
+    """The CHANGELOG.md a real `--clean-template` bootstrap hands to an adopter."""
+    project, env = make_isolated_clone(tmp_path_factory.mktemp('cleaned'))
+
+    result = run_bootstrap(project, env, QUICKSTART_ARGS + ['--clean-template'])
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    return (project / 'CHANGELOG.md').read_text(encoding='utf-8')
+
+def test_clean_template_leaves_no_inherited_version_section(cleaned_changelog):
+    headings = VERSION_HEADING_REGEX.findall(cleaned_changelog)
+
+    assert headings == ['## [Unreleased]'], headings
+
+def test_clean_template_leaves_no_reference_to_this_templates_pull_requests(cleaned_changelog):
+    assert re.findall(r'#\d+', cleaned_changelog) == []
+    assert TEMPLATE_PROJECT_NAME not in cleaned_changelog
+
+def test_clean_template_changelog_points_its_links_at_the_adopters_repository(cleaned_changelog):
+    assert f"[Unreleased]: {CLEANED_REPO_URL}/compare/main...HEAD" in cleaned_changelog
+
+def test_release_cuts_a_clean_first_release_from_the_cleaned_changelog(cleaned_changelog):
+    """The point of the reset: release.py must still be usable in the adopter's repo."""
+    # release.py bumps into the repository's tag format, so the version carries its `v`.
+    released = apply_changelog_release(cleaned_changelog, 'v1.0.0', '2026-01-31', [])
+
+    assert VERSION_HEADING_REGEX.findall(released) == [
+        '## [Unreleased]', '## [1.0.0] - 2026-01-31']
+    assert released.count(f"[1.0.0]: {CLEANED_REPO_URL}/releases/tag/v1.0.0") == 1
+    assert f"[Unreleased]: {CLEANED_REPO_URL}/compare/v1.0.0...HEAD" in released
