@@ -91,7 +91,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   drafts 20, 13 generated. `--skip-issue-audit` disables the lookup with the audit (#99).
 - `scripts/release.py` warns when the curated `[Unreleased]` section describes a breaking
   change -- a `### Removed` entry, or a bullet opening `**Breaking**:` -- that no commit
-  declared with `!:` or a `BREAKING CHANGE:` footer, and names the entries. It still
+  declared with `!:` or a `BREAKING CHANGE:` footer. It quotes each offending entry --
+  flowed across the bullet's wrapped lines, trimmed on a word boundary and wrapped to the
+  report's width -- so the operator can judge it without opening the file. It still
   proposes the level the commits support rather than guessing `major` on prose: the
   mismatch is a judgement about adopter impact, and `--bump major` is where a human
   records it (#99).
