@@ -277,7 +277,12 @@ def test_skill_frontmatter_and_routing_tables():
     agents_content = agents_md.read_text(encoding='utf-8')
     guide_content = template_guide.read_text(encoding='utf-8')
     readme_content = (root_dir / 'README.md').read_text(encoding='utf-8')
-    skills_section = re.search(r'├── \.agents/skills/.*?(?=├── scripts/)', readme_content, re.DOTALL)
+    # Bounded by the next top-level tree entry, `.agents/templates/`, not by `scripts/`.
+    # The looser boundary swallowed everything between the two, so a subdirectory added
+    # under .agents/templates/ (the per-language CI profiles, #42) was read as a skill
+    # that had no directory on disk.
+    skills_section = re.search(
+        r'├── \.agents/skills/.*?(?=├── \.agents/templates/)', readme_content, re.DOTALL)
     assert skills_section, "Could not find .agents/skills section in README.md"
 
     disk = {d.name for d in skill_dirs}

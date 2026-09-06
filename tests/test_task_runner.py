@@ -103,6 +103,14 @@ def test_verify_is_composed_of_lint_test_and_docs():
 
 
 def test_ci_runs_make_verify_rather_than_restating_the_commands():
+    """CI must invoke the task runner, and must invoke all of `make verify`.
+
+    Since #42, `make verify` is not a single CI step: the chain is split so the
+    documentation and lint half always runs while the language build sits behind a
+    paths filter. The contract is therefore about the union, not one substring --
+    a split that silently dropped `test` would look just like a split that did not.
+    `verify` = `lint` + `test` + `docs`, and `lint` = `lint-tooling` + `lint-lang`.
+    """
     workflow = yaml.safe_load((REPO_ROOT / '.github' / 'workflows' / 'ci.yml').read_text(encoding='utf-8'))
     run_steps = [
         step.get('run', '')
@@ -110,8 +118,16 @@ def test_ci_runs_make_verify_rather_than_restating_the_commands():
         for step in job['steps']
     ]
 
-    assert any('make verify' in step for step in run_steps), \
-        "ci.yml must invoke `make verify`, otherwise local and CI gates can drift"
+    invoked = set()
+    for step in run_steps:
+        for match in re.finditer(r'(?:^|\s)make\s+([a-z0-9\- ]+)', step):
+            invoked.update(match.group(1).split())
+
+    missing = {'lint-tooling', 'lint-lang', 'test', 'docs'} - invoked
+    assert not missing, (
+        f"ci.yml never invokes {sorted(missing)}, so the pipeline is a weaker gate than "
+        "the `make verify` a contributor runs locally, and the two can drift"
+    )
 
 
 def test_make_verify_is_wired_to_the_documentation_helpers():

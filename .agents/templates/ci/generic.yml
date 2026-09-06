@@ -22,7 +22,7 @@ concurrency:
 #
 #   quality-gate    always runs: documentation footers, markdownlint, provider redirects,
 #                   the placeholder doctor -- the language-agnostic half of `make verify`.
-#   build-and-test  Python's lint and test, behind a paths filter.
+#   build-and-test  this project's lint and test, behind a paths filter.
 #
 # PR #75 filtered the whole workflow and had to be reverted before merge, because ci.yml
 # was entirely documentation validation: excluding `**/*.md` disabled the skill-routing
@@ -144,14 +144,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.10'
-          cache: 'pip'
-          cache-dependency-path: |
-            requirements-dev.txt
-            requirements-python.txt
+      # No toolchain setup step: --lang generic names no ecosystem to install. The
+      # Makefile's generic profile makes `make test` exit non-zero until a real test
+      # command is filled in, so this job stands as a red reminder to configure one
+      # rather than reporting a green build over a project that has never run a test.
 
       # `make setup` rather than `make setup-lang`: the seven verbs are the contract, and
       # a stack whose tests import a tool from requirements-dev.txt (this template's own
@@ -159,7 +155,7 @@ jobs:
       - name: Install dependencies
         run: make setup
 
-      - name: Lint and test Python
+      - name: Lint and test this project
         run: make lint-lang test
 
   build-and-test-skip:

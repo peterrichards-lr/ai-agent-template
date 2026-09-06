@@ -22,7 +22,7 @@ concurrency:
 #
 #   quality-gate    always runs: documentation footers, markdownlint, provider redirects,
 #                   the placeholder doctor -- the language-agnostic half of `make verify`.
-#   build-and-test  Python's lint and test, behind a paths filter.
+#   build-and-test  Java's lint and test, behind a paths filter.
 #
 # PR #75 filtered the whole workflow and had to be reverted before merge, because ci.yml
 # was entirely documentation validation: excluding `**/*.md` disabled the skill-routing
@@ -144,14 +144,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - name: Set up Java
+        uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
         with:
-          python-version: '3.10'
-          cache: 'pip'
-          cache-dependency-path: |
-            requirements-dev.txt
-            requirements-python.txt
+          distribution: 'temurin'
+          java-version: '21'
+          # `cache: 'maven'` is deliberately not set: the action fails when no build file
+          # exists yet, which would make a freshly bootstrapped repository red for a
+          # reason unrelated to its code. Add it once pom.xml is committed.
 
       # `make setup` rather than `make setup-lang`: the seven verbs are the contract, and
       # a stack whose tests import a tool from requirements-dev.txt (this template's own
@@ -159,7 +159,7 @@ jobs:
       - name: Install dependencies
         run: make setup
 
-      - name: Lint and test Python
+      - name: Lint and test Java
         run: make lint-lang test
 
   build-and-test-skip:

@@ -118,6 +118,31 @@ MAKEFILE_RELPATH = Path('Makefile')
 MAKEFILE_PROFILE_BEGIN_MARKER = '# >>> BOOTSTRAP LANGUAGE PROFILE >>>'
 MAKEFILE_PROFILE_END_MARKER = '# <<< BOOTSTRAP LANGUAGE PROFILE <<<'
 
+# Per-language CI workflow profiles (#42). Before these existed, `--lang go` left behind
+# a workflow that installed Python and ran this template's own pytest suite, so a Go
+# repository had CI that never compiled a line of Go -- and reported green while doing it.
+# configure_ci_workflow() installs the profile matching --lang over ci.yml.
+#
+# The library lives beside the other tracked bootstrap seeds in .agents/templates/ rather
+# than in .github/workflows/, because anything in the workflows directory is a workflow
+# GitHub will try to run. Note that Dependabot's github-actions ecosystem only scans
+# .github/workflows, so pins inside the library are bumped when a profile is installed
+# and thereafter, not while it sits in the library.
+CI_PROFILE_DIR_RELPATH = Path('.agents') / 'templates' / 'ci'
+CI_WORKFLOW_RELPATH = Path('.github') / 'workflows' / 'ci.yml'
+
+# The two check-run contexts every profile reports. Both are required status checks in
+# .github/rulesets/protect-main-branch.json, and neither may be renamed without editing
+# that file too: a ruleset context matching no job name never reports, and the pull
+# request then waits for it forever.
+#
+# BUILD_AND_TEST_JOB_NAME is declared by two jobs on purpose -- the real one and its
+# skip twin -- so exactly one of them reports it on any given run. An adopter whose
+# project cannot build yet removes that one context before importing the ruleset; see
+# docs/BRANCH_PROTECTION.md for the trade-off.
+QUALITY_GATE_JOB_NAME = 'Code & Documentation Quality Verification'
+BUILD_AND_TEST_JOB_NAME = 'Build & Test'
+
 # AGENTS.md rule 5 names the command that gates "work complete". It is the task runner
 # verb for every stack now: the ecosystem's actual command lives in the Makefile block
 # below and is stated exactly once, rather than restated in the agent rules, in
@@ -409,6 +434,77 @@ def configure_task_runner(root_dir: Path, language: str, dry_run: bool = False) 
     print(f"  ✓ Installed the {language} task runner profile in {MAKEFILE_RELPATH.as_posix()}")
     return True
 
+def configure_ci_workflow(root_dir: Path, language: str, dry_run: bool = False) -> bool:
+    """Install the CI workflow profile for the selected stack over ci.yml.
+
+    Aborts when the library is present but the selected language's profile is not.
+    Skipping would leave the previous stack's workflow in place, and a workflow that
+    installs Python and runs pytest in a Go repository is worse than no CI at all: it
+    reports a green required status check having compiled and tested nothing, so the
+    failure is invisible precisely where CI is supposed to be the evidence.
+
+    A missing library is only a warning. That is the state of an already-bootstrapped
+    project whose --clean-template run removed it, and re-running bootstrap there must
+    not clobber a ci.yml the adopter has since made their own.
+
+    Returns True when the profile was (or, in a dry run, would be) installed.
+    """
+    profile_dir = root_dir / CI_PROFILE_DIR_RELPATH
+
+    if not profile_dir.is_dir():
+        print(
+            f"  ⚠️ Skipping CI workflow selection: {CI_PROFILE_DIR_RELPATH.as_posix()} not found.\n"
+            f"     {CI_WORKFLOW_RELPATH.as_posix()} is left as it is. This is expected in a project\n"
+            "     that has already been bootstrapped with --clean-template."
+        )
+        return False
+
+    profile_path = profile_dir / f'{language}.yml'
+    if not profile_path.is_file():
+        print(
+            f"❌ Error: No CI workflow profile for --lang {language} at {profile_path.relative_to(root_dir).as_posix()}.\n"
+            f"   Bootstrap will not leave another stack's workflow in {CI_WORKFLOW_RELPATH.as_posix()}: it would\n"
+            "   report a green required status check while building and testing nothing.\n"
+            f"   Add the profile (see the others in {CI_PROFILE_DIR_RELPATH.as_posix()}), then re-run bootstrap.",
+            file=sys.stderr
+        )
+        sys.exit(1)
+
+    if dry_run:
+        announce_planned_write(
+            CI_WORKFLOW_RELPATH.as_posix(), f"install the {language} CI workflow profile")
+        return True
+
+    workflow_path = root_dir / CI_WORKFLOW_RELPATH
+    workflow_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(profile_path, workflow_path)
+    print(f"  ✓ Installed the {language} CI workflow profile in {CI_WORKFLOW_RELPATH.as_posix()}")
+    return True
+
+
+def clean_ci_profile_library(root_dir: Path, dry_run: bool = False) -> list:
+    """Remove the CI profile library once the selected profile has been installed.
+
+    The other profiles are template scaffolding by the same argument that removes the
+    self-test suite in #55: they describe stacks this project is not written in. The
+    installed .github/workflows/ci.yml is untouched -- it is the project's workflow now.
+
+    Returns the sorted relative POSIX paths that were (or would be) removed.
+    """
+    profile_dir = root_dir / CI_PROFILE_DIR_RELPATH
+    if not profile_dir.exists():
+        return []
+
+    if dry_run:
+        announce_planned_write(
+            CI_PROFILE_DIR_RELPATH.as_posix(), "remove the unused CI workflow profiles")
+        return [CI_PROFILE_DIR_RELPATH.as_posix()]
+
+    shutil.rmtree(profile_dir)
+    print(f"  ✓ Removed the unused CI workflow profiles ({CI_PROFILE_DIR_RELPATH.as_posix()})")
+    return [CI_PROFILE_DIR_RELPATH.as_posix()]
+
+
 def configure_language_profile(root_dir: Path, language: str, dry_run: bool = False):
     """Point AGENTS.md at the task runner and fit the Makefile to the selected stack.
 
@@ -445,6 +541,10 @@ def configure_language_profile(root_dir: Path, language: str, dry_run: bool = Fa
         print(f"  ✓ Mutated AGENTS.md with primary test command: {PRIMARY_TEST_COMMAND}")
 
     configure_task_runner(root_dir, language, dry_run=dry_run)
+    # Unconditional, not gated on --clean-template. `--lang go` promises a Go project;
+    # a Go project whose CI runs pytest is the defect this exists to remove, and it is
+    # exactly as wrong in a repository that kept the template meta docs.
+    configure_ci_workflow(root_dir, language, dry_run=dry_run)
 
 def configure_semgrep_rulesets(root_dir: Path, language: str, dry_run: bool = False) -> bool:
     """Select the Semgrep registry rulesets for the chosen stack in security-scan.yml.
@@ -632,6 +732,7 @@ def clean_template_meta_docs(root_dir: Path, project_name: str, language: str,
 
     clean_python_scaffolding(root_dir, language, dry_run=dry_run)
     clean_docs_site_scaffold(root_dir, docs_site, dry_run=dry_run)
+    clean_ci_profile_library(root_dir, dry_run=dry_run)
 
     today_str = datetime.today().strftime('%Y-%m-%d')
     clean_readme_content = f"""# {project_name}
