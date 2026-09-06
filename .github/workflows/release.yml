@@ -1,0 +1,123 @@
+name: Publish Release
+
+# Turns a pushed `v*` tag into a GitHub Release whose body is the CHANGELOG.md
+# section for that version. .agents/skills/release-management/SKILL.md rule 2 --
+# "a tag without release notes is an unchecked gap" -- is the reason this exists:
+# a human who pushes a bare tag still ends up with a real release.
+#
+# Git tags are this template's single source of version truth. There is no VERSION
+# file to reconcile: scripts/check_template_drift.py already reads
+# `git describe --tags --abbrev=0`, and a second source could disagree with it.
+#
+# Deliberately NOT a required status check in .github/rulesets/protect-main-branch.json.
+# It only ever runs on a tag push, so no pull request could satisfy it and requiring
+# it would deadlock every merge (see #75 for the same failure mode).
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Least privilege: creating a release needs contents: write and nothing more.
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # cancel-in-progress: true, following security-scan.yml rather than ci.yml: this
+  # workflow supplies no required status check, so a superseded run is pure waste.
+  # In practice the group is unique per tag anyway -- protect-version-tags.json makes
+  # a `v*` tag immutable, so the same ref cannot be pushed twice.
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Tag verification and `git describe` both need the tag objects and the
+          # history behind them; the default shallow fetch has neither.
+          fetch-depth: 0
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.10'
+
+      # The pushed ref is verified before anything is published. A tag that is
+      # lightweight, malformed, or pointing somewhere other than the commit that was
+      # checked out would otherwise publish notes that do not describe it -- and
+      # protect-version-tags.json means the wrong tag cannot be moved afterwards.
+      - name: Verify the pushed tag
+        env:
+          TAG: ${{ github.ref_name }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::'$TAG' is not a vMAJOR.MINOR.PATCH tag (release-management/SKILL.md rule 1)."
+            exit 1
+          fi
+
+          tag_object_type=$(git cat-file -t "$TAG")
+          if [ "$tag_object_type" != "tag" ]; then
+            echo "::error::'$TAG' is a $tag_object_type, not an annotated tag. Create it with 'git tag -a', or via scripts/release.py --tag."
+            exit 1
+          fi
+
+          tagged_sha=$(git rev-list -n 1 "$TAG")
+          if [ "$tagged_sha" != "$EXPECTED_SHA" ]; then
+            echo "::error::'$TAG' points at $tagged_sha but this run checked out $EXPECTED_SHA."
+            exit 1
+          fi
+
+          echo "✓ $TAG is an annotated tag at $tagged_sha."
+
+      # The changelog parsing lives in scripts/release.py, where tests/test_release.py
+      # covers it, rather than being re-implemented in sed here where nothing would.
+      - name: Extract the release notes from CHANGELOG.md
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release.py --extract-notes "$TAG" > release-notes.md
+
+          if [ ! -s release-notes.md ]; then
+            echo "::error::CHANGELOG.md has no notes for $TAG. A tag without release notes is an unchecked gap."
+            exit 1
+          fi
+
+          {
+            echo "### Release notes for $TAG"
+            echo ""
+            cat release-notes.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          # Re-running this workflow (a manual re-run, or a transient API failure on
+          # the first attempt) must converge rather than fail on "release already
+          # exists": the tag is immutable, so the release body is the only thing left
+          # that can be corrected.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; updating its notes."
+            gh release edit "$TAG" --notes-file release-notes.md
+          else
+            # --verify-tag refuses to invent a tag: if the ref disappeared between the
+            # push and this step, that is a hard failure rather than a new tag created
+            # by the workflow token.
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes-file release-notes.md \
+              --verify-tag
+          fi
