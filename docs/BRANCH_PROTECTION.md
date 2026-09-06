@@ -90,9 +90,9 @@ one-size-fits-all config to apply blindly:
 - **Path-Filtered CI Deadlock**: A path filter that skips a heavy build on a
   documentation-only change also stops the filtered job reporting its status,
   so a pull request requiring that context deadlocks in "Expected — Waiting for
-  status to be reported". `.github/workflows/ci.yml` -- installed from
-  `.agents/templates/ci/<lang>.yml` by
-  `scripts/bootstrap_template.py --lang <stack>` -- ships the **filter +
+  status to be reported". `.github/workflows/ci.yml` -- installed by
+  `scripts/bootstrap_template.py --lang <stack>` from the template's
+  per-language CI profile library -- ships the **filter +
   same-named skip-job pattern** that avoids it. Four properties make it work,
   and each of them has a specific failure behind it:
   - **The doc checks are never filtered.** `Code & Documentation Quality
@@ -119,8 +119,8 @@ one-size-fits-all config to apply blindly:
     readable reason instead of a silent absence.
   - **No `strategy.matrix` on a job supplying a fixed-name context.** GitHub
     reports a matrix job as `Build & Test (some-value)` and never the bare name,
-    so a ruleset requiring the bare name would wait forever, and
-    `tests/test_template_scripts.py::test_ruleset_status_checks_match_workflow_jobs`
+    so a ruleset requiring the bare name would wait forever, and the template's
+    test asserting the ruleset's status checks match the workflow's job names
     would fail it as unmatched. Keep a fixed-name aggregating job as the context
     and put the matrix in a job beneath it.
 - **`Build & Test` is a required status check, and this is the entry to think
@@ -143,4 +143,4 @@ not apply it silently.
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
+*Last Updated: 2026-09-06* | *Last Reviewed: 2026-09-06*

@@ -7,7 +7,8 @@ Covers the bootstrap behaviours that must not fail silently:
 - --dry-run previews every mutation without touching the working tree (#56),
 - --clean-template scrubs the template's Python-only scaffolding (#55),
 - --clean-template resets CHANGELOG.md so no template release history is inherited (#105),
-- SECURITY.md is seeded with the adopter's project name and reporting contact (#107).
+- SECURITY.md is seeded with the adopter's project name and reporting contact (#107),
+- no delivered document cites a path the same --clean-template run removed (#109).
 """
 
 import hashlib
@@ -29,6 +30,7 @@ import bootstrap_template
 from bootstrap_template import (
     AGENT_STATE_SEED_RELPATH,
     CONDUCT_EMAIL_PLACEHOLDER,
+    DOCS_SITE_SCAFFOLD_RELPATHS,
     DOCTOR_ADOPTER_MODE_ENTRY,
     DOCTOR_TEMPLATE_MODE_ENTRY,
     PRE_COMMIT_CONFIG_RELPATH,
@@ -433,3 +435,48 @@ def test_bootstrap_security_policy_names_a_contactable_reporting_destination(boo
     """Disclosure instructions naming no address are worse than naming the wrong project."""
     assert CONDUCT_EMAIL_PLACEHOLDER not in bootstrapped_security_policy
     assert CLEANED_CONDUCT_EMAIL in bootstrapped_security_policy
+
+# --- #109: no delivered document may cite a path the same bootstrap removed ---
+#
+# SECURITY.md linked tests/test_workflow_pinning.py to make a real point -- that the
+# SHA-pinning rule is enforced from the inside by a test and not merely flagged by a
+# scanner -- and --clean-template deletes tests/, so the delivered policy argued from a
+# file the same run had removed. Three defects of this shape shipped in sequence (#105,
+# #107, #109), each found by auditing the one file just fixed, so the invariant is
+# asserted here in general rather than against that one sentence: whatever the cleanup
+# deletes, no surviving document may still point at it.
+#
+# The removed set is diffed out of a real run rather than restated as a list, so a path
+# added to the cleanup later is covered without anyone remembering to extend this test.
+
+@pytest.fixture(scope='module')
+def clean_template_removals(tmp_path_factory, cleaned_project):
+    """Relative POSIX paths --clean-template removed from the tree handed to an adopter.
+
+    The opt-in documentation site is excluded: it is absent by choice rather than by
+    cleanup, and docs/how-to/publish-the-documentation-site.md exists to explain how to
+    restore it, so naming those files is the doc doing its job.
+    """
+    pristine, _ = make_isolated_clone(tmp_path_factory.mktemp('pristine'))
+    opt_in = {rel_path.as_posix() for rel_path in DOCS_SITE_SCAFFOLD_RELPATHS}
+
+    removed = set(fingerprint_tree(pristine)) - set(fingerprint_tree(cleaned_project))
+    return removed - opt_in
+
+def test_no_delivered_document_cites_a_path_clean_template_removed(
+        cleaned_project, clean_template_removals):
+    # Only paths carrying a separator are matched: a bare `tests` or `src` is an ordinary
+    # English word ("unit tests pass") long before it is a citation of a directory.
+    citable = sorted(rel for rel in clean_template_removals if '/' in rel)
+    assert citable, "diff produced no citable removals; the fixture is not exercising cleanup"
+
+    citations = []
+    for markdown_path in sorted(cleaned_project.rglob('*.md')):
+        rel_path = markdown_path.relative_to(cleaned_project).as_posix()
+        # .claude/skills is a symlink onto .agents/skills; scanning both double-reports.
+        if rel_path.startswith('.claude/skills/'):
+            continue
+        text = markdown_path.read_text(encoding='utf-8')
+        citations.extend(f"{rel_path} cites {cited}" for cited in citable if cited in text)
+
+    assert citations == [], citations

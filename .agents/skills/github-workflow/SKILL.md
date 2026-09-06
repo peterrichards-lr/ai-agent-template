@@ -72,7 +72,7 @@ The rule is **one canonical tracker per repo, defaulting to GitHub Issues**: deb
 
 The 10 catalogued categories, mirroring the required `Category` dropdown in `.github/ISSUE_TEMPLATE/tech_debt.yml`, which owns this list: Code Smells, Duplication, Over-complexity, Fragile Coupling, Missing Safety Guards, Missing Tests, Security Hygiene, Deprecated Patterns, Config Drift, Documentation Debt.
 
-Change the dropdown first and this sentence second -- `tests/test_issue_templates.py` fails if they drift apart. Everywhere else (`docs/TEMPLATE_GUIDE.md` included) links here rather than restating the categories.
+Change the dropdown first and this sentence second -- the template's issue-template test fails if they drift apart. Everywhere else links here rather than restating the categories.
 
 Apply this without derailing the task you're actually doing:
 - **Don't halt mid-task.** Keep working; log tech debt at a natural checkpoint (before opening your PR is fine) rather than interrupting the current edit the moment you spot something.
