@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [2.0.0] - 2026-09-06
+
 ### Added
 
 - Root `Makefile` task runner exposing one vocabulary in every language stack --
@@ -40,6 +44,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   change-detection `filter` job, plus `{ "context": "Build & Test" }` in
   `.github/rulesets/protect-main-branch.json`. A failed filter exits non-zero through the
   skip twin rather than leaving the required context unreported (#42, #44).
+- **template-sync**: ship TEMPLATE_REF.md seed, drift checker and template-sync skill (#95)
+- **docs**: add opt-in mkdocs-material site with Diátaxis scaffold and Pages workflow (#93)
+- **github**: convert issue templates to GitHub Issue Forms (#85)
+- **skills**: add always-active no-assumptions and e2e-verification skills (#84)
+- **community**: ship community health and editor baseline stubs (#81)
+- **scripts**: add commit attribution guard to prevent unmergeable PR deadlock (#79)
+- **skills**: add PR review feedback loop rule to github-workflow skill (#77)
+- **ci**: add PR scope-sprawl CI gate and coding-standards guardrail (#76, #52)
+- **skills**: enforce Fail-First Verification Gate in unit-testing skill (#74)
+- **ci**: reject stray and negated closing references in PRs (#73, #29)
+- **claude**: ship starter .claude/settings.json client-side deny-list (#72, #40)
+- **discovery**: add provider discovery redirects and length gate (#70, #28, #49)
+- **claude**: narrow .gitignore and track .claude/skills symlink (#69, #27, #39)
+- **skills**: add YAML frontmatter and harmonize routing tables (#68, #38)
 
 ### Changed
 
@@ -71,6 +89,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only because the sanctioned path is now `make test` (#46).
 - `AGENTS.md` rule 5, `CONTRIBUTING.md` §3 and `docs/TEMPLATE_GUIDE.md` defer to
   `make test` / `make verify` instead of each restating every ecosystem's commands (#46).
+- fix stale GEMINI.md state references across template docs (#64, #37)
+- **deps-dev**: bump pre-commit from 4.0.1 to 4.6.2 (#26)
+- **deps-dev**: bump pytest from 9.0.3 to 9.1.1
+- **deps**: bump actions/checkout from 4 to 7
+- **deps**: bump actions/setup-python from 5 to 7
 
 ### Removed
 
@@ -97,6 +120,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   proposes the level the commits support rather than guessing `major` on prose: the
   mismatch is a judgement about adopter impact, and `--bump major` is where a human
   records it (#99).
+- **release**: quote the whole breaking entry and count the warning in a test (#102)
+- **bootstrap**: require --name, --repo-owner and --conduct-email at parse time (#92)
+- **skills**: pair gh pr view with the gh api call that returns inline review comments (#83)
+- **bootstrap**: seed .agent-state.md from a tracked template in fresh clones (#78)
+- **ci**: disable cancel-in-progress on required checks and add permissions (#67, #30, #43)
+- **rulesets**: reconcile branch protection rulesets and validate check contexts (#66, #41)
+- **docs**: repair footer regex, unify fence-stripping, and deduplicate footers (#63, #50)
+- **ci**: repair quality gate on main and auto-label Dependabot PRs (#61)
+
+### Security
+
+- **security**: pin GitHub Actions to commit SHAs and add Dependabot cooldown (#88)
+- **security**: add non-blocking Semgrep SAST and dependency review layer (#87)
 
 <!--
 Example of a released version, kept commented out so the stub starts clean:
@@ -110,7 +146,8 @@ Example of a released version, kept commented out so the stub starts clean:
 [1.0.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v1.0.0
 -->
 
-[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/main...HEAD
+[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.0.0
 
 <!-- markdownlint-disable MD049 -->
 ---
