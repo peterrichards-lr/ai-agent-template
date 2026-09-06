@@ -29,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reporting step now seeds the `--conduct-email` address in place of the untargetable
   "the repository maintainers", giving a reporter a destination the adopter monitors, and
   `scripts/doctor.py` fails the bootstrap if that address is left unresolved (#107).
+- Documents delivered by `--clean-template` no longer cite paths the same run removes.
+  `SECURITY.md` argued the SHA-pinning rule is enforced from the inside by linking
+  `tests/test_workflow_pinning.py`, which cleanup deletes for every non-Python stack; the
+  same shape appeared in `docs/BRANCH_PROTECTION.md` and the `github-workflow` skill. All
+  four now make the claim without naming a path the adopter does not have, and
+  `tests/test_bootstrap_cleanup.py` asserts the invariant in general -- diffing a real
+  `--clean-template` run and rejecting any surviving document that still points at a
+  removed path -- rather than guarding the one sentence (#109).
 
 ## [2.0.0] - 2026-09-06
 
