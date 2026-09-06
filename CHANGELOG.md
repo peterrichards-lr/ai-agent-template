@@ -43,6 +43,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `.agents/skills/github-workflow/SKILL.md` rule 4 now states the tracker invariant as
+  **one canonical tracker per repo, defaulting to GitHub Issues** rather than mandating
+  GitHub Issues specifically, and a new rule 7 documents the external-tracker escape
+  hatch (Jira, Azure Boards, Linear, ...): a one-directional mirror rather than a sync,
+  which system is authoritative for what, how external IDs are referenced in commits and
+  PR bodies, and how the two are kept from drifting. Rule 7 also states plainly that
+  `.github/workflows/issue-link-check.yml` and `scripts/check_closing_refs.py` understand
+  `Closes #<number>` only, and why that stays deliberate rather than becoming configurable
+  (#60).
 - `.github/workflows/ci.yml` runs `make verify` instead of restating pytest, `doctor.py`,
   `check_docs_review.py` and `pre-commit`, so the local and CI gates cannot drift (#46).
 - `make verify` is now split across two CI jobs rather than one step: `lint-tooling` and
