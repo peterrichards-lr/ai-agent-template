@@ -289,7 +289,7 @@ These files ship deliberately short and clearly marked as adopter-customisable:
 | File | Purpose | Placeholders |
 | :--- | :--- | :--- |
 | `CODE_OF_CONDUCT.md` | Contributor Covenant v2.1. | `<CONDUCT_EMAIL_PLACEHOLDER>` (`--conduct-email`) |
-| `CHANGELOG.md` | Keep a Changelog seed feeding the `release-management` skill. | `<GITHUB_OWNER_PLACEHOLDER>` (`--repo-owner`) |
+| `CHANGELOG.md` | Keep a Changelog seed feeding the `release-management` skill. The template's own release history accumulates here, so `--clean-template` resets the file to an empty `[Unreleased]` stub pointing at the adopter's repository -- `scripts/release.py` reads this file and `--extract-notes` publishes a section verbatim, so an inherited version section would collide with the adopter's first release. | `<GITHUB_OWNER_PLACEHOLDER>` (`--repo-owner`) |
 | `.editorconfig` | UTF-8 / LF / final-newline / trimmed-whitespace baseline plus per-language indent rules for every `--lang` stack. Prevents editors from producing commits that the `trailing-whitespace` and `end-of-file-fixer` hooks immediately rewrite. | none |
 | `.github/CODEOWNERS` | Fully commented ownership stub. Makes `"require_code_owner_review"` in `.github/rulesets/protect-main-branch.json` a real, flippable switch instead of a reference to a missing file. | `<GITHUB_OWNER_PLACEHOLDER>` (`--repo-owner`) |
 | `.github/ISSUE_TEMPLATE/config.yml` | Issue chooser: `blank_issues_enabled: false` plus contact links, steering reports into the structured templates the `github-workflow` skill depends on. | `<GITHUB_OWNER_PLACEHOLDER>` (`--repo-owner`) |

@@ -105,6 +105,12 @@ TEMPLATE_SELF_TEST_RELPATH = Path('tests')
 PYTHON_PACKAGE_MARKER_RELPATH = Path('src') / '__init__.py'
 PYTHON_REQUIREMENTS_RELPATH = Path('requirements-python.txt')
 
+# The template's own release history accumulates in CHANGELOG.md, so --clean-template
+# resets it rather than handing it over. This is not cosmetic: scripts/release.py reads
+# this file to draft notes and --extract-notes publishes a section verbatim, so an
+# inherited version section collides with the adopter's first release. See #105.
+CHANGELOG_RELPATH = Path('CHANGELOG.md')
+
 # The pre-commit hook that runs the placeholder verification. The template checks
 # itself in template mode; the adopter's repository is checked strictly.
 PRE_COMMIT_CONFIG_RELPATH = Path('.pre-commit-config.yaml')
@@ -717,8 +723,74 @@ def clean_python_scaffolding(root_dir: Path, language: str, dry_run: bool = Fals
 
     return sorted(removed)
 
+def render_adopter_changelog(project_name: str, repo_owner: str = None) -> str:
+    """Render an empty Keep a Changelog stub for the adopter's own repository.
+
+    The shape is the one scripts/release.py expects: a `## [Unreleased]` heading it can
+    insert below, an empty body it will not mistake for curated entries, and a
+    `[Unreleased]: <base>/compare/<from>...HEAD` definition it rewrites to point at the
+    first tag. No version sections and no commented-out example release -- a `[1.0.0]`
+    link definition inside an HTML comment would suppress the real one release.py adds.
+
+    `repo_owner` is optional so a direct caller that omits it leaves the placeholder in
+    place for substitute_community_health_placeholders(), and the final doctor run fails
+    on it rather than shipping a broken link.
+    """
+    today_str = datetime.today().strftime('%Y-%m-%d')
+    repository_url = f"https://github.com/{repo_owner or OWNER_PLACEHOLDER}/{project_name}"
+
+    return f"""# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+> [!IMPORTANT]
+> Record changes under `[Unreleased]` as you merge them, then move that block under a
+> new version heading when you tag a release. See
+> [`.agents/skills/release-management/SKILL.md`](.agents/skills/release-management/SKILL.md)
+> for the versioning, release-note, and issue-closure audit rules AI agents must follow.
+>
+> Categories, in Keep a Changelog order: `Added`, `Changed`, `Deprecated`, `Removed`,
+> `Fixed`, `Security`. Delete the categories you do not use in a given release.
+
+## [Unreleased]
+
+_Nothing yet._
+
+[Unreleased]: {repository_url}/compare/main...HEAD
+
+<!-- markdownlint-disable MD049 -->
+---
+*Last Updated: {today_str}* | *Last Reviewed: {today_str}*
+"""
+
+def reset_changelog_to_adopter_stub(root_dir: Path, project_name: str,
+                                    repo_owner: str = None, dry_run: bool = False) -> bool:
+    """Replace the template's inherited release history with an empty adopter stub (#105).
+
+    Returns True when the changelog was rewritten.
+    """
+    changelog_path = root_dir / CHANGELOG_RELPATH
+    if not changelog_path.exists():
+        print(f"  ⚠️ {CHANGELOG_RELPATH.as_posix()} not found; nothing to reset")
+        return False
+
+    if dry_run:
+        announce_planned_write(
+            CHANGELOG_RELPATH.as_posix(),
+            f"reset to an empty changelog stub for '{project_name}'")
+        return False
+
+    changelog_path.write_text(
+        render_adopter_changelog(project_name, repo_owner), encoding='utf-8')
+    print(f"  ✓ Reset {CHANGELOG_RELPATH.as_posix()} to an empty stub for '{project_name}'")
+    return True
+
 def clean_template_meta_docs(root_dir: Path, project_name: str, language: str,
-                             dry_run: bool = False, docs_site: bool = False):
+                             dry_run: bool = False, docs_site: bool = False,
+                             repo_owner: str = None):
     """Remove template-only meta docs and generate a clean project README."""
     print("🧹 Cleaning template-specific meta documentation...")
 
@@ -733,6 +805,8 @@ def clean_template_meta_docs(root_dir: Path, project_name: str, language: str,
     clean_python_scaffolding(root_dir, language, dry_run=dry_run)
     clean_docs_site_scaffold(root_dir, docs_site, dry_run=dry_run)
     clean_ci_profile_library(root_dir, dry_run=dry_run)
+    reset_changelog_to_adopter_stub(root_dir, project_name, repo_owner=repo_owner,
+                                    dry_run=dry_run)
 
     today_str = datetime.today().strftime('%Y-%m-%d')
     clean_readme_content = f"""# {project_name}
@@ -1206,7 +1280,7 @@ def bootstrap(
     # src/__init__.py. Destruction must be asked for by name. See #90.
     if clean_template:
         clean_template_meta_docs(root_dir, project_name, language, dry_run=dry_run,
-                                 docs_site=docs_site)
+                                 docs_site=docs_site, repo_owner=repo_owner)
 
     # 3. Seed/update .agent-state.md and .agents/TEMPLATE_REF.md, and update AGENTS.md
     ensure_agent_state_scratchpad(root_dir, project_name, dry_run=dry_run)
