@@ -1,4 +1,4 @@
-AGENTS_MD = """# AI Agent Template - Canonical Agent Context
+# AI Agent Template - Canonical Agent Context
 
 This document is the single source of truth for AI agent rules in this repository across all AI providers (Gemini, Claude, Cursor, Copilot, etc.). It acts as a canonical router pointing to modular skill instructions under `.agents/skills/` and in-flight scratchpad state in `.agent-state.md`.
 
@@ -28,33 +28,89 @@ Project rules are organized into active, modular skill files located under `.age
 | **[human-in-the-loop](file:///.agents/skills/human-in-the-loop/SKILL.md)** | [.agents/skills/human-in-the-loop/SKILL.md](file:///.agents/skills/human-in-the-loop/SKILL.md) | Deployments, database drops, secrets generation, or opening PRs. | Enforces strict human verification gates before high-risk or irreversible operations. |
 | **[coding-standards](file:///.agents/skills/coding-standards/SKILL.md)** | [.agents/skills/coding-standards/SKILL.md](file:///.agents/skills/coding-standards/SKILL.md) | Writing, refactoring, or reviewing source code logic across any language. | Enforces DRY code, self-documenting style, predictive failure analysis, and safety guards. |
 | **[unit-testing](file:///.agents/skills/unit-testing/SKILL.md)** | [.agents/skills/unit-testing/SKILL.md](file:///.agents/skills/unit-testing/SKILL.md) | Writing tests, running verification, or investigating test failures. | Governs test-driven development, coverage checking, and non-interactive command execution. |
-| **[e2e-verification](file:///.agents/skills/e2e-verification/SKILL.md)** | [.agents/skills/e2e-verification/SKILL.md](file:///.agents/skills/e2e-verification/SKILL.md) | Changes unit tests cannot prove: UI/rendering, process or network boundaries, CLI interaction, config/deployment. | Defines real-system e2e behavior and environment interaction. |
-| **[context-compaction](file:///.agents/skills/context-compaction/SKILL.md)** | [.agents/skills/context-compaction/SKILL.md](file:///.agents/skills/context-compaction/SKILL.md) | When agent state exceeds token limits or context window. | Manages token economy, summarizing, and preserving state fidelity during long sessions. |
-| **[session-resume](file:///.agents/skills/session-resume/SKILL.md)** | [.agents/skills/session-resume/SKILL.md](file:///.agents/skills/session-resume/SKILL.md) | Upon re-loading `.agent-state.md` after a potential context shift. | Bridges the gap between previous tasks and current understanding without re-scan. |
-| **[documentation-footers](file:///.agents/skills/documentation-footers/SKILL.md)** | [.agents/skills/documentation-footers/SKILL.md](file:///.agents/skills/documentation-footers/SKILL.md) | Every time a document is committed, reviewed, or timestamped. | Ensures metadata stays fresh, adding author/date context to immutable markdown. |
-| **[artifact-generation](file:///.agents/skills/artifact-generation/SKILL.md)** | [.agents/skills/artifact-generation/SKILL.md](file:///.agents/skills/artifact-generation/SKILL.md) | When outputting new files, configs, or CLI artifacts to the repo root. | Standardizes how new files appear in the tree, maintaining consistent structure. |
-| **[prompt-engineering](file:///.agents/skills/prompt-engineering/SKILL.md)** | [.agents/skills/prompt-engineering/SKILL.md](file:///.agents/skills/prompt-engineering/SKILL.md) | Constructing or refining the system prompts that drive the agents. | Optimizes the LLM inputs, ensuring tokens are spent wisely on instruction. |
-| **[state-management](file:///.agents/skills/state-management/SKILL.md)** | [.agents/skills/state-management/SKILL.md](file:///.agents/skills/state-management/SKILL.md) | Tracking mutable data across tool calls and external integrations. | Decouples ephemeral tool output from persistent repository state in memory. |
-| **[environment-scoping](file:///.agents/skills/environment-scoping/SKILL.md)** | [.agents/skills/environment-scoping/SKILL.md](file:///.agents/skills/environment-scoping/SKILL.md) | When tool outputs are ambiguous or path resolution varies by OS. | Resolves path normalization issues, ensuring `file://` URIs point correctly. |
+| **[e2e-verification](file:///.agents/skills/e2e-verification/SKILL.md)** | [.agents/skills/e2e-verification/SKILL.md](file:///.agents/skills/e2e-verification/SKILL.md) | Changes unit tests cannot prove: UI/rendering, process or network boundaries, CLI interaction, config/deployment. | Defines real-system evidence, non-interactive runs with teardown, and specific escalation to human verification. |
+| **[documentation](file:///.agents/skills/documentation/SKILL.md)** | [.agents/skills/documentation/SKILL.md](file:///.agents/skills/documentation/SKILL.md) | After implementing any feature, code change, or bug fix. | Details active documentation review, timestamp hygiene, and staleness checks. |
+| **[github-workflow](file:///.agents/skills/github-workflow/SKILL.md)** | [.agents/skills/github-workflow/SKILL.md](file:///.agents/skills/github-workflow/SKILL.md) | Managing issues, creating PRs, responding to review comments, repository SEO, or resolving CI pipeline failures. | Governs GitHub CLI usage, issue linking (`Closes #<issue>`), the PR review feedback loop (`gh pr view <number> --json reviews,comments,statusCheckRollup` plus `gh api repos/{owner}/{repo}/pulls/<number>/comments` for inline threads), repository SEO (description & topics), and CI run cleanup. |
+| **[tool-use-react](file:///.agents/skills/tool-use-react/SKILL.md)** | [.agents/skills/tool-use-react/SKILL.md](file:///.agents/skills/tool-use-react/SKILL.md) | Executing terminal commands, file tools, or background tasks. | Enforces ReAct reasoning patterns, non-interactive flags (`-y`), and tool safety boundaries. |
+| **[multi-agent-orchestration](file:///.agents/skills/multi-agent-orchestration/SKILL.md)** | [.agents/skills/multi-agent-orchestration/SKILL.md](file:///.agents/skills/multi-agent-orchestration/SKILL.md) | Delegating tasks to subagents or running parallel background research. | Defines subagent invocation, prompt framing, and async result synthesis. |
+| **[rule-adherence](file:///.agents/skills/rule-adherence/SKILL.md)** | [.agents/skills/rule-adherence/SKILL.md](file:///.agents/skills/rule-adherence/SKILL.md) | Before merging, deploying, tagging a release, applying a ruleset, or declaring a task complete. | Addresses agents not reliably following prose rules: re-read before acting, prefer checkable artifacts, and self-correct visibly. |
+| **[release-management](file:///.agents/skills/release-management/SKILL.md)** | [.agents/skills/release-management/SKILL.md](file:///.agents/skills/release-management/SKILL.md) | Tagging a version, publishing a release, or when merged changes accumulate. | Governs semantic versioning, release notes, auditing issue closure, and human verification gates. |
+| **[template-sync](file:///.agents/skills/template-sync/SKILL.md)** | [.agents/skills/template-sync/SKILL.md](file:///.agents/skills/template-sync/SKILL.md) | Before authoring or amending any agent rule, skill, or guardrail, and when checking this repository against the upstream template. | Governs the bidirectional contract with `ai-agent-template`: consult upstream before writing a new rule locally, push lessons learned back, and record drift in `.agents/TEMPLATE_REF.md` (`scripts/check_template_drift.py`). |
 
 ---
 
-## 3. Discovery & Metadata
+## 3. Current Work State
 
-This section points the "discovery" files to this single source of truth. They act as thin wrappers to satisfy Git LFS and Git Blame requirements without bloating the logic.
+Active, in-flight task state and intra-task scratchpad context are maintained locally in `.agent-state.md` (gitignored). `scripts/bootstrap_template.py` seeds it from the tracked template [`.agents/templates/agent-state.md`](./.agents/templates/agent-state.md); if it is missing, recreate it by copying that seed.
 
-- **`.claude/skills`**: Tracked symlink to `.agents/skills`.
-- **`GEMINI.md`**: The entry point for Gemini-based chains.
-- **`.cursorrules`**: Directives for the Cursor IDE.
+- **On Session Startup**: If `.agent-state.md` exists, read it to discover active objectives and resume in-flight work without lost context across AI provider switches.
+- **During Execution**: Update `.agent-state.md` when making progress, encountering blockers, or pausing a workflow.
+- **On Feature Completion**: Clear or reset `.agent-state.md` once all objectives and verification steps are met.
 
 ---
 
-## 4. Maintenance & Versioning
+## 4. Universal Rules of Engagement
 
-- **Timestamp**: Managed by pre-commit hooks.
-- **Schema**: Stable Markdown table format.
-- **Git Strategy**: Tracked in `.gitattributes` with `diff=word` to prevent whitespace fights.
+### 1. Anti-Hallucination Protocol
+Always active, never waivable: every technical claim MUST be verified by a tool call made in the current session -- see `no-assumptions/SKILL.md` for the full protocol, including the compaction and session-resume corollary.
 
-> [!TIP]
-> **To update**: Modify the `.agents/skills/` files, then let the state manager regenerate this view if auto-magic is enabled.
-"""
+### 2. Active Documentation Maintenance Rule
+After completing any feature or code change, the agent MUST inspect the project documentation, execute `scripts/append_timestamps.py` to update timestamp footers, and run `scripts/check_docs_review.py` to ensure document policy compliance.
+
+### 3. Non-Interactive Default
+Whenever executing CLI commands or developer tools via terminal, the agent MUST explicitly append non-interactive flags (e.g. `-y`, `--non-interactive`, `--batch`, `-n`) to prevent blocking interactive prompts -- for routine, safe confirmations only. This never overrides `human-in-the-loop/SKILL.md`'s Rule 1 (High-Risk Operation Gates).
+
+### 4. Technical Debt Logging
+If the agent encounters technical debt during a task (Code Smells, Duplication, Missing Tests, Security Hygiene, Config Drift, Doc Debt, etc.), it must track it in this repository's canonical tracker -- one per repo, GitHub Issues by default, as an issue labeled `tech-debt`. See `github-workflow/SKILL.md` rule 4 for the full policy, and rule 7 for repos that also run an external tracker (Jira, Azure Boards, Linear).
+
+### 5. Primary Unit Testing Command
+Primary Unit Testing Command: `<TEST_COMMAND_PLACEHOLDER>`
+
+The task runner (`Makefile`) is the single entrypoint vocabulary, identical in every
+language stack, so an agent never has to work out which ecosystem's commands apply:
+
+| Target | Contract |
+| :--- | :--- |
+| `make setup` | Install dev dependencies and the pre-commit Git hooks. |
+| `make lint` | `pre-commit run --all-files` plus this stack's linters. |
+| `make test` | This stack's non-interactive test command. |
+| `make docs` | `append_timestamps.py` then `check_docs_review.py` (rule 2). |
+| `make verify` | `lint` + `test` + `docs` -- **exactly** what `.github/workflows/ci.yml` runs, split across its two jobs. |
+| `make push` | Guarded commit-and-push (`scripts/agent_push.py`): refuses no-op pushes and unstaged trees, never bypasses the hooks. |
+| `make help` | Self-documenting target list; the default goal. |
+
+The ecosystem's real command is stated once, in the `Makefile`'s language profile block,
+which `scripts/bootstrap_template.py --lang <stack>` fills in. `make verify` is therefore
+the answer to "did I break CI", and the two cannot drift because CI invokes these targets
+rather than restating them. CI splits the chain across two jobs -- `lint-tooling` + `docs`
+always run, `lint-lang` + `test` sit behind a paths filter -- so the union is `make verify`
+with nothing dropped and nothing run twice.
+
+### 6. Rule Adherence
+Before a high-commitment action (merging, deploying, tagging, applying a ruleset), re-read the specific governing skill file fresh rather than relying on memory. See `rule-adherence/SKILL.md` for full guidance.
+
+---
+
+## 5. Related References
+
+| File | Purpose |
+| :--- | :--- |
+| [`.agent-state.md`](./.agent-state.md) | In-flight task state, synced between AI providers. Gitignored. |
+| [`.agents/templates/agent-state.md`](./.agents/templates/agent-state.md) | Tracked seed copied to `.agent-state.md` by `scripts/bootstrap_template.py`. |
+| [`README.md`](./README.md) | Consumer-facing documentation & quick setup. |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Contribution guidelines and quality gate commands. |
+| [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) | Contributor Covenant v2.1 community standards. |
+| [`CHANGELOG.md`](./CHANGELOG.md) | Keep a Changelog history; update under `[Unreleased]` when merging user-visible changes. |
+| [`.editorconfig`](./.editorconfig) | Shared editor baseline (UTF-8, LF, final newline, trimmed trailing whitespace) matching the pre-commit hygiene hooks. |
+| [`.claude/skills`](./.claude/skills) | Tracked symlink to [`.agents/skills/`](./.agents/skills) for Claude Code auto-discovery. |
+| [`CLAUDE.md`](./CLAUDE.md) | Claude CLI discovery redirect. |
+| [`GEMINI.md`](./GEMINI.md) | Gemini CLI discovery redirect. |
+| [`.cursorrules`](./.cursorrules) | Cursor IDE discovery redirect. |
+| [`.windsurfrules`](./.windsurfrules) | Windsurf IDE discovery redirect. |
+| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot discovery redirect. |
+
+<!-- markdownlint-disable MD049 -->
+
+---
+
+*Last Updated: 2026-09-06* | *Last Reviewed: 2026-09-06*
