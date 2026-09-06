@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `scripts/release.py` reads it to draft notes and `--extract-notes` publishes a section
   verbatim -- so an inherited version section collided with the adopter's first release
   rather than merely reading wrong (#105).
+- `SECURITY.md` joins the community health files bootstrap substitutes, so a bootstrapped
+  project no longer ships a security policy whose opening line names this template. Its
+  reporting step now seeds the `--conduct-email` address in place of the untargetable
+  "the repository maintainers", giving a reporter a destination the adopter monitors, and
+  `scripts/doctor.py` fails the bootstrap if that address is left unresolved (#107).
 
 ## [2.0.0] - 2026-09-06
 

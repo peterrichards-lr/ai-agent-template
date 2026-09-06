@@ -64,6 +64,7 @@ UNBOOTSTRAPPED_STUB_PATHS = (
     'AGENTS.md',
     'CODE_OF_CONDUCT.md',
     'CHANGELOG.md',
+    'SECURITY.md',
     '.github/CODEOWNERS',
     '.github/ISSUE_TEMPLATE/config.yml',
 )

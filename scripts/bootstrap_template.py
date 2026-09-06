@@ -80,6 +80,7 @@ DOCS_SITE_OPT_IN_MARKER = 'OPT-IN PUSH TRIGGER'
 COMMUNITY_HEALTH_FILES = [
     'CODE_OF_CONDUCT.md',
     'CHANGELOG.md',
+    'SECURITY.md',
     '.editorconfig',
     '.github/CODEOWNERS',
     '.github/ISSUE_TEMPLATE/config.yml',
@@ -87,6 +88,9 @@ COMMUNITY_HEALTH_FILES = [
 
 # Placeholders substituted at bootstrap time, mirroring how README/SEO metadata are seeded.
 OWNER_PLACEHOLDER = '<GITHUB_OWNER_PLACEHOLDER>'
+# Seeds the contact address in both CODE_OF_CONDUCT.md and SECURITY.md. One required
+# --conduct-email covers both because a newly bootstrapped project has one maintainer
+# inbox; an adopter who later separates the two roles edits SECURITY.md directly.
 CONDUCT_EMAIL_PLACEHOLDER = '<CONDUCT_EMAIL_PLACEHOLDER>'
 # Substituted out of .agents/templates/template-ref.md by ensure_template_reference().
 # The upstream URL recorded in that seed contains the string 'ai-agent-template', so the
@@ -1423,7 +1427,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     # carrying them switched off, so --clean-template deletes the scaffold without this.
     parser.add_argument('--docs-site', action='store_true', help='Enable the optional MkDocs Material documentation site and its GitHub Pages workflow (without this, --clean-template removes mkdocs.yml, .github/workflows/docs.yml and requirements-docs.txt)')
     parser.add_argument('--repo-owner', type=str, required=True, help='GitHub org/user owning the repository, seeding CODEOWNERS, CHANGELOG links and the issue chooser (required)')
-    parser.add_argument('--conduct-email', type=str, required=True, help='Code of Conduct enforcement contact email address (required)')
+    parser.add_argument('--conduct-email', type=str, required=True, help='Contact email seeded into CODE_OF_CONDUCT.md enforcement and SECURITY.md vulnerability reporting (required)')
 
     return parser
 

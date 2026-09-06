@@ -6,7 +6,8 @@ Covers the bootstrap behaviours that must not fail silently:
 - regex substitutions that match nothing abort instead of warning (#56),
 - --dry-run previews every mutation without touching the working tree (#56),
 - --clean-template scrubs the template's Python-only scaffolding (#55),
-- --clean-template resets CHANGELOG.md so no template release history is inherited (#105).
+- --clean-template resets CHANGELOG.md so no template release history is inherited (#105),
+- SECURITY.md is seeded with the adopter's project name and reporting contact (#107).
 """
 
 import hashlib
@@ -27,6 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 import bootstrap_template
 from bootstrap_template import (
     AGENT_STATE_SEED_RELPATH,
+    CONDUCT_EMAIL_PLACEHOLDER,
     DOCTOR_ADOPTER_MODE_ENTRY,
     DOCTOR_TEMPLATE_MODE_ENTRY,
     PRE_COMMIT_CONFIG_RELPATH,
@@ -367,17 +369,27 @@ VERSION_HEADING_REGEX = re.compile(r'^## \[[^\]]+\].*$', re.MULTILINE)
 
 CLEANED_PROJECT_NAME = 'my-awesome-app'
 CLEANED_REPO_OWNER = 'my-org'
+CLEANED_CONDUCT_EMAIL = 'conduct@example.com'
 CLEANED_REPO_URL = f"https://github.com/{CLEANED_REPO_OWNER}/{CLEANED_PROJECT_NAME}"
 
 @pytest.fixture(scope='module')
-def cleaned_changelog(tmp_path_factory):
-    """The CHANGELOG.md a real `--clean-template` bootstrap hands to an adopter."""
+def cleaned_project(tmp_path_factory):
+    """The project tree a real `--clean-template` bootstrap hands to an adopter.
+
+    Module-scoped because bootstrap is a full subprocess run over a copied tree: every
+    assertion about the delivered artefacts reads this single run rather than repeating it.
+    """
     project, env = make_isolated_clone(tmp_path_factory.mktemp('cleaned'))
 
     result = run_bootstrap(project, env, QUICKSTART_ARGS + ['--clean-template'])
 
     assert result.returncode == 0, result.stdout + result.stderr
-    return (project / 'CHANGELOG.md').read_text(encoding='utf-8')
+    return project
+
+@pytest.fixture(scope='module')
+def cleaned_changelog(cleaned_project):
+    """The CHANGELOG.md a real `--clean-template` bootstrap hands to an adopter."""
+    return (cleaned_project / 'CHANGELOG.md').read_text(encoding='utf-8')
 
 def test_clean_template_leaves_no_inherited_version_section(cleaned_changelog):
     headings = VERSION_HEADING_REGEX.findall(cleaned_changelog)
@@ -400,3 +412,24 @@ def test_release_cuts_a_clean_first_release_from_the_cleaned_changelog(cleaned_c
         '## [Unreleased]', '## [1.0.0] - 2026-01-31']
     assert released.count(f"[1.0.0]: {CLEANED_REPO_URL}/releases/tag/v1.0.0") == 1
     assert f"[Unreleased]: {CLEANED_REPO_URL}/compare/v1.0.0...HEAD" in released
+
+# --- #107: the delivered security policy must be the adopter's, and must be actionable ---
+#
+# SECURITY.md is a GitHub community health file, surfaced in the repository sidebar and the
+# "Report a vulnerability" flow. Two failure modes matter, in increasing order of severity:
+# naming the template tells a reporter they are reading someone else's policy, and naming
+# no destination at all fails the one job the document exists to do.
+
+@pytest.fixture(scope='module')
+def bootstrapped_security_policy(cleaned_project):
+    """The SECURITY.md a real `--clean-template` bootstrap hands to an adopter."""
+    return (cleaned_project / 'SECURITY.md').read_text(encoding='utf-8')
+
+def test_bootstrap_security_policy_names_the_adopters_project(bootstrapped_security_policy):
+    assert TEMPLATE_PROJECT_NAME not in bootstrapped_security_policy
+    assert CLEANED_PROJECT_NAME in bootstrapped_security_policy
+
+def test_bootstrap_security_policy_names_a_contactable_reporting_destination(bootstrapped_security_policy):
+    """Disclosure instructions naming no address are worse than naming the wrong project."""
+    assert CONDUCT_EMAIL_PLACEHOLDER not in bootstrapped_security_policy
+    assert CLEANED_CONDUCT_EMAIL in bootstrapped_security_policy
