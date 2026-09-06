@@ -191,6 +191,7 @@ is materialized as a text file and agent skill discovery silently finds nothing.
 │   ├── bootstrap_template.py          # Project initializer script
 │   ├── agent_push.py                  # Guarded commit-and-push behind `make push`
 │   ├── check_template_drift.py        # Compares this repo against the upstream template
+│   ├── release.py                     # Semver proposal, issue-closure audit & tagging gate
 │   ├── doctor.py                      # Post-bootstrap placeholder & structure verification
 │   └── gh_issue_sync.py               # GitHub issue & task plan helper
 ├── requirements-dev.txt               # Language-agnostic agent tooling & quality gate deps
