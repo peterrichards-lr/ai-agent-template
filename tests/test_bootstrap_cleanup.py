@@ -480,3 +480,73 @@ def test_no_delivered_document_cites_a_path_clean_template_removed(
         citations.extend(f"{rel_path} cites {cited}" for cited in citable if cited in text)
 
     assert citations == [], citations
+
+# --- #111: no delivered document may cite this template's issues as a bare `#N` ---
+#
+# docs/BRANCH_PROTECTION.md argued the doc checks must stay unfiltered and cited the
+# evidence as "See Issues #42 and #44". The document survives --clean-template in every
+# stack, and GitHub resolves a bare `#N` against the repository it is *rendered* in, so
+# an adopter read a citation silently pointing at their own issues 42 and 44 -- either
+# unrelated work or nothing at all. Same identity-residue family as #105 and #107.
+#
+# Stated as the general invariant rather than against that one sentence: after cleanup,
+# a `#N` in delivered prose has no correct referent, whatever number it carries. Three
+# constructs are exempt because GitHub does not autolink inside them, so they cannot
+# resolve anywhere and are the template's own illustrative examples -- `Closes #123` in
+# CONTRIBUTING.md, `(#47)` in the release-management skill -- rather than citations:
+# fenced code, inline code spans, and link text. Provenance that must survive delivery
+# is written as an absolute upstream URL, which resolves identically in every repository.
+
+FENCED_CODE_BLOCK = re.compile(r'^```.*?^```', re.MULTILINE | re.DOTALL)
+INLINE_CODE_SPAN = re.compile(r'`[^`\n]*`')
+MARKDOWN_LINK = re.compile(r'\[[^\]]*\]\([^)]*\)')
+BARE_ISSUE_REFERENCE = re.compile(r'(?<![\w#])#\d+\b')
+
+def strip_non_autolinking_constructs(markdown_text):
+    """Remove the spans where GitHub leaves a `#N` as literal, unlinked text."""
+    without_fences = FENCED_CODE_BLOCK.sub('', markdown_text)
+    without_code = INLINE_CODE_SPAN.sub('', without_fences)
+    return MARKDOWN_LINK.sub('', without_code)
+
+def test_no_delivered_document_cites_an_issue_github_resolves_against_the_adopter(
+        cleaned_project):
+    citations = []
+    for markdown_path in sorted(cleaned_project.rglob('*.md')):
+        rel_path = markdown_path.relative_to(cleaned_project).as_posix()
+        # .claude/skills is a symlink onto .agents/skills; scanning both double-reports.
+        if rel_path.startswith('.claude/skills/'):
+            continue
+        prose = strip_non_autolinking_constructs(
+            markdown_path.read_text(encoding='utf-8'))
+        for line_number, line in enumerate(prose.splitlines(), start=1):
+            citations.extend(
+                f"{rel_path}:{line_number} cites {match.group(0)}"
+                for match in BARE_ISSUE_REFERENCE.finditer(line))
+
+    assert citations == [], citations
+
+UPSTREAM_TEMPLATE_REPO = 'peterrichards-lr/ai-agent-template'
+GITHUB_ISSUE_URL = re.compile(r'https://github\.com/([\w.-]+/[\w.-]+)/issues/\d+')
+
+def test_delivered_docs_cite_upstream_issues_by_a_url_bootstrap_does_not_rewrite(
+        cleaned_project):
+    """The provenance that replaces a bare `#N` must survive the project rename.
+
+    bootstrap applies a blanket `ai-agent-template` -> project-name replacement, which is
+    exactly why .agents/templates/template-ref.md carries a placeholder instead of the
+    literal name: the rename would rewrite the one URL that mechanism depends on. `docs/`
+    is outside that rename today; this asserts it stays outside, because a citation
+    silently renamed to the adopter's own repository is the #111 defect again, wearing a
+    URL instead of a `#N`.
+    """
+    cited = []
+    for markdown_path in sorted((cleaned_project / 'docs').rglob('*.md')):
+        rel_path = markdown_path.relative_to(cleaned_project).as_posix()
+        cited.extend(
+            (rel_path, repo) for repo in
+            GITHUB_ISSUE_URL.findall(markdown_path.read_text(encoding='utf-8')))
+
+    assert cited, "no upstream issue citation survives in the delivered docs/"
+
+    misdirected = [entry for entry in cited if entry[1] != UPSTREAM_TEMPLATE_REPO]
+    assert misdirected == [], misdirected
