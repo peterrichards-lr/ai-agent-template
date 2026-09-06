@@ -390,6 +390,53 @@ def test_curated_breaking_signals_names_the_entries_that_read_as_breaking():
     assert len(signals) == 2
 
 
+def test_curated_breaking_signals_flow_a_wrapped_bullet_into_one_readable_summary():
+    """The quoted entry is what the operator judges, so it must not stop mid-sentence.
+
+    The real `### Removed` bullet wraps after ``-y` /`, and quoting only that first line
+    read as though the changelog entry itself were malformed. The bullet is flowed into
+    one line and trimmed on a word boundary with an ellipsis instead.
+    """
+    changelog = MINIMAL_CHANGELOG.replace(
+        '### Fixed',
+        '### Removed\n\n'
+        '- **Breaking**: `bootstrap_template.py` no longer accepts `-y` /\n'
+        '  `--non-interactive`. The script has never called `input()`, so the flag\n'
+        '  suppressed nothing; it was quietly a second trigger for template cleanup,\n'
+        '  so `-y` deleted `docs/TEMPLATE_GUIDE.md` without being asked (#90).\n'
+        '\n'
+        '### Fixed',
+    )
+
+    (_, summary), = curated_breaking_signals(changelog)
+
+    # The wrapped continuation is flowed in, so the break is stated in full.
+    assert summary.startswith(
+        '**Breaking**: `bootstrap_template.py` no longer accepts `-y` / '
+        '`--non-interactive`.')
+    assert '\n' not in summary
+    assert summary.endswith(' ...'), 'a trimmed entry must say so'
+
+    # Trimmed on a word boundary: the kept text is a whole-word prefix of the entry.
+    flowed = ('**Breaking**: `bootstrap_template.py` no longer accepts `-y` / '
+              '`--non-interactive`. The script has never called `input()`, so the flag '
+              'suppressed nothing; it was quietly a second trigger for template cleanup, '
+              'so `-y` deleted `docs/TEMPLATE_GUIDE.md` without being asked (#90).')
+    kept = summary[:-len(' ...')]
+    assert flowed.startswith(kept)
+    assert flowed[len(kept)] == ' ', 'the trim must not cut a word in half'
+
+
+def test_curated_breaking_signals_quote_a_short_entry_whole():
+    """Nothing to trim, nothing trimmed -- no ellipsis on an entry that already fits."""
+    changelog = MINIMAL_CHANGELOG.replace(
+        '### Fixed', '### Removed\n\n- **Breaking**: dropped `-y` (#90).\n\n### Fixed')
+
+    (_, summary), = curated_breaking_signals(changelog)
+
+    assert summary == '**Breaking**: dropped `-y` (#90).'
+
+
 def test_curated_breaking_signals_ignores_prose_that_merely_says_breaking():
     """Otherwise this file's own note *about* the warning would trigger the warning.
 
@@ -578,6 +625,56 @@ def test_dry_run_warns_when_the_curated_notes_contradict_the_proposed_bump(
     assert 'undeclared breaking change' in result.stdout.lower()
     assert '--bump major' in result.stdout
     assert 'no longer accepts' in result.stdout, "the offending entry must be named"
+    # Counted, not merely present: a substring check passes on duplicated output, and a
+    # warning printed twice for one entry reads as two findings -- contradicting the
+    # "1 change(s)" its own first line reports.
+    assert result.stdout.count('Undeclared breaking change') == 1
+
+
+def test_dry_run_reports_one_warning_per_breaking_entry(release_repo: Path):
+    """Two curated entries, one warning block, two named entries -- never a block each."""
+    changelog = release_repo / 'CHANGELOG.md'
+    changelog.write_text(
+        MINIMAL_CHANGELOG.replace(
+            '### Fixed',
+            '### Removed\n\n'
+            '- **Breaking**: `bootstrap_template.py` no longer accepts `-y` (#90).\n'
+            '- **Breaking**: `--name` is now required (#92).\n\n'
+            '### Fixed'),
+        encoding='utf-8')
+
+    result = run_release(release_repo, '--dry-run', '--skip-issue-audit')
+
+    assert result.returncode == EXIT_OK, result.stdout + result.stderr
+    assert result.stdout.count('Undeclared breaking change') == 1
+    assert 'describes 2 change(s)' in result.stdout
+    assert result.stdout.count('   - [Removed]') == 2
+
+
+def test_dry_run_wraps_a_quoted_breaking_entry_to_the_width_of_its_own_warning(
+        release_repo: Path):
+    """Quoting more of the entry must not put a 180-column line in the report."""
+    changelog = release_repo / 'CHANGELOG.md'
+    changelog.write_text(
+        MINIMAL_CHANGELOG.replace(
+            '### Fixed',
+            '### Removed\n\n'
+            '- **Breaking**: `bootstrap_template.py` no longer accepts `-y` /\n'
+            '  `--non-interactive`. The script has never called `input()`, so the flag\n'
+            '  suppressed nothing; it was quietly a second trigger for template cleanup,\n'
+            '  so `-y` deleted `docs/TEMPLATE_GUIDE.md` without being asked (#90).\n\n'
+            '### Fixed'),
+        encoding='utf-8')
+
+    result = run_release(release_repo, '--dry-run', '--skip-issue-audit')
+
+    assert result.returncode == EXIT_OK, result.stdout + result.stderr
+    warning = result.stdout[result.stdout.index('⚠'):result.stdout.index('Range    :')]
+    assert 'Undeclared breaking change' in warning
+    # The whole continuation is quoted, wrapped rather than emitted as one long line.
+    assert '`--non-interactive`' in warning
+    assert max(len(line) for line in warning.splitlines()) <= 100, (
+        'the quoted entry must wrap like the rest of the report')
 
 
 def test_dry_run_does_not_warn_when_the_bump_is_already_major(release_repo: Path):

@@ -51,6 +51,7 @@ import os
 import re
 import subprocess
 import sys
+import textwrap
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
@@ -147,6 +148,17 @@ CURATED_BULLET_START_REGEX = re.compile(r'^[ \t]*[-*+][ \t]+')
 # and this file's own changelog note would otherwise trip the warning it describes.
 BREAKING_MARKER_REGEX = re.compile(r'^[*_`\s]*breaking\b[*_`\s]*:', re.IGNORECASE)
 BREAKING_SIGNAL_CATEGORIES = ('Removed',)
+
+# How much of a curated entry the warning quotes. The point of quoting is that the
+# operator can judge the change without opening the file, so the quote follows the
+# bullet across its wrapped lines instead of stopping at the first newline -- the real
+# `### Removed` entry wraps after "`-y` /", which read as a malformed entry rather than
+# a truncated one. Trimmed on a word boundary, and only when there is more to say.
+BREAKING_SIGNAL_SUMMARY_WIDTH = 160
+BREAKING_SIGNAL_ELLIPSIS = ' ...'
+# Quoting more of the entry is only an improvement if it stays readable, so the quote is
+# wrapped to the width the rest of this report already uses.
+BREAKING_SIGNAL_LINE_WIDTH = 92
 
 # Git and gh subcommands are cheap; a hung network call is not. Bound every one.
 DEFAULT_TIMEOUT_SECONDS = 60
@@ -645,6 +657,30 @@ def expand_curated_coverage(numbers: Sequence[int],
     return tuple(sorted(covered))
 
 
+def _summarise_bullet(bullet: Sequence[str],
+                      width: int = BREAKING_SIGNAL_SUMMARY_WIDTH) -> str:
+    """Flow one curated bullet onto a single line, trimmed on a word boundary.
+
+    The bullet marker goes, the wrapped continuation lines are joined back into the
+    sentence the author wrote, and the result is cut at the last whitespace inside
+    `width` so the quote never stops mid-word. An entry that already fits is quoted
+    whole, with no ellipsis to suggest text that is not there.
+    """
+    lines = list(bullet)
+    if not lines:
+        return ''
+
+    lines[0] = CURATED_BULLET_START_REGEX.sub('', lines[0])
+    flowed = ' '.join(' '.join(line.split()) for line in lines).strip()
+    if len(flowed) <= width:
+        return flowed
+
+    head, separator, _ = flowed[:width + 1].rpartition(' ')
+    # A single unbroken token longer than the width: cut it rather than quote the lot.
+    trimmed = (head if separator else flowed[:width]).rstrip()
+    return f"{trimmed}{BREAKING_SIGNAL_ELLIPSIS}"
+
+
 def _curated_bullets(lines: Sequence[str]) -> List[List[str]]:
     """Group curated lines into bullets, keeping wrapped continuations with their bullet."""
     bullets: List[List[str]] = []
@@ -661,8 +697,9 @@ def curated_breaking_signals(content: str) -> Tuple[Tuple[str, str], ...]:
 
     Two signals, both of which a human writes without any commit ever saying `!:`: an
     entry under a category Keep a Changelog reserves for removals, and an entry opening
-    with a `Breaking:` marker in any category. Returns (category, first line) pairs so
-    the caller can name the entries rather than assert that something, somewhere, broke.
+    with a `Breaking:` marker in any category. Returns (category, summary) pairs -- the
+    bullet flowed onto one line -- so the caller can name the entries rather than assert
+    that something, somewhere, broke.
     """
     try:
         _, unreleased_body, _ = _split_unreleased(content)
@@ -672,7 +709,7 @@ def curated_breaking_signals(content: str) -> Tuple[Tuple[str, str], ...]:
     signals: List[Tuple[str, str]] = []
     for category, lines in curated_category_lines(unreleased_body).items():
         for bullet in _curated_bullets(lines):
-            summary = CURATED_BULLET_START_REGEX.sub('', bullet[0]).strip()
+            summary = _summarise_bullet(bullet)
             if category in BREAKING_SIGNAL_CATEGORIES or BREAKING_MARKER_REGEX.match(summary):
                 signals.append((category, summary))
 
@@ -897,7 +934,13 @@ def report_undeclared_breaking_changes(signals: Sequence[Tuple[str, str]],
           "   not major. Judge these entries and re-run with `--bump major` if they "
           "break adopters:")
     for category, summary in signals[:limit]:
-        print(f"     - [{category}] {summary}")
+        label = f"     - [{category}] "
+        for line in textwrap.wrap(summary, width=BREAKING_SIGNAL_LINE_WIDTH,
+                                  initial_indent=label,
+                                  subsequent_indent=' ' * len(label),
+                                  break_long_words=False,
+                                  break_on_hyphens=False) or [label.rstrip()]:
+            print(line)
     if len(signals) > limit:
         print(f"     ... and {len(signals) - limit} more")
     print()
