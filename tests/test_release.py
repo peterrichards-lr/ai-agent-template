@@ -41,12 +41,15 @@ from release import (  # noqa: E402
     bump_version,
     classify_bump,
     collect_referenced_issues,
+    curated_breaking_signals,
+    expand_curated_coverage,
     extract_changelog_section,
     format_version_tag,
     main,
     parse_commit,
     parse_version_tag,
     render_changelog_entries,
+    undeclared_breaking_changes,
 )
 
 MINIMAL_CHANGELOG = """# Changelog
@@ -328,6 +331,93 @@ def test_apply_changelog_release_does_not_duplicate_a_curated_entry():
     assert updated.count('(#46)') == 1
 
 
+def test_expand_curated_coverage_adds_the_pull_requests_that_closed_curated_issues():
+    """A curated bullet cites the issue; the squash commit carries only the PR number.
+
+    Regression (#99): the first real run drafted 24 `### Added` bullets -- 7 curated and
+    18 generated -- because `- ... (#47)` and `feat(release): ... (#96)` share no number,
+    even though PR #96 is what closed issue #47.
+    """
+    closing_pull_requests = {46: [94], 47: [96]}
+
+    expanded = expand_curated_coverage(
+        [46, 47, 93], lambda number: closing_pull_requests.get(number, []))
+
+    assert set(expanded) == {46, 47, 93, 94, 96}
+
+
+def test_expand_curated_coverage_keeps_the_curated_numbers_when_the_lookup_fails():
+    """Offline, or on an old `gh`: expansion degrades to today's number-only matching."""
+    assert set(expand_curated_coverage([46, 47], lambda number: None)) == {46, 47}
+
+
+def test_apply_changelog_release_suppresses_the_commit_that_closed_a_curated_issue():
+    """The curated bullet cites #46; PR #94 closed it, so #94 is not restated."""
+    updated = apply_changelog_release(
+        MINIMAL_CHANGELOG,
+        version='v1.5.0',
+        release_date='2026-09-05',
+        commits=[make_commit('feat(runner): add the Makefile task runner (#94)'),
+                 make_commit('feat(docs): add the site (#93)')],
+        expand_coverage=lambda numbers: list(numbers) + ([94] if 46 in numbers else []),
+    )
+
+    assert 'add the Makefile task runner' not in updated
+    # A commit with no curated coverage keeps its generated entry.
+    assert 'add the site (#93)' in updated
+
+
+def test_curated_breaking_signals_names_the_entries_that_read_as_breaking():
+    """Two signals: any `### Removed` entry, and any bullet opening "Breaking:"."""
+    changelog = MINIMAL_CHANGELOG.replace(
+        '### Fixed',
+        '### Changed\n\n'
+        '- **Breaking**: `--name` is now required (#92).\n'
+        '\n'
+        '### Removed\n\n'
+        '- `bootstrap_template.py` no longer accepts `-y` (#90).\n'
+        '  Passing it is now an argparse usage error (#90).\n'
+        '\n'
+        '### Fixed',
+    )
+
+    signals = curated_breaking_signals(changelog)
+
+    assert [category for category, _ in signals] == ['Changed', 'Removed']
+    assert 'is now required' in signals[0][1]
+    assert 'no longer accepts' in signals[1][1]
+    # The wrapped continuation line is part of that one bullet, not a third signal.
+    assert len(signals) == 2
+
+
+def test_curated_breaking_signals_ignores_prose_that_merely_says_breaking():
+    """Otherwise this file's own note *about* the warning would trigger the warning.
+
+    The marker is a bullet that opens `Breaking:` -- the convention CHANGELOG.md uses --
+    not the word appearing anywhere in a paragraph describing something else.
+    """
+    changelog = MINIMAL_CHANGELOG.replace(
+        '- A curated entry a human wrote by hand (#46).',
+        '- `release.py` now warns about an undeclared breaking change (#99).')
+
+    assert curated_breaking_signals(changelog) == ()
+
+
+def test_curated_breaking_signals_ignores_a_section_that_signals_nothing():
+    assert curated_breaking_signals(MINIMAL_CHANGELOG) == ()
+
+
+def test_undeclared_breaking_changes_stays_quiet_when_a_commit_declares_one():
+    changelog = MINIMAL_CHANGELOG.replace(
+        '### Fixed', '### Removed\n\n- **Breaking**: dropped `-y` (#90).\n\n### Fixed')
+
+    declared = [make_commit('feat(bootstrap)!: drop -y (#92)')]
+    undeclared = [make_commit('feat(bootstrap): drop -y (#92)')]
+
+    assert undeclared_breaking_changes(declared, changelog) == ()
+    assert len(undeclared_breaking_changes(undeclared, changelog)) == 1
+
+
 def test_apply_changelog_release_resets_unreleased_and_rewrites_the_link_definitions():
     updated = apply_changelog_release(
         MINIMAL_CHANGELOG,
@@ -461,6 +551,49 @@ def test_dry_run_honours_an_explicit_bump_override(release_repo: Path):
 
     assert result.returncode == EXIT_OK, result.stdout + result.stderr
     assert 'v2.0.0' in result.stdout
+
+
+def test_dry_run_warns_when_the_curated_notes_contradict_the_proposed_bump(
+        release_repo: Path):
+    """Regression (#99): a release with two CLI breaks was proposed as `minor`.
+
+    No commit in the range used `!:` or a `BREAKING CHANGE:` footer, so the classifier
+    was right about its inputs -- and the contradiction was sitting in the `### Removed`
+    section of the file the script already parses.
+    """
+    changelog = release_repo / 'CHANGELOG.md'
+    changelog.write_text(
+        MINIMAL_CHANGELOG.replace(
+            '### Fixed',
+            '### Removed\n\n'
+            '- **Breaking**: `bootstrap_template.py` no longer accepts `-y` (#90).\n\n'
+            '### Fixed'),
+        encoding='utf-8')
+
+    result = run_release(release_repo, '--dry-run', '--skip-issue-audit')
+
+    assert result.returncode == EXIT_OK, result.stdout + result.stderr
+    # Warn, don't guess: the proposal is unchanged and --bump major stays the override.
+    assert 'v1.5.0' in result.stdout
+    assert 'undeclared breaking change' in result.stdout.lower()
+    assert '--bump major' in result.stdout
+    assert 'no longer accepts' in result.stdout, "the offending entry must be named"
+
+
+def test_dry_run_does_not_warn_when_the_bump_is_already_major(release_repo: Path):
+    """`--bump major` is the documented override; it resolves the mismatch."""
+    changelog = release_repo / 'CHANGELOG.md'
+    changelog.write_text(
+        MINIMAL_CHANGELOG.replace(
+            '### Fixed',
+            '### Removed\n\n- **Breaking**: dropped `-y` (#90).\n\n### Fixed'),
+        encoding='utf-8')
+
+    result = run_release(release_repo, '--dry-run', '--skip-issue-audit', '--bump', 'major')
+
+    assert result.returncode == EXIT_OK, result.stdout + result.stderr
+    assert 'v2.0.0' in result.stdout
+    assert 'undeclared breaking change' not in result.stdout.lower()
 
 
 def test_a_failed_issue_audit_refuses_to_write_the_changelog(release_repo: Path, monkeypatch):

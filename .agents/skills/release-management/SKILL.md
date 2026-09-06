@@ -39,15 +39,15 @@ python3 scripts/release.py             # write the CHANGELOG.md section for revi
 python3 scripts/release.py --tag       # confirm, then create the annotated tag (never pushes)
 ```
 
-- It reads the current version with `git describe --tags --abbrev=0` and **proposes** the next from Conventional Commits in `<last-tag>..HEAD` (`feat:` minor, `fix:` patch, `!`/`BREAKING CHANGE` major). `--bump {major,minor,patch}` overrides the proposal -- rule 1 is a judgement about adopter impact, and the commit types are only evidence for it.
+- It reads the current version with `git describe --tags --abbrev=0` and **proposes** the next from Conventional Commits in `<last-tag>..HEAD` (`feat:` minor, `fix:` patch, `!`/`BREAKING CHANGE` major). `--bump {major,minor,patch}` overrides the proposal -- rule 1 is a judgement about adopter impact, and the commit types are only evidence for it. Because that evidence is incomplete, it also **warns** -- without changing the proposal -- when the curated `[Unreleased]` section describes a breaking change (a `### Removed` entry, or a bullet opening `**Breaking**:`) that no commit declared, and names the entries so you can judge them and re-run with `--bump major`.
 - It refuses to write or tag when rule 3's audit fails: every `Closes #N` in the range is checked against `gh`, and an issue that is still open -- or whose state cannot be verified -- stops the release (exit code 3).
 - It never pushes and never publishes. Pushing the tag stays a human action (rule 4); `.github/workflows/release.yml` then publishes the GitHub Release from that version's `CHANGELOG.md` section on the tag push, satisfying rule 2 even for a tag pushed by hand.
 
-Curated `[Unreleased]` entries are promoted into the new version section verbatim and the generated lines fill in the rest, so the "what changed and why it matters" prose rule 2 asks for survives the automation. Review the drafted section before committing it.
+Curated `[Unreleased]` entries are promoted into the new version section verbatim and the generated lines fill in only what they do not already cover, so the "what changed and why it matters" prose rule 2 asks for survives the automation instead of being restated beside it. A curated bullet citing `(#47)` also suppresses the commit stamped `(#96)` when `gh` reports that pull request closed that issue; `--skip-issue-audit` turns that lookup off along with the audit. Review the drafted section before committing it.
 
 ### 6. Release Branches Need a Version Guard This Template Does Not Ship
 If you add a long-lived `release/*` branch flow, know the failure mode it brings: GitHub's "Update branch" button can silently revert a release branch's version by cleanly resolving the merge in the default branch's favour, and nothing fails. A dedicated version-guard workflow is the fix. This template has no release branches -- tags are cut from `main` -- so the machinery is not shipped here; add it in the same change as the branch flow, not afterwards.
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
+*Last Updated: 2026-09-06* | *Last Reviewed: 2026-09-06*
