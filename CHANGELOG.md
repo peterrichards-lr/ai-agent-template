@@ -83,7 +83,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- _Nothing yet._
+- `scripts/release.py` no longer restates a curated `[Unreleased]` bullet as a generated
+  commit subject beside it. The curated entry cites the issue and the squash commit
+  carries the pull request, so the numbers never matched; the drafter now asks `gh` which
+  pull request closed each curated issue and drops those commits. The first real run
+  against `v1.4.0..HEAD` drafted 24 `### Added` bullets, 18 of them generated; it now
+  drafts 20, 13 generated. `--skip-issue-audit` disables the lookup with the audit (#99).
+- `scripts/release.py` warns when the curated `[Unreleased]` section describes a breaking
+  change -- a `### Removed` entry, or a bullet opening `**Breaking**:` -- that no commit
+  declared with `!:` or a `BREAKING CHANGE:` footer, and names the entries. It still
+  proposes the level the commits support rather than guessing `major` on prose: the
+  mismatch is a judgement about adopter impact, and `--bump major` is where a human
+  records it (#99).
 
 <!--
 Example of a released version, kept commented out so the stub starts clean:
@@ -101,4 +112,4 @@ Example of a released version, kept commented out so the stub starts clean:
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
+*Last Updated: 2026-09-06* | *Last Reviewed: 2026-09-06*

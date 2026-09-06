@@ -46,6 +46,7 @@ Exit codes:
 """
 
 import argparse
+import functools
 import os
 import re
 import subprocess
@@ -132,6 +133,20 @@ UNRELEASED_LINK_REGEX = re.compile(
     re.MULTILINE)
 CATEGORY_HEADING_REGEX = re.compile(r'^###[ \t]+(?P<category>.+?)[ \t]*$', re.MULTILINE)
 NOTHING_YET_PLACEHOLDER = '_Nothing yet._'
+
+# The start of a curated bullet. Anything else is a wrapped continuation of the bullet
+# above it, which matters because a multi-line entry is one signal, not several.
+CURATED_BULLET_START_REGEX = re.compile(r'^[ \t]*[-*+][ \t]+')
+
+# How a human writes "this breaks callers" when no commit said `!:`. Keep a Changelog's
+# `### Removed` is the structural spelling of it; `**Breaking**:` opening a bullet -- the
+# form CHANGELOG.md already uses, and render_commit_entry() emits -- is the prose one.
+#
+# Matched as an opener rather than anywhere in the entry on purpose: an entry *about* a
+# breaking change ("now warns about an undeclared breaking change") is not itself one,
+# and this file's own changelog note would otherwise trip the warning it describes.
+BREAKING_MARKER_REGEX = re.compile(r'^[*_`\s]*breaking\b[*_`\s]*:', re.IGNORECASE)
+BREAKING_SIGNAL_CATEGORIES = ('Removed',)
 
 # Git and gh subcommands are cheap; a hung network call is not. Bound every one.
 DEFAULT_TIMEOUT_SECONDS = 60
@@ -439,6 +454,41 @@ def make_gh_issue_lookup(repo: Optional[str] = None,
     return lookup
 
 
+def make_gh_closing_pull_requests_lookup(
+        repo: Optional[str] = None,
+        timeout: int = DEFAULT_TIMEOUT_SECONDS) -> Callable[[int], Optional[List[int]]]:
+    """Build a lookup returning the pull requests that closed one issue.
+
+    Curated changelog entries cite the *issue* a human was working from; the squash
+    commit is stamped with the *pull request* that merged it. Nothing in the commit
+    connects the two -- GitHub holds that link -- so this is what lets a curated bullet
+    suppress the generated restatement of the same work.
+
+    Returns None, not [], when the answer is unknown: an offline run or a `gh` too old
+    for `closedByPullRequestsReferences` must degrade into "no extra coverage", never
+    into "this issue was closed by nothing".
+    """
+    import json
+
+    def lookup(number: int) -> Optional[List[int]]:
+        arguments = ['gh', 'issue', 'view', str(number),
+                     '--json', 'closedByPullRequestsReferences']
+        if repo:
+            arguments += ['--repo', repo]
+
+        code, output, _ = run_command(arguments, timeout=timeout)
+        if code != 0:
+            return None
+        try:
+            references = json.loads(output).get('closedByPullRequestsReferences') or []
+            return [int(reference['number']) for reference in references
+                    if reference.get('number') is not None]
+        except (ValueError, AttributeError, TypeError, KeyError):
+            return None
+
+    return lookup
+
+
 # ---------------------------------------------------------------------------
 # Changelog rendering
 # ---------------------------------------------------------------------------
@@ -573,20 +623,100 @@ def curated_category_lines(unreleased_body: str) -> Dict[str, List[str]]:
     return curated
 
 
+def expand_curated_coverage(numbers: Sequence[int],
+                            lookup: Callable[[int], Optional[Sequence[int]]]
+                            ) -> Tuple[int, ...]:
+    """Add the pull requests that closed each curated number to the covered set.
+
+    A curated bullet reads `- scripts/release.py: ... (#47)`; the commit it describes
+    reads `feat(release): add release.py ... (#96)`. They share no number, so matching
+    on the numbers alone let the first real run draft both -- 7 curated entries and 18
+    generated restatements of the same backlog under one `### Added` (#99).
+
+    `lookup` is injected for the same reason the audit's is: it is a network call, and a
+    failed one must subtract nothing. A None answer leaves the curated numbers exactly
+    as they were, which is the behaviour this had before the expansion existed.
+    """
+    covered = set(numbers)
+    for number in sorted(set(numbers)):
+        closing_pull_requests = lookup(number)
+        if closing_pull_requests:
+            covered.update(int(pull_request) for pull_request in closing_pull_requests)
+    return tuple(sorted(covered))
+
+
+def _curated_bullets(lines: Sequence[str]) -> List[List[str]]:
+    """Group curated lines into bullets, keeping wrapped continuations with their bullet."""
+    bullets: List[List[str]] = []
+    for line in lines:
+        if CURATED_BULLET_START_REGEX.match(line) or not bullets:
+            bullets.append([line])
+        else:
+            bullets[-1].append(line)
+    return bullets
+
+
+def curated_breaking_signals(content: str) -> Tuple[Tuple[str, str], ...]:
+    """Curated [Unreleased] bullets that read as a breaking change.
+
+    Two signals, both of which a human writes without any commit ever saying `!:`: an
+    entry under a category Keep a Changelog reserves for removals, and an entry opening
+    with a `Breaking:` marker in any category. Returns (category, first line) pairs so
+    the caller can name the entries rather than assert that something, somewhere, broke.
+    """
+    try:
+        _, unreleased_body, _ = _split_unreleased(content)
+    except ReleaseError:
+        return ()
+
+    signals: List[Tuple[str, str]] = []
+    for category, lines in curated_category_lines(unreleased_body).items():
+        for bullet in _curated_bullets(lines):
+            summary = CURATED_BULLET_START_REGEX.sub('', bullet[0]).strip()
+            if category in BREAKING_SIGNAL_CATEGORIES or BREAKING_MARKER_REGEX.match(summary):
+                signals.append((category, summary))
+
+    return tuple(signals)
+
+
+def undeclared_breaking_changes(commits: Sequence[CommitEntry],
+                                content: str) -> Tuple[Tuple[str, str], ...]:
+    """Curated breaking-change signals that no commit in the range declared.
+
+    The classifier reads `!:` and `BREAKING CHANGE:` footers and nothing else, so a
+    release whose only record of a break is the changelog prose is proposed as `minor`.
+    That is correct arithmetic on the wrong inputs, and this is the contradiction --
+    visible in a file the script already parses -- that says so.
+    """
+    if any(commit.breaking for commit in commits):
+        return ()
+    return curated_breaking_signals(content)
+
+
 def apply_changelog_release(content: str, version: str, release_date: str,
-                            commits: Sequence[CommitEntry]) -> str:
+                            commits: Sequence[CommitEntry],
+                            expand_coverage: Optional[
+                                Callable[[Sequence[int]], Sequence[int]]] = None) -> str:
     """Promote [Unreleased] into a dated version section and add the generated notes.
 
     Curated entries move down verbatim -- deleting a human's explanation of why a
     change matters in favour of a restated commit subject would be a downgrade. The
     generated entries then fill in everything the human did not already cover, merged
     into the same `### Category` heading rather than repeating it.
+
+    `expand_coverage` widens "what the human already covered" from the numbers written
+    in the curated bullets to the pull requests that closed them, which is the only way
+    a bullet citing `(#47)` can suppress the commit stamped `(#96)`. Optional, so the
+    rendering stays a pure function of the file and the commits when no resolver is
+    supplied.
     """
     before, unreleased_body, after = _split_unreleased(content)
 
     curated = curated_category_lines(unreleased_body)
     covered = _referenced_numbers('\n'.join(
         line for lines in curated.values() for line in lines))
+    if expand_coverage:
+        covered = list(expand_coverage(covered))
 
     merged = {category: list(lines) for category, lines in curated.items()}
     for category, lines in generate_category_lines(commits, already_covered=covered).items():
@@ -746,6 +876,33 @@ def report_audit(audit: IssueAudit, issue_numbers: Sequence[int]) -> None:
         print(f"  ✗ unverified : {', '.join('#' + str(n) for n in audit.unverified)}")
 
 
+def report_undeclared_breaking_changes(signals: Sequence[Tuple[str, str]],
+                                       level: str, limit: int = 10) -> None:
+    """Warn -- never fail, never guess -- when the notes and the bump disagree.
+
+    Not an upgrade to `major`: only a human can say whether "Removed" meant an adopter's
+    invocation now exits 2 or that an unused file was deleted. Naming the entries is
+    what makes that judgement possible, and `--bump major` is the override that records
+    it. Silent under `--bump major`, because there the mismatch is already resolved.
+    """
+    if not signals or level == 'major':
+        return
+
+    print(f"\n⚠️ Undeclared breaking change: {CHANGELOG_RELPATH.as_posix()}'s curated "
+          f"[Unreleased] section\n"
+          f"   describes {len(signals)} change(s) that read as breaking, but no commit in "
+          "this range\n"
+          "   declares one with `!:` or a `BREAKING CHANGE:` footer -- so the proposal "
+          f"above is {level},\n"
+          "   not major. Judge these entries and re-run with `--bump major` if they "
+          "break adopters:")
+    for category, summary in signals[:limit]:
+        print(f"     - [{category}] {summary}")
+    if len(signals) > limit:
+        print(f"     ... and {len(signals) - limit} more")
+    print()
+
+
 # ---------------------------------------------------------------------------
 # Phases
 # ---------------------------------------------------------------------------
@@ -760,6 +917,7 @@ def run_release(root_dir: Path, bump: Optional[str] = None, dry_run: bool = Fals
     if not changelog_path.exists():
         print(f"❌ {CHANGELOG_RELPATH.as_posix()} not found in {root_dir}.", file=sys.stderr)
         return EXIT_ERROR
+    changelog_text = changelog_path.read_text(encoding='utf-8')
 
     previous_tag = current_version_tag(root_dir, timeout=timeout)
     if previous_tag is None:
@@ -793,6 +951,8 @@ def run_release(root_dir: Path, bump: Optional[str] = None, dry_run: bool = Fals
     print(f"Current  : {base_version}"
           + ('' if previous_tag else '  (synthetic: no tags in this repository)'))
     print(f"Proposed : {next_version}  ({level} -- {reason})")
+    report_undeclared_breaking_changes(
+        undeclared_breaking_changes(commits, changelog_text), level)
     report_commits(commits, revision_range)
 
     issue_numbers = collect_referenced_issues(commits)
@@ -803,7 +963,6 @@ def run_release(root_dir: Path, bump: Optional[str] = None, dry_run: bool = Fals
     )
     report_audit(audit, issue_numbers)
 
-    changelog_text = changelog_path.read_text(encoding='utf-8')
     effective_date = release_date or datetime.today().strftime('%Y-%m-%d')
     updated_changelog = None
 
@@ -817,9 +976,20 @@ def run_release(root_dir: Path, bump: Optional[str] = None, dry_run: bool = Fals
         except ReleaseError:
             preview = ''  # _tag_phase reports the missing section precisely.
     else:
+        # Same network dependency, same opt-out: --skip-issue-audit already means "do
+        # not ask GitHub about issue numbers", and resolving which pull request closed
+        # a curated issue is exactly that question. Without it the curated numbers are
+        # matched as written, which is what this did before #99.
+        expand_coverage = None
+        if not skip_issue_audit:
+            expand_coverage = functools.partial(
+                expand_curated_coverage,
+                lookup=make_gh_closing_pull_requests_lookup(repo=repo, timeout=timeout))
+
         try:
             updated_changelog = apply_changelog_release(
-                changelog_text, next_version, effective_date, commits)
+                changelog_text, next_version, effective_date, commits,
+                expand_coverage=expand_coverage)
             preview = extract_changelog_section(updated_changelog, next_version)
         except ReleaseError as error:
             print(f"❌ {error}", file=sys.stderr)
@@ -932,7 +1102,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument('--yes', action='store_true',
                         help='Confirm tagging without a prompt. Required with --tag when no TTY.')
     parser.add_argument('--skip-issue-audit', action='store_true',
-                        help='Skip the issue-closure audit (recorded loudly in the output)')
+                        help='Skip the issue-closure audit, and with it the gh lookup that '
+                             'lets a curated entry suppress its generated twin '
+                             '(recorded loudly in the output)')
     parser.add_argument('--repo', default=None,
                         help='owner/name to audit issues against (default: the gh-detected repo)')
     parser.add_argument('--extract-notes', metavar='TAG', default=None,
