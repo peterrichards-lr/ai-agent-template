@@ -54,6 +54,7 @@ This template solves these failure modes out of the box, providing a standardize
 ### 9. Immediate Technical Debt Governance
 - **Problem**: Minor technical debt accumulating unnoticed during agent refactoring.
 - **Pattern**: Agents log technical debt immediately to GitHub Issues (`--label "tech-debt"`) across 10 catalogued categories. The taxonomy has exactly one home -- the required `Category` dropdown in [`.github/ISSUE_TEMPLATE/tech_debt.yml`](../.github/ISSUE_TEMPLATE/tech_debt.yml) -- which `.agents/skills/github-workflow/SKILL.md` rule 4 mirrors for command-line filing and `tests/test_issue_templates.py` holds in step. This page deliberately does not restate the list: a third hand-maintained copy is a third thing to forget to update.
+- **Escape hatch**: the invariant is *one* canonical tracker per repo, not that the tracker is GitHub. A project that plans in an external tracker (Jira, Azure Boards, Linear) follows rule 7 of the same skill: a one-directional mirror, a clear split of what each system is authoritative for, and `Closes #<issue>` still required for the link gate, which only GitHub's parser can act on.
 
 ### 10. Multi-Agent Subagent Delegation & Asynchronous Synthesis
 - **Problem**: Large codebase surveys or parallel research blocking the primary developer agent.
@@ -171,7 +172,7 @@ later change language.
 | **`unit-testing`** | Enforces test-driven development, fail-first verification gates (citing red-to-green empirical evidence), non-interactive execution, and prohibits superficial test deletion. |
 | **`e2e-verification`** | Covers changes a green unit suite cannot prove (UI, process/network boundaries, CLI, deployment): what real-system evidence counts, teardown duties, and specific human escalation. |
 | **`documentation`** | Governs timestamp footers (`*Last Updated* \| *Last Reviewed*`), post-feature doc updates, and staleness policy checks. |
-| **`github-workflow`** | Standardizes `gh` CLI usage, forces PRs to link `Closes #<issue>`, drives the PR review feedback loop (pull review summaries and CI status with `gh pr view`, inline file/line comments with `gh api repos/{owner}/{repo}/pulls/<number>/comments`, close the loop on each one), logs tech-debt, and cleans up historical CI failures. |
+| **`github-workflow`** | Standardizes `gh` CLI usage, forces PRs to link `Closes #<issue>`, drives the PR review feedback loop (pull review summaries and CI status with `gh pr view`, inline file/line comments with `gh api repos/{owner}/{repo}/pulls/<number>/comments`, close the loop on each one), logs tech-debt to the repo's one canonical tracker (with a documented external-tracker escape hatch), and cleans up historical CI failures. |
 | **`tool-use-react`** | Enforces reasoning before tool activation, non-interactive flags, and asynchronous task lifecycle management. |
 | **`multi-agent-orchestration`** | Governs subagent delegation criteria, clear prompt framing, and asynchronous result synthesis. |
 | **`rule-adherence`** | Addresses agents not reliably following prose rules: re-read before acting, prefer checkable artifacts, and self-correct visibly. |
@@ -299,4 +300,4 @@ these placeholders is still live, citing the file and line. Supply `--repo-owner
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
+*Last Updated: 2026-09-06* | *Last Reviewed: 2026-09-06*

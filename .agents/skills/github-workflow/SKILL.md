@@ -66,7 +66,9 @@ gh api 'repos/{owner}/{repo}/pulls/<number>/comments'
 **Interaction with `human-in-the-loop/SKILL.md`**: pushing fixes in response to review is routine and needs no approval gate -- it is cheap and reversible, exactly like opening the PR was. Resolving a reviewer's thread on their behalf is not routine: marking a conversation resolved is the reviewer's own signal that they are satisfied with the answer. Push the fix, reply on the thread, and leave it to the reviewer to close.
 
 ### 4. Technical Debt Issue Creation
-Tech debt you notice but don't fix as part of the current task must still be tracked -- untracked debt is debt that never gets paid down. This is the single canonical place tech debt is tracked in this template: as a GitHub issue labeled `tech-debt`. Do not also maintain a separate registry elsewhere (`GEMINI.md` points back here rather than keeping its own list, for exactly this reason).
+Tech debt you notice but don't fix as part of the current task must still be tracked -- untracked debt is debt that never gets paid down.
+
+The rule is **one canonical tracker per repo, defaulting to GitHub Issues**: debt lives as a GitHub issue labeled `tech-debt`, and nothing maintains a second registry alongside it (`GEMINI.md` points back here rather than keeping its own list, for exactly this reason). The invariant that earns its keep is *one* place to look, not *which* place -- a repo that genuinely plans in an external tracker follows rule 7 rather than quietly running two lists.
 
 The 10 catalogued categories, mirroring the required `Category` dropdown in `.github/ISSUE_TEMPLATE/tech_debt.yml`, which owns this list: Code Smells, Duplication, Over-complexity, Fragile Coupling, Missing Safety Guards, Missing Tests, Security Hygiene, Deprecated Patterns, Config Drift, Documentation Debt.
 
@@ -144,6 +146,36 @@ To ensure high visibility, search discoverability, and SEO positioning on GitHub
   gh repo edit --description "<concise keyword-rich summary>" --add-topic "ai-agent,developer-tools,<language>"
   ```
 
+### 7. External Trackers (The Escape Hatch to Rule 4)
+
+Rule 4's default holds for most repositories. Some genuinely cannot take it: work is planned in a tracker the team does not own or cannot move off -- Jira, Azure Boards, Linear, YouTrack, Shortcut, an upstream vendor's Bugzilla. Three of this template's sibling repositories hit exactly this and each invented a private answer. This is that answer, generalised. The provider is an implementation detail; nothing below is specific to one.
+
+**One canonical tracker still, plus a mirror.** The repo keeps *one* tracker of record and adds a **one-directional mirror** of the external items it cares about. The mirror is not a sync: nothing writes repo state back into the external tracker automatically, because the two systems have different owners and a two-way sync fails silently in whichever direction nobody is watching.
+
+**Which tracker is authoritative for what.** Split by subject, not by convenience -- an item with two owners has none:
+
+| Question | Authoritative source |
+| :--- | :--- |
+| Does the upstream/planned item exist, and what is its status? | The external tracker |
+| What changed in *this* repository, in which PR, in which release? | The repo's canonical tracker (GitHub Issues) |
+| What workaround does this codebase carry, and why? | The mirror record, reviewed with the code |
+
+**Shape of the mirror.** Prefer a normal GitHub issue carrying a label named for the tracker (`gh issue create --label jira`), with the external key in the title: the mirror then *is* the canonical tracker, so there is still one place to look, and `gh issue list --label jira` is the whole audit. Use version-controlled Markdown records (e.g. `tracker/open/PROJ-123-short-description.md`) only when the record must be reviewed alongside the code that works around it -- it buys review, and costs a second place to look.
+
+**Referencing external IDs in commits and PRs.** External keys carry no `#`, so GitHub's parser ignores them entirely and rule 2's positional anchoring does not apply:
+
+- **Commits**: put the key in a trailer in the commit body -- `Refs: PROJ-123` -- never in the Conventional Commit subject's type or scope, which is reserved for the change's own classification.
+- **PR body**: reference the key in the description, outside `## Linked Issue`, and write `Refs:` or `Relates to`, never a closing keyword. `Closes PROJ-123` closes nothing anywhere and reads as though it did.
+- **`## Linked Issue`**: GitHub issue references only. This is the section GitHub's own parser consumes.
+
+**Keeping the two from drifting.** Drift comes from the same fact recorded twice, so record it once:
+
+- The external key is the **only** join key, and it appears in exactly one authoritative field per mirror record (the issue title, or the filename). Never duplicate the external item's prose into a third location -- link to it.
+- Before the external ticket exists, open the mirror record with a **placeholder key** (`PROJ-XXXXX`) rather than inventing one, then rename it in place the moment the real key is assigned.
+- **Audit on a schedule, and close in one direction**: when the external item is resolved, close the mirror. A mirror record that outlives its external item is the drift, and it is the only kind an audit can catch cheaply.
+
+**The `Closes #N` link gate: GitHub Issues remains mandatory, by design.** `.github/workflows/issue-link-check.yml` and `scripts/check_closing_refs.py` understand `Closes #<number>` and GitHub issue URLs, and nothing else. That is deliberate rather than an oversight: the gate exists so that merging a PR *actually closes* the tracked item, and only GitHub's own parser can do that. A configurable ID pattern would let `Closes PROJ-123` satisfy the check while closing nothing -- a gate that validates a string instead of enforcing the outcome it was built for, which is worse than no gate. So a repo whose planning lives elsewhere still opens a GitHub issue per change; make it the mirror record and the cost is a title and a label, not a duplicate backlog. For changes genuinely too trivial for any issue, the existing `no-issue-needed` label is the escape hatch -- there is no need for a second one.
+
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
+*Last Updated: 2026-09-06* | *Last Reviewed: 2026-09-06*
