@@ -37,6 +37,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/test_bootstrap_cleanup.py` asserts the invariant in general -- diffing a real
   `--clean-template` run and rejecting any surviving document that still points at a
   removed path -- rather than guarding the one sentence (#109).
+- `AGENTS.md`'s skill routing table now links each `SKILL.md` by repository-relative path.
+  Every row had linked its skill twice through an absolute local-file URI (`file:` scheme)
+  since the initial commit, which resolves to `/.agents/skills/...` on the filesystem root
+  rather than into the repository, so all 26 links pointed at a file on nobody's machine
+  and GitHub's renderer
+  -- which permits only a small set of URI schemes -- dropped them to unclickable text,
+  costing the routing table the navigation it exists to provide. `tests/test_document_links.py`
+  asserts the targets resolve to real files and forbids the scheme in any shipped Markdown,
+  so the next skill row cannot copy the pattern from the row above it (#110).
+- `docs/BRANCH_PROTECTION.md` cites the two issues behind the never-filter-the-doc-checks
+  rule as absolute upstream links instead of a bare `See Issues #42 and #44`. The document
+  survives `--clean-template` in every stack and GitHub resolves a bare `#N` against the
+  repository it is rendered in, so an adopter read a citation silently pointing at their
+  own issues 42 and 44. `tests/test_bootstrap_cleanup.py` asserts the general invariant on
+  a real bootstrapped tree -- no delivered document may carry a `#N` outside code spans,
+  fenced blocks and link text, where GitHub does not autolink -- and that the replacement
+  URL survives bootstrap's project rename (#111).
 
 ## [2.0.0] - 2026-09-06
 

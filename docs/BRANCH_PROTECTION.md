@@ -101,7 +101,9 @@ one-size-fits-all config to apply blindly:
     before merge, because that workflow was *entirely* documentation validation:
     excluding `**/*.md` disabled markdownlint, the provider-redirect check, the
     doc-footer guard and the skill-routing drift test for exactly the pull
-    requests they exist to catch. See Issues #42 and #44.
+    requests they exist to catch. See the upstream template's
+    [#42](https://github.com/peterrichards-lr/ai-agent-template/issues/42) and
+    [#44](https://github.com/peterrichards-lr/ai-agent-template/issues/44).
   - **Only the heavy build sits behind the filter**, and `build-and-test` and
     `build-and-test-skip` declare the identical `name: Build & Test`, so exactly
     one of the pair runs and the context is reported either way. The filter's
