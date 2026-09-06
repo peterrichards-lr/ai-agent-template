@@ -810,7 +810,7 @@ def _resolve_editorconfig(sections: list, filename: str) -> dict:
     return resolved
 
 def test_community_health_files_exist_as_adopter_stubs():
-    """All five community health files ship, each marked as an adopter-customisable stub."""
+    """Every community health file ships, each marked as an adopter-customisable stub."""
     root_dir = Path(__file__).parent.parent
 
     for rel_path in COMMUNITY_HEALTH_FILES:

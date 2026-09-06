@@ -18,10 +18,12 @@ Only the latest `main` branch and tagged release versions receive security updat
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, hardcoded secret, or security flaw within this template or projects generated from it:
+If you discover a security vulnerability, hardcoded secret, or security flaw in this project:
 
 1. **Do NOT open a public GitHub issue.**
-2. Send a private report detailing the vulnerability, impact, and reproduction steps to the repository maintainers or via GitHub Private Vulnerability Reporting (if enabled on the repository settings).
+2. Send a private report detailing the vulnerability, impact, and reproduction steps to
+   <CONDUCT_EMAIL_PLACEHOLDER>, or open a private advisory via GitHub Private Vulnerability
+   Reporting (enable it once under *Settings > Code security > Private vulnerability reporting*).
 3. The security team will acknowledge receipt within **48 hours** and provide periodic updates on remediation progress.
 
 ---
@@ -95,4 +97,4 @@ All AI assistants pairing in this repository MUST follow the security rules in [
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
+*Last Updated: 2026-09-06* | *Last Reviewed: 2026-09-06*
