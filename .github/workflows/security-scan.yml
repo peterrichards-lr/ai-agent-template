@@ -135,7 +135,7 @@ jobs:
       - name: Review dependency changes for known vulnerabilities
         # Requires the dependency graph to be enabled (default on public
         # repositories; needs GitHub Advanced Security on private ones).
-        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
           # `comment-summary-in-pr` is left at its default of `never`: any other
