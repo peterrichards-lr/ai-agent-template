@@ -27,6 +27,17 @@ After completing a feature or bug fix:
 3. Run `python3 scripts/append_timestamps.py` to ensure all markdown files have valid footers.
 4. Run `python3 scripts/check_docs_review.py` to verify that no documents violate review staleness thresholds.
 
+> [!NOTE]
+> **Auditing the documentation set as a whole is a different activity.**
+> This skill covers hygiene after a change. When the documentation *itself* is
+> the work -- reported as overwhelming, stale or hard to navigate, or you are
+> restructuring it -- load
+> [`documentation-review`](../documentation-review/SKILL.md) instead.
+>
+> In particular: a green `check_docs_review.py` means every footer is in date.
+> It says nothing about whether the content is correct, whether it renders, or
+> whether a reader can find it.
+
 ### 3. Missing Documentation Remediation
 If a feature introduces new commands, CLI flags, configuration parameters, or architecture modules without corresponding documentation, create a new doc or section with valid timestamp footers.
 
@@ -52,4 +63,4 @@ Rules of engagement:
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-04* | *Last Reviewed: 2026-09-04*
+*Last Updated: 2026-09-20* | *Last Reviewed: 2026-09-04*
