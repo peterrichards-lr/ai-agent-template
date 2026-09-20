@@ -177,6 +177,7 @@ is materialized as a text file and agent skill discovery silently finds nothing.
 │   ├── unit-testing/                  # TDD & non-interactive test rules
 │   ├── e2e-verification/              # Real-app evidence when unit tests aren't proof
 │   ├── documentation/                 # Timestamp & doc maintenance rules
+│   ├── documentation-review/          # Auditing an existing documentation set
 │   ├── github-workflow/               # Issue sync, PR review feedback loop & CI cleanup
 │   ├── tool-use-react/                # ReAct reasoning & CLI command boundaries
 │   ├── multi-agent-orchestration/     # Subagent delegation directives
