@@ -1,4 +1,4 @@
-# AI Agent Template - Canonical Agent Context
+# <PROJECT_NAME_PLACEHOLDER> - Canonical Agent Context
 
 This document is the single source of truth for AI agent rules in this repository across all AI providers (Gemini, Claude, Cursor, Copilot, etc.). It acts as a canonical router pointing to modular skill instructions under `.agents/skills/` and in-flight scratchpad state in `.agent-state.md`.
 
@@ -8,7 +8,7 @@ Provider discovery files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfru
 
 ## 1. Project Identity & Architecture
 
-- **Repository**: `ai-agent-template` - reusable multi-language project template for AI Agent-assisted development.
+- **Repository**: `<PROJECT_NAME_PLACEHOLDER>`
 - **Provider-Agnostic Model**: Discovery files (`GEMINI.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`) redirect to `AGENTS.md`. In-flight task scratchpad lives in `.agent-state.md` (gitignored).
 - **Native Claude Code Discovery**: `.claude/skills` is a tracked relative symlink to `../.agents/skills`, allowing Claude Code to discover all skills natively without duplication.
   > [!NOTE]
@@ -31,7 +31,7 @@ Project rules are organized into active, modular skill files located under `.age
 | **[e2e-verification](.agents/skills/e2e-verification/SKILL.md)** | [.agents/skills/e2e-verification/SKILL.md](.agents/skills/e2e-verification/SKILL.md) | Changes unit tests cannot prove: UI/rendering, process or network boundaries, CLI interaction, config/deployment. | Defines real-system evidence, non-interactive runs with teardown, and specific escalation to human verification. |
 | **[documentation](.agents/skills/documentation/SKILL.md)** | [.agents/skills/documentation/SKILL.md](.agents/skills/documentation/SKILL.md) | After implementing any feature, code change, or bug fix. | Details active documentation review, timestamp hygiene, and staleness checks. |
 | **[documentation-review](.agents/skills/documentation-review/SKILL.md)** | [.agents/skills/documentation-review/SKILL.md](.agents/skills/documentation-review/SKILL.md) | Reviewing, auditing or restructuring documentation as a body of work. | Measure before diagnosing, inspect rendered output, check docs against the code, and fix routing before restructuring. |
-| **[github-workflow](.agents/skills/github-workflow/SKILL.md)** | [.agents/skills/github-workflow/SKILL.md](.agents/skills/github-workflow/SKILL.md) | Managing issues, creating PRs, responding to review comments, repository SEO, or resolving CI pipeline failures. | Governs GitHub CLI usage, issue linking (`Closes #<issue>`), the PR review feedback loop (`gh pr view <number> --json reviews,comments,statusCheckRollup` plus `gh api repos/{owner}/{repo}/pulls/<number>/comments` for inline threads), repository SEO (description & topics), and CI run cleanup. |
+| **[github-workflow](.agents/skills/github-workflow/SKILL.md)** | [.agents/skills/github-workflow/SKILL.md](.agents/skills/github-workflow/SKILL.md) | Managing issues, creating PRs, responding to review comments, repository SEO, or resolving CI pipeline failures. | Governs GitHub CLI usage, issue linking (`Closes #<issue>`), the PR review feedback loop (`gh pr view <number> --json reviews,comments,statusCheckRollup` plus `gh api repos/{owner}/{repo}/pulls/<number>/comments` for inline threads), repository SEO (description & topics), and CI run triage and targeted rerun. |
 | **[tool-use-react](.agents/skills/tool-use-react/SKILL.md)** | [.agents/skills/tool-use-react/SKILL.md](.agents/skills/tool-use-react/SKILL.md) | Executing terminal commands, file tools, or background tasks. | Enforces ReAct reasoning patterns, non-interactive flags (`-y`), and tool safety boundaries. |
 | **[multi-agent-orchestration](.agents/skills/multi-agent-orchestration/SKILL.md)** | [.agents/skills/multi-agent-orchestration/SKILL.md](.agents/skills/multi-agent-orchestration/SKILL.md) | Delegating tasks to subagents or running parallel background research. | Defines subagent invocation, prompt framing, and async result synthesis. |
 | **[rule-adherence](.agents/skills/rule-adherence/SKILL.md)** | [.agents/skills/rule-adherence/SKILL.md](.agents/skills/rule-adherence/SKILL.md) | Before merging, deploying, tagging a release, applying a ruleset, or declaring a task complete. | Addresses agents not reliably following prose rules: re-read before acting, prefer checkable artifacts, and self-correct visibly. |
@@ -114,4 +114,4 @@ Before a high-commitment action (merging, deploying, tagging, applying a ruleset
 
 ---
 
-*Last Updated: 2026-09-06* | *Last Reviewed: 2026-09-06*
+*Last Updated: 2026-09-22* | *Last Reviewed: 2026-09-22*

@@ -130,6 +130,9 @@ def test_dependency_review_is_scoped_to_pull_requests():
     assert "github.event_name == 'pull_request'" in condition, (
         "actions/dependency-review-action only supports pull_request events"
     )
+    assert "!github.event.repository.private" in condition, (
+        "dependency-review must skip private repos to avoid failing on plans without GHAS"
+    )
 
 
 def test_security_scan_jobs_are_not_required_status_checks():

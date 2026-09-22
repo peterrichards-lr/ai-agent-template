@@ -340,6 +340,27 @@ def test_documented_dry_run_leaves_the_tree_byte_identical(tmp_path):
     assert result.returncode == 0, result.stdout + result.stderr
     assert fingerprint_tree(project) == before
 
+def test_bootstrap_customizes_agents_md_without_corrupting_template_sync(tmp_path):
+    """Bootstrap must update AGENTS.md title and repo line while preserving template-sync row."""
+    project, env = make_isolated_clone(tmp_path)
+    res = run_bootstrap(project, env, QUICKSTART_ARGS)
+    assert res.returncode == 0, res.stderr
+
+    agents = (project / 'AGENTS.md').read_text(encoding='utf-8')
+    assert agents.startswith("# my-awesome-app - Canonical Agent Context")
+    assert "- **Repository**: `my-awesome-app`\n" in agents
+    assert "Governs the bidirectional contract with `ai-agent-template`" in agents
+
+def test_bootstrap_customizes_agents_md_with_repo_desc(tmp_path):
+    """Bootstrap with --repo-desc must append the description to the repo line."""
+    project, env = make_isolated_clone(tmp_path)
+    res = run_bootstrap(project, env, QUICKSTART_ARGS + ['--repo-desc', 'Next-generation AI toolkit'])
+    assert res.returncode == 0, res.stderr
+
+    agents = (project / 'AGENTS.md').read_text(encoding='utf-8')
+    assert "- **Repository**: `my-awesome-app` - Next-generation AI toolkit\n" in agents
+
+
 @pytest.mark.parametrize('omitted', ['--name', '--repo-owner', '--conduct-email'])
 def test_omitting_a_required_flag_fails_before_any_file_is_modified(tmp_path, omitted):
     project, env = make_isolated_clone(tmp_path)

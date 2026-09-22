@@ -208,3 +208,23 @@ def test_precommit_config_runs_the_doctor():
 def test_ci_workflow_runs_the_doctor():
     workflow = (REPO_ROOT / '.github' / 'workflows' / 'ci.yml').read_text(encoding='utf-8')
     assert 'scripts/doctor.py' in workflow
+
+
+def test_doctor_skips_agent_state_scratchpad_in_ci(tmp_path, monkeypatch):
+    """CI checkouts lack gitignored .agent-state.md; doctor must not fail them."""
+    make_bootstrapped_tree(tmp_path)
+    (tmp_path / '.agent-state.md').unlink()
+
+    monkeypatch.setenv('CI', 'true')
+    findings_ci = run_doctor(tmp_path, mode=ADOPTER_MODE)
+    assert not any(f.path == '.agent-state.md' for f in findings_ci)
+
+    monkeypatch.delenv('CI', raising=False)
+    monkeypatch.setenv('GITHUB_ACTIONS', 'true')
+    findings_gha = run_doctor(tmp_path, mode=ADOPTER_MODE)
+    assert not any(f.path == '.agent-state.md' for f in findings_gha)
+
+    monkeypatch.delenv('CI', raising=False)
+    monkeypatch.delenv('GITHUB_ACTIONS', raising=False)
+    findings_local = run_doctor(tmp_path, mode=ADOPTER_MODE)
+    assert any(f.path == '.agent-state.md' for f in findings_local)

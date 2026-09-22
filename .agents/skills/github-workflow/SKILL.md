@@ -1,7 +1,7 @@
 ---
 name: github-workflow
 description: >-
-  Standardizes GitHub CLI usage, mandatory issue linking (Closes #<issue>), the PR review feedback loop, repository SEO, and CI run cleanup.
+  Standardizes GitHub CLI usage, mandatory issue linking (Closes #<issue>), the PR review feedback loop, repository SEO, and CI run triage.
   Load when managing issues, opening PRs, responding to review comments, or handling CI failures.
 ---
 
@@ -61,7 +61,10 @@ gh api 'repos/{owner}/{repo}/pulls/<number>/comments'
 - **Retrieve feedback directly.** Never ask the user to paste review comments, check names, or CI logs into the chat. The agent has the same `gh` access the human does; asking them to relay it wastes their turn and loses the file/line context. `statusCheckRollup` in the first query is the CI status, so this pair covers both "what did the reviewer say" and "is the build green" -- reach for `gh run list` only to resolve a failing check into a run id.
 - **Close the loop on every comment.** Map each comment to the specific file and line it concerns (`path` and `line` from the `gh api` response), state the plan for addressing it, apply the fix, then re-run both queries above and report back which comments were addressed and how. **A review comment left neither actioned nor answered is an open thread, not a resolved one** -- it becomes something the PR author has to chase.
 - **Answering counts; silence does not.** Disagreeing with a comment, deferring it to a follow-up issue, or explaining why it does not apply are all legitimate closures -- provided the reasoning is posted on the PR (`gh pr comment`), not just narrated in chat. Only a comment nobody replied to and nobody actioned is unresolved.
-- **CI failure analysis and cleanup.** When `statusCheckRollup` reports a failing check, pull the logs (`gh run view <run-id> --log`), fix the underlying cause, and push a verified fix -- never re-run a job hoping for a different result. Once the fix is verified green, delete the historical record of failed runs (`gh run delete <run-id>`) to keep build history clean.
+- **CI failure analysis and triage.** When `statusCheckRollup` reports a failing check, pull the failed logs first (`gh run view <run-id> --log-failed`) before doing anything else.
+  - **Transient infrastructure flake** (runner fault, network error, registry/download timeout, API rate limit, cancelled job): re-run only the failed jobs with `gh run rerun <run-id> --failed`.
+  - **Caused by the change**: fix the root cause locally, verify with `make verify`, and push a verified commit; re-running only reproduces the failure.
+  - **Never delete a failed run.** Historical failed runs are vital diagnostic evidence cited in issues and PRs; keeping build history intact allows tracking recurrence and flake rates.
 
 **Interaction with `human-in-the-loop/SKILL.md`**: pushing fixes in response to review is routine and needs no approval gate -- it is cheap and reversible, exactly like opening the PR was. Resolving a reviewer's thread on their behalf is not routine: marking a conversation resolved is the reviewer's own signal that they are satisfied with the answer. Push the fix, reply on the thread, and leave it to the reviewer to close.
 
@@ -120,7 +123,7 @@ To authenticate `gh` CLI commands non-interactively without storing plaintext se
 
 #### Required Fine-Grained PAT Scopes (Least Privilege)
 Create a Fine-Grained Personal Access Token (PAT) scoped strictly to target repositories with the following permissions:
-- **`Actions: Read and write`**: Required for listing runs (`gh run list`), viewing logs (`gh run view`), and deleting historical failed runs (`gh run delete`).
+- **`Actions: Read and write`**: Required for listing runs (`gh run list`), viewing logs (`gh run view`), and re-running failed jobs (`gh run rerun`).
 - **`Workflows: Read and write`**: Required if the agent modifies or pushes changes to workflow YAML files under `.github/workflows/*.yml`.
 - **`Issues: Read and write`**: Required for creating/syncing issues (`gh issue create`) and tech-debt logging.
 - **`Pull requests: Read and write`**: Required for opening PRs and linking issue closures (`Closes #<issue>`).
@@ -178,4 +181,4 @@ Rule 4's default holds for most repositories. Some genuinely cannot take it: wor
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-06* | *Last Reviewed: 2026-09-06*
+*Last Updated: 2026-09-22* | *Last Reviewed: 2026-09-22*

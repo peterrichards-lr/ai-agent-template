@@ -942,7 +942,7 @@ def test_bootstrap_substitutes_community_health_placeholders(tmp_path):
     assert unresolved == [], f"Expected no unresolved placeholders, got {unresolved}"
 
     conduct = (resolved_root / 'CODE_OF_CONDUCT.md').read_text(encoding='utf-8')
-    assert 'conduct@acme.example' in conduct and CONDUCT_EMAIL_PLACEHOLDER not in conduct
+    assert '<conduct@acme.example>' in conduct and CONDUCT_EMAIL_PLACEHOLDER not in conduct
 
     changelog = (resolved_root / 'CHANGELOG.md').read_text(encoding='utf-8')
     assert 'my-awesome-service' in changelog and TEMPLATE_PROJECT_NAME not in changelog
@@ -969,6 +969,17 @@ def test_bootstrap_substitutes_community_health_placeholders(tmp_path):
 def test_bootstrap_placeholder_substitution_tolerates_missing_files(tmp_path):
     """Substitution must not fail when a downstream repo has deleted a community health file."""
     assert substitute_community_health_placeholders(tmp_path, project_name='empty-repo') == []
+
+
+def test_substitute_community_health_placeholders_avoids_double_brackets(tmp_path):
+    """Passing an already-bracketed email must not create nested <<...>>."""
+    (tmp_path / 'CODE_OF_CONDUCT.md').write_text(f"Report to {CONDUCT_EMAIL_PLACEHOLDER}.\n", encoding='utf-8')
+    substitute_community_health_placeholders(
+        tmp_path, project_name='proj', repo_owner='owner', conduct_email='<conduct@acme.example>')
+    conduct = (tmp_path / 'CODE_OF_CONDUCT.md').read_text(encoding='utf-8')
+    assert '<conduct@acme.example>' in conduct
+    assert '<<' not in conduct
+
 def test_check_commit_attribution_validation_logic():
     """Verify the attribution heuristic accepts noreply/allowlisted emails and rejects unknown ones."""
     from check_commit_attribution import validate_commit_attribution
@@ -1191,10 +1202,12 @@ def test_github_workflow_skill_pr_review_feedback_loop():
     assert "report back which comments were addressed and how" in skill
     assert "neither actioned nor answered is an open thread" in skill
 
-    # 4. CI status retrieval consolidated into the same call, drill-down + cleanup retained
+    # 4. CI status retrieval consolidated into the same call, triage and targeted rerun
     assert "statusCheckRollup" in skill
-    assert "gh run view <run-id> --log" in skill
-    assert "gh run delete <run-id>" in skill
+    assert "gh run view <run-id> --log-failed" in skill
+    assert "gh run rerun <run-id> --failed" in skill
+    assert "Never delete a failed run" in skill
+    assert "gh run delete" not in skill
 
     # 5. Boundary with human-in-the-loop: pushing fixes is routine, resolving threads is not
     assert "human-in-the-loop/SKILL.md" in skill

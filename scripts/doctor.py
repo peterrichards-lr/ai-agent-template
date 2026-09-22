@@ -177,7 +177,13 @@ def check_claude_skills_link(root_dir: Path) -> list:
     return [Finding(CLAUDE_SKILLS_RELPATH, None, detail)]
 
 def check_agent_state_scratchpad(root_dir: Path) -> list:
-    """Assert the gitignored agent scratchpad was seeded by bootstrap."""
+    """Assert the gitignored agent scratchpad was seeded by bootstrap.
+
+    Skipped in CI environments (CI=true or GITHUB_ACTIONS=true), where gitignored
+    scratchpads are intentionally absent from fresh checkouts.
+    """
+    if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
+        return []
     if (root_dir / AGENT_STATE_RELPATH).is_file():
         return []
     return [Finding(
