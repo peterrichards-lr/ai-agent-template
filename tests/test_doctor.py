@@ -118,7 +118,9 @@ def test_missing_claude_skills_link_is_reported(tmp_path):
 
     assert finding_paths(run_doctor(tmp_path, mode=ADOPTER_MODE)) == {'.claude/skills'}
 
-def test_missing_agent_state_scratchpad_is_reported(tmp_path):
+def test_missing_agent_state_scratchpad_is_reported(tmp_path, monkeypatch):
+    monkeypatch.delenv('CI', raising=False)
+    monkeypatch.delenv('GITHUB_ACTIONS', raising=False)
     make_bootstrapped_tree(tmp_path)
     (tmp_path / '.agent-state.md').unlink()
 
