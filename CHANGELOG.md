@@ -18,6 +18,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## [2.1.0] - 2026-09-22
+
+### Added
+
+- Add the `documentation-review` skill to audit existing documentation sets as a body of
+  work. While the `documentation` skill enforces post-change hygiene (such as timestamp
+  footers and staleness checks), `documentation-review` guides inspecting rendered output,
+  auditing documentation against code and CLI help, and correcting navigation and alert
+  formatting before restructuring (#122).
+
+### Changed
+
+- In `github-workflow` skill, update CI failure triage instructions to mandate inspecting
+  failed logs (`gh run view <id> --log-failed`) and running targeted reruns
+  (`gh run rerun <id> --failed`), dropping previous guidance to delete workflow runs (#126, #128).
+- Bump `actions/dependency-review-action` from 4.9.0 to 5.0.0 (#119).
+- Bump `github/codeql-action/upload-sarif` (#120).
+
+### Fixed
+
+- In `scripts/bootstrap_template.py`, refine placeholder replacement to avoid corrupting
+  project URLs and `template-sync` references in `AGENTS.md`, and format seeded conduct
+  emails with CommonMark autolink angle brackets (`<email>`) to prevent markdownlint `MD034`
+  violations (#123, #124, #128).
+- In `scripts/doctor.py`, skip the `.agent-state.md` scratchpad presence check when running
+  inside CI environments, preventing checkout failures on fresh, non-interactive CI runs
+  where the scratchpad is gitignored (#125, #128).
+- In `.github/workflows/security-scan.yml`, guard the `dependency-review` job so it is skipped
+  on private repositories without GitHub Advanced Security (GHAS), preventing failing checks
+  for private adopter forks (#127, #128).
+
 ## [2.0.1] - 2026-09-06
 
 ### Fixed
@@ -187,10 +218,11 @@ Example of a released version, kept commented out so the stub starts clean:
 [1.0.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v1.0.0
 -->
 
-[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.1.0
 [2.0.1]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.0.1
 [2.0.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.0.0
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-06* | *Last Reviewed: 2026-09-06*
+*Last Updated: 2026-09-22* | *Last Reviewed: 2026-09-22*
