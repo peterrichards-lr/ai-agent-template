@@ -122,8 +122,11 @@ jobs:
   dependency-review:
     name: Dependency Review (non-blocking)
     # actions/dependency-review-action diffs the dependency manifests between the
-    # base and head of a pull request, so it has nothing to compare on a push.
-    if: github.event_name == 'pull_request'
+    # base and head of a pull request, so it has nothing to compare on a push. It
+    # requires the dependency graph (enabled by default on public repositories;
+    # requires GitHub Advanced Security on private ones). Skip on private repositories
+    # so PRs without GHAS don't report a failing check.
+    if: github.event_name == 'pull_request' && !github.event.repository.private
     runs-on: ubuntu-latest
     continue-on-error: true
     permissions:

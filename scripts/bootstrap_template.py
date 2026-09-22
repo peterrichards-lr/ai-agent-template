@@ -896,7 +896,9 @@ def substitute_community_health_placeholders(
     if repo_owner:
         replacements.append((OWNER_PLACEHOLDER, repo_owner))
     if conduct_email:
-        replacements.append((CONDUCT_EMAIL_PLACEHOLDER, conduct_email))
+        # Wrap in autolink angle brackets if not already present to satisfy markdownlint MD034 (no-bare-urls).
+        formatted_email = f"<{conduct_email.strip('<> ')}>"
+        replacements.append((CONDUCT_EMAIL_PLACEHOLDER, formatted_email))
 
     unresolved = []
     for rel_path in COMMUNITY_HEALTH_FILES:
@@ -1293,7 +1295,12 @@ def bootstrap(
     agents_path = root_dir / 'AGENTS.md'
     if agents_path.exists():
         content = agents_path.read_text(encoding='utf-8')
-        content = content.replace(TEMPLATE_PROJECT_NAME, project_name)
+        content = content.replace(PROJECT_NAME_PLACEHOLDER, project_name)
+        if repo_desc:
+            content = content.replace(
+                f"- **Repository**: `{project_name}`",
+                f"- **Repository**: `{project_name}` - {repo_desc}"
+            )
         if dry_run:
             announce_planned_write('AGENTS.md', f"substitute project name ({project_name})")
         else:
