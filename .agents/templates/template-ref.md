@@ -43,6 +43,9 @@ warning and exits 0 -- an offline checkout must never fail a build over this. An
 is not found or refuses access, or a governed path that does not exist upstream, exits 3: a
 check that compared nothing must not pass.
 
+Reading the report is not the same as acting on it. For each real divergence, either adopt the
+upstream change or record it below as a deliberate decision with a linked issue.
+
 ---
 
 ## Path mapping
@@ -53,9 +56,6 @@ reporting one as missing and the other as extra. `bootstrap_template.py --docs-p
 its stylesheet here.
 
 - _None recorded._
-
-Reading the report is not the same as acting on it. For each real divergence, either adopt the
-upstream change or record it below as a deliberate decision with a linked issue.
 
 ---
 

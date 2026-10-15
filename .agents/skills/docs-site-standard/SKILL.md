@@ -104,6 +104,9 @@ alerts hook, `scripts/mkdocs_github_alerts.py`, converts it at build time:
 | Rendered-output check | `scripts/check_docs_rendered.py` | Rule 5 |
 | Theme override | `overrides/main.html` | Open Graph and Twitter tags, verification tags, favicons |
 | Footer partial | `overrides/partials/copyright.html` | The "About these docs" link, through the `url` filter |
+
+A site's own extra override goes in `overrides/` beside them (Material has one `custom_dir`);
+only these two files are governed.
 | Liferay stylesheet | `.agents/templates/docs-profiles/liferay/liferay-blue.css` | Rule 6 |
 
 - **Change them here, in a template PR, then copy them into each project unchanged.** Never
@@ -122,7 +125,8 @@ alerts hook, `scripts/mkdocs_github_alerts.py`, converts it at build time:
   ```
 
   A mismatch prints both SHA-256 prefixes and sizes and exits 2. The template not found, or a
-  shared path missing from it, exits 3. A network failure warns and exits 0.
+  shared path missing from it, exits 3. A network failure warns and exits 0. A profile
+  stylesheet present locally but not mapped is named, with the mapping line to add.
 
 ### 5. Rendered-output checks
 
@@ -164,6 +168,10 @@ every nested page.
 - **Related Liferay tools**: the three rows in the profile's `site.yml`. Set
   `extra.docs_standard.project_name` to this tool's name as it appears there, so its row is
   the "You are here." one.
+- **Checks start off.** The profile ships `home_layout: false` and the notice commented out: a
+  new project's home page has neither yet, and its first deploy would fail on them. Turn both
+  on in the change that writes the home page. A site that already follows the standard turns
+  them on at once.
 - **Branding**: each tool uses its own mark. No official Liferay logo or waffle in the header,
   favicon, social preview or README; "Liferay" appears in text only (Liferay brand ticket
   DESIGN-10350). Not checked.

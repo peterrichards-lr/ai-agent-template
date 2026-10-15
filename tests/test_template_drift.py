@@ -642,6 +642,9 @@ def test_describe_bytes_is_a_short_sha256_and_a_size():
      False),
     ("fatal: unable to access 'https://x/': The requested URL returned error: 502", False),
     ("git clone timed out after 120s", False),
+    # init.templateDir pointing nowhere adds a harmless warning containing "not found".
+    ("warning: templates not found in /nonexistent/tpl\n"
+     "fatal: unable to access 'https://x.invalid/a/b/': Could not resolve host: x.invalid", False),
 ])
 def test_clone_failures_split_into_not_found_and_transport(stderr, not_found):
     assert classify_clone_failure(stderr) is not_found
@@ -732,4 +735,41 @@ def test_fail_on_drift_ignores_upstream_commits_when_content_matches(tmp_path, u
 def test_docs_site_paths_are_all_shipped_by_the_template():
     for rel in DOCS_SITE_SHARED_PATHS:
         assert (REPO_ROOT / rel).exists(), f"{rel} is a docs-site shared path but not shipped"
-    assert 'overrides' in GOVERNED_PATHS
+    assert 'overrides/main.html' in GOVERNED_PATHS
+    assert 'overrides' not in GOVERNED_PATHS and 'overrides' not in DOCS_SITE_SHARED_PATHS, (
+        "a site's own extra override lives in overrides/ too: govern the two files, not the dir")
+
+
+def test_a_sites_own_extra_override_is_not_drift(tmp_path, docs_upstream):
+    """Material has one custom_dir; a partial of the site's own must not fail docs CI."""
+    local_root = adopter_with_docs_files(tmp_path / 'local', docs_upstream['path'])
+    write_reference_file(local_root, docs_upstream['url'], docs_upstream['commit'])
+    (local_root / 'overrides' / 'partials' / 'site-extra.html').write_text('x\n', encoding='utf-8')
+
+    assert main(['--root', str(local_root), '--docs-site', '--fail-on-drift']) == 0
+
+
+def test_docs_site_mode_names_an_unmapped_profile_stylesheet(tmp_path, docs_upstream, capsys):
+    """A TEMPLATE_REF.md from before #135 maps nothing: say so, with the line to add."""
+    css_up = '.agents/templates/docs-profiles/liferay/liferay-blue.css'
+    local_root = adopter_with_docs_files(
+        tmp_path / 'local', docs_upstream['path'],
+        at={css_up: 'docs/assets/stylesheets/liferay-blue.css'})
+    write_reference_file(local_root, docs_upstream['url'], docs_upstream['commit'])
+
+    assert main(['--root', str(local_root), '--docs-site']) == 0
+    assert f"- `docs/assets/stylesheets/liferay-blue.css` ← `{css_up}`" in capsys.readouterr().out
+
+
+def test_the_copy_direction_is_only_given_for_shared_files(tmp_path, upstream_repo, capsys):
+    """AGENTS.md is customised by bootstrap: never tell an adopter to overwrite it."""
+    local_root = tmp_path / 'local'
+    (local_root / '.agents' / 'skills' / 'unit-testing').mkdir(parents=True)
+    (local_root / '.agents' / 'skills' / 'unit-testing' / 'SKILL.md').write_bytes(
+        (upstream_repo['path'] / '.agents' / 'skills' / 'unit-testing' / 'SKILL.md').read_bytes())
+    (local_root / 'AGENTS.md').write_text('# Agents\n\ncustomised\n', encoding='utf-8')
+    write_reference_file(local_root, upstream_repo['url'], upstream_repo['head_commit'])
+
+    assert main(['--root', str(local_root)]) == 0
+    out = capsys.readouterr().out
+    assert 'AGENTS.md' in out and 'copy the file FROM' not in out

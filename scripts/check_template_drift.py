@@ -82,7 +82,8 @@ GOVERNED_PATHS = (
     '.agents/templates',
     'AGENTS.md',
     'scripts',
-    'overrides',
+    'overrides/main.html',
+    'overrides/partials/copyright.html',
     '.github/workflows',
     '.pre-commit-config.yaml',
 )
@@ -90,11 +91,20 @@ GOVERNED_PATHS = (
 # The docs site's shared files (ai-agent-template#135), for a docs CI job that should fail on
 # them and only them. Upstream paths: the Liferay profile's stylesheet is compared through the
 # path mapping bootstrap records. See .agents/skills/docs-site-standard/SKILL.md.
+#
+# The two override files by name, never `overrides/` as a whole: Material has ONE custom_dir,
+# so a site's own extra override (a partial of its own) has nowhere else to live, and governing
+# the directory would fail docs CI on a file the template does not ship.
 DOCS_SITE_SHARED_PATHS = (
-    'overrides',
+    'overrides/main.html',
+    'overrides/partials/copyright.html',
     'scripts/mkdocs_github_alerts.py',
     'scripts/check_docs_rendered.py',
 )
+# Where bootstrap puts a profile's stylesheets, and where the profiles live upstream: a local
+# stylesheet named like a profile's, with no mapping, is the shared file not being compared.
+DOCS_PROFILE_STYLESHEET_DIR = 'docs/assets/stylesheets'
+DOCS_PROFILE_DIR = '.agents/templates/docs-profiles'
 
 # The "Path mapping" section of .agents/TEMPLATE_REF.md: one `local` <- `upstream` pair per
 # line. The seed ships the placeholder line, which bootstrap removes when it adds a mapping.
@@ -115,10 +125,13 @@ DIRECTION_MESSAGE = (
 EVIDENCE_HASH_LENGTH = 16
 
 # git's own words for "this repository does not exist, or you may not read it". Anything else
-# a failed clone says (DNS, timeouts, refused connections, 5xx) is transport, and warns.
+# a failed clone says (DNS, timeouts, refused connections, 5xx) is transport, and warns. Matched
+# only on git's `fatal:` / `remote:` lines: a bare "not found" also appears in harmless warnings
+# (`warning: templates not found in <dir>` whenever init.templateDir points nowhere), and read
+# there it turned a DNS failure into a hard "not found".
 NOT_FOUND_PATTERNS = (
     'repository not found',
-    'not found',
+    "' not found",
     'does not appear to be a git repository',
     'does not exist',
     'returned error: 401',
@@ -267,8 +280,9 @@ def to_upstream_path(local_path: str, mappings: dict) -> str:
 
 def classify_clone_failure(stderr: str) -> bool:
     """True when git says the repository is missing or refused access, not that it is unreachable."""
-    lowered = stderr.lower()
-    return any(pattern in lowered for pattern in NOT_FOUND_PATTERNS)
+    verdicts = [line.lower() for line in stderr.splitlines()
+                if line.lstrip().lower().startswith(('fatal:', 'remote:'))]
+    return any(pattern in line for line in verdicts for pattern in NOT_FOUND_PATTERNS)
 
 
 def describe_bytes(content: bytes) -> str:
@@ -577,8 +591,35 @@ def _print_section(title: str, entries: Sequence[str], empty_note: str = None, l
         print(f"  ... and {len(entries) - limit} more")
 
 
+def is_shared_file(path: str, mappings: Optional[dict] = None) -> bool:
+    """True for a file whose copies must be byte-identical: a shared docs file, or a mapped one.
+
+    Only these get the copy-FROM-upstream direction. Bootstrap customises AGENTS.md, ci.yml and
+    the pre-commit config, and TEMPLATE_REF.md says to edit those freely; telling an adopter to
+    overwrite them from the template would be wrong.
+    """
+    return (path in DOCS_SITE_SHARED_PATHS or path in (mappings or {})
+            or path.startswith(DOCS_PROFILE_DIR + '/'))
+
+
+def unmapped_profile_stylesheets(upstream_root: Path, local_root: Path, mappings: dict) -> list:
+    """Suggested mapping lines for profile stylesheets present locally but not mapped.
+
+    A TEMPLATE_REF.md written before the Path mapping section existed maps nothing, so its copy
+    of a shared stylesheet would never be compared -- and nothing would say so.
+    """
+    suggestions = []
+    for upstream_css in sorted((upstream_root / DOCS_PROFILE_DIR).glob('*/*.css')):
+        upstream = upstream_css.relative_to(upstream_root).as_posix()
+        local = f'{DOCS_PROFILE_STYLESHEET_DIR}/{upstream_css.name}'
+        if upstream not in mappings and (local_root / local).is_file():
+            suggestions.append(f"- `{local}` ← `{upstream}`")
+    return suggestions
+
+
 def report(reference: TemplateReference, snapshot: UpstreamSnapshot,
-           changes: UpstreamChanges, comparison: PathComparison) -> None:
+           changes: UpstreamChanges, comparison: PathComparison,
+           mappings: Optional[dict] = None) -> None:
     """Print the human-readable drift report."""
     print(f"Upstream : {reference.repo_url}")
     print(f"Recorded : {reference.version} @ {reference.commit} "
@@ -612,7 +653,8 @@ def report(reference: TemplateReference, snapshot: UpstreamSnapshot,
         _print_section("Content differs",
                        [f"{path}\n      {evidence[path]}" if path in evidence else path
                         for path in comparison.modified])
-        if comparison.modified or comparison.only_upstream:
+        if any(is_shared_file(path, mappings)
+               for path in comparison.modified + comparison.only_upstream):
             print("\n" + DIRECTION_MESSAGE.format(repo_url=reference.repo_url))
 
 
@@ -657,7 +699,7 @@ def check_template_drift(root_dir: Path, repo_url: Optional[str] = None,
                          rel_paths: Sequence[str] = GOVERNED_PATHS,
                          update_stamp: bool = False, fail_on_drift: bool = False,
                          timeout: int = DEFAULT_GIT_TIMEOUT_SECONDS,
-                         explicit_paths: bool = False) -> int:
+                         explicit_paths: bool = False, docs_site: bool = False) -> int:
     """Run the whole check and return the process exit code (see module docstring)."""
     reference_path = root_dir / TEMPLATE_REFERENCE_RELPATH
     if not reference_path.exists():
@@ -706,7 +748,14 @@ def check_template_drift(root_dir: Path, repo_url: Optional[str] = None,
             snapshot.worktree, reference.commit, upstream_paths, timeout=timeout)
         comparison = compare_paths(snapshot.worktree, root_dir, rel_paths,
                                    mappings=mappings, explicit_paths=explicit_paths)
-        report(reference, snapshot, changes, comparison)
+        report(reference, snapshot, changes, comparison, mappings)
+        if docs_site:
+            suggestions = unmapped_profile_stylesheets(snapshot.worktree, root_dir, mappings)
+            if suggestions:
+                print(
+                    "\n⚠️ Not compared: a shared profile stylesheet with no path mapping. Add to "
+                    f"the Path mapping section\n   of {TEMPLATE_REFERENCE_RELPATH.as_posix()}:\n   "
+                    + '\n   '.join(suggestions))
 
         if comparison.missing_upstream:
             print(
@@ -782,6 +831,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         fail_on_drift=args.fail_on_drift,
         timeout=args.timeout,
         explicit_paths=bool(rel_paths),
+        docs_site=args.docs_site,
     )
 
 

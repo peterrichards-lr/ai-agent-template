@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent.resolve()))
 from check_docs_review import FOOTER_REGEX
 from doctor import ADOPTER_MODE, run_doctor_and_report
 from check_template_drift import (
+    PATH_MAPPING_LINE_REGEX,
     PATH_MAPPING_NONE_LINE,
     TEMPLATE_REFERENCE_RELPATH,
     TEMPLATE_REFERENCE_SEED_RELPATH,
@@ -72,6 +73,7 @@ DOCS_SITE_REQUIREMENTS_RELPATH = Path('requirements-docs.txt')
 # site, governed by check_template_drift.py, and meaningless without one. See
 # .agents/skills/docs-site-standard/SKILL.md.
 DOCS_SITE_SHARED_RELPATHS = (
+    Path('.agents') / 'templates' / 'docs-profiles',
     Path('overrides'),
     Path('scripts') / 'mkdocs_github_alerts.py',
     Path('scripts') / 'check_docs_rendered.py',
@@ -757,7 +759,9 @@ def apply_docs_profile(root_dir: Path, profile: str, project_name: str, repo_own
         else:
             shutil.copyfile(source, target)   # byte for byte: the drift check compares bytes
         print(f"  ✓ Copied {target.relative_to(root_dir).as_posix()}")
-    print("  ℹ️ Set extra.docs_standard.project_name in mkdocs.yml to the project's full name.")
+    print("  ℹ️ Set extra.docs_standard.project_name in mkdocs.yml to the project's full name, then\n"
+          "     turn on its notice and home_layout checks once the home page follows the standard\n"
+          "     (.agents/skills/docs-site-standard/SKILL.md, rules 1 and 6).")
     return mappings
 
 
@@ -788,11 +792,21 @@ def record_path_mappings(root_dir: Path, mappings: list, dry_run: bool = False) 
     new = [line for line in lines if line not in content]
     if not new:
         return True
-    content = content.replace(PATH_MAPPING_NONE_LINE + '\n', '', 1)
-    # Insert after the section's prose, before the next horizontal rule.
-    rule = content.find('\n---\n', section.end())
-    insert_at = rule + 1 if rule != -1 else len(content)
-    content = content[:insert_at].rstrip('\n') + '\n\n' + '\n'.join(new) + '\n\n' + content[insert_at:]
+    # Within the section only, and as list items where the list is: in place of the seed's
+    # placeholder line, after the last recorded mapping, or else at the end of the prose. Any
+    # other placement leaves a blank-line pair or a list split from its own section, and the
+    # adopter's markdownlint fails the file bootstrap just wrote.
+    end = re.search(r'^(?:## |---[ \t]*$)', content[section.end():], re.MULTILINE)
+    stop = section.end() + (end.start() if end else len(content) - section.end())
+    body, block = content[section.end():stop], '\n'.join(new)
+    existing = list(PATH_MAPPING_LINE_REGEX.finditer(body))
+    if PATH_MAPPING_NONE_LINE in body:
+        body = body.replace(PATH_MAPPING_NONE_LINE, block, 1)
+    elif existing:
+        body = body[:existing[-1].end()] + '\n' + block + body[existing[-1].end():]
+    else:
+        body = body.rstrip('\n') + '\n\n' + block + '\n\n'
+    content = content[:section.end()] + body + content[stop:]
     reference_path.write_text(content, encoding='utf-8')
     print(f"  ✓ Recorded {len(new)} path mapping(s) in {TEMPLATE_REFERENCE_RELPATH.as_posix()}")
     return True

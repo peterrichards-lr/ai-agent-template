@@ -30,8 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Related Liferay tools" rows (#135).
 - `check_template_drift.py`: a "Path mapping" section in `.agents/TEMPLATE_REF.md` compares a
   governed file kept at another path; a mismatch prints both SHA-256 prefixes and sizes and
-  says which way to copy; `--docs-site` compares only the shared docs files. `overrides/` is a
-  governed path (#135).
+  says which way to copy; `--docs-site` compares only the shared docs files, and names a
+  profile stylesheet left unmapped. `overrides/main.html` and `overrides/partials/copyright.html`
+  are governed paths (#135).
 
 ### Changed
 

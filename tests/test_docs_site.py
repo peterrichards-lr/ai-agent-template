@@ -584,11 +584,22 @@ RELATED_INTRO = ('Three community tools from the same maintainer. None is an off
 FOOTER_HTML = '<p><em>Last Updated: 2026-10-15</em> | <em>Last Reviewed: 2026-10-15</em></p>'
 
 
+def turn_on_profile_checks(text: str) -> str:
+    """What an adopter does once the home page is written: switch on the notice and layout."""
+    out = text.replace('home_layout: false', 'home_layout: true', 1)
+    out = out.replace('# notice:', 'notice:', 1)
+    for key in ('title:', 'text:', 'link_text:'):
+        out = re.sub(r'#   (' + key + ')', r'  \1', out, count=1)
+    assert out.count('home_layout: true') == 1 and '# notice:' not in out
+    assert not re.search(r'#   (title|text|link_text):', out)
+    return out
+
+
 def _liferay_config():
-    """The Liferay profile's own site.yml, with project_name set as an adopter would."""
-    site = yaml.safe_load(
+    """The Liferay profile's own site.yml, set up as an adopter whose home page is written."""
+    site = yaml.safe_load(turn_on_profile_checks(
         (LIFERAY_PROFILE / 'site.yml').read_text(encoding='utf-8')
-        .replace('<PROJECT_NAME_PLACEHOLDER>', 'Liferay Tunnel'))
+        .replace('<PROJECT_NAME_PLACEHOLDER>', 'Liferay Tunnel')))
     return {'site_name': 'lfr-tunnel', **site}
 
 
@@ -805,8 +816,13 @@ def test_liferay_profile_replaces_the_blocks_copies_the_stylesheet_and_maps_it(t
     assert {scheme['primary'] for scheme in config['theme']['palette']} == {'custom'}
     assert config['extra_css'] == ['assets/stylesheets/liferay-blue.css']
     standard = config['extra']['docs_standard']
-    assert standard['home_layout'] is True and standard['project_name'] == 'lfr-tunnel'
-    assert standard['notice']['title'] == 'Community project'
+    # Off until the home page is written: a fresh project's first deploy must not fail on it.
+    assert standard['home_layout'] is False and 'notice' not in standard
+    assert standard['project_name'] == 'lfr-tunnel'
+    assert yaml.safe_load(turn_on_profile_checks(
+        (project / 'mkdocs.yml').read_text(encoding='utf-8').split('# >>> DOCS PROFILE: site')[1]
+        .split('\n', 1)[1].split('# <<< DOCS PROFILE: site')[0]))['extra']['docs_standard'][
+            'notice']['title'] == 'Community project'
     assert [row['name'] for row in standard['related']['rows']] == [
         name for name, _, _ in RELATED_ROWS]
     assert 'A community project' in config['copyright']
@@ -825,7 +841,10 @@ def test_liferay_profile_replaces_the_blocks_copies_the_stylesheet_and_maps_it(t
     assert record_path_mappings(project, mappings) is True      # idempotent
     text = reference.read_text(encoding='utf-8')
     assert text.count(upstream) == 1
-    assert '- _None recorded._' not in text.split('## Path mapping', 1)[1].split('---', 1)[0]
+    section = text.split('## Path mapping', 1)[1].split('\n---', 1)[0]
+    assert '- _None recorded._' not in section and upstream in section, (
+        "the mapping goes in place of the placeholder, inside its own section")
+    assert '\n\n\n' not in text, "a double blank line fails the adopter's markdownlint (MD012)"
     assert parse_path_mappings(text) == {upstream: 'docs/assets/stylesheets/liferay-blue.css'}
 
 
@@ -850,10 +869,11 @@ def test_cleanup_removes_the_shared_docs_files_too(tmp_path):
     (project / 'scripts' / 'mkdocs_github_alerts.py').write_text('x', encoding='utf-8')
     (project / 'scripts' / 'check_docs_rendered.py').write_text('x', encoding='utf-8')
     (project / 'docs' / 'about.md').write_text('x', encoding='utf-8')
+    (project / '.agents' / 'templates' / 'docs-profiles' / 'liferay').mkdir(parents=True)
 
     removed = clean_docs_site_scaffold(project, docs_site=False)
     for rel in ('overrides', 'scripts/mkdocs_github_alerts.py', 'scripts/check_docs_rendered.py',
-                'docs/about.md'):
+                'docs/about.md', '.agents/templates/docs-profiles'):
         assert rel in removed and not (project / rel).exists()
 
 
@@ -911,6 +931,22 @@ def test_a_liferay_profile_site_builds_and_holds_to_the_standard(tmp_path):
 
     enable_docs_site(project, project_name='lfr-tunnel', repo_owner='peterrichards-lr')
     apply_docs_profile(project, 'liferay', 'Liferay Tunnel', repo_owner='peterrichards-lr')
+    index = project / 'docs' / 'index.md'
+
+    # A fresh profile site, before anyone has written its home page, must deploy: the profile
+    # ships the notice and layout checks off (review of #136).
+    index.write_text("# Liferay Tunnel\n\nA new project.\n\n---\n"
+                     "*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*\n", encoding='utf-8')
+    fresh = _build(project, tmp_path / 'site-fresh')
+    assert fresh.returncode == 0, fresh.stderr
+    fresh_check = subprocess.run(
+        [sys.executable, str(project / 'scripts' / 'check_docs_rendered.py'),
+         str(tmp_path / 'site-fresh'), '--config', str(project / 'mkdocs.yml')],
+        capture_output=True, text=True, check=False)
+    assert fresh_check.returncode == 0, fresh_check.stdout
+
+    config = project / 'mkdocs.yml'
+    config.write_text(turn_on_profile_checks(config.read_text(encoding='utf-8')), encoding='utf-8')
 
     rows = '\n'.join(
         f'| {name} | You are here. {desc} |' if name == 'Liferay Tunnel'
@@ -925,7 +961,6 @@ def test_a_liferay_profile_site_builds_and_holds_to_the_standard(tmp_path):
         "## By subject\n\n### Guides\n\n- [Publish](how-to/publish-the-documentation-site.md)\n\n"
         "## Related Liferay tools\n\n" + RELATED_INTRO + "\n\n| Tool | What it does |\n|---|---|\n"
         + rows + "\n\n---\n*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*\n")
-    index = project / 'docs' / 'index.md'
 
     def build_and_check(markdown):
         index.write_text(markdown, encoding='utf-8')
@@ -945,3 +980,38 @@ def test_a_liferay_profile_site_builds_and_holds_to_the_standard(tmp_path):
                              .replace('## By subject', '## 📖 By subject'))
     assert broken.returncode == 1
     assert '[NO-NOTICE]' in broken.stdout and '[HOME-LAYOUT]' in broken.stdout
+
+
+# --- Regressions from the review of #136 -------------------------------------
+
+def test_social_check_accepts_a_site_url_without_its_trailing_slash(tmp_path, capsys):
+    """MkDocs adds the slash before the template sees site_url; the check must too."""
+    site = _write_site(tmp_path)
+    (site / 'assets').mkdir()
+    (site / 'assets' / 'social.png').write_bytes(b'png')
+    tag = '<meta property="og:image" content="https://acme.github.io/demo/assets/social.png">'
+    for page in site.rglob('*.html'):
+        html = page.read_text(encoding='utf-8').replace('<html><body>', '<html><head><body>')
+        page.write_text(html.replace('<head>', '<head>' + tag, 1), encoding='utf-8')
+    config = {**_liferay_config(), 'site_url': 'https://acme.github.io/demo',
+              'extra': {**_liferay_config()['extra'], 'social_image': 'assets/social.png'}}
+    code, out = _run_check(site, config, capsys)
+    assert code == 0, out
+    assert 'MISSING-SOCIAL' in out, "a configured social check is named as having run"
+
+
+def test_an_important_callout_before_the_notice_does_not_hide_it(tmp_path, capsys):
+    """[!IMPORTANT] renders as `info` too; the notice is any matching callout above the H2."""
+    important = ('<div class="admonition info"><p class="admonition-title">Important</p>'
+                 '<p>Read this first.</p></div>')
+    home = GOOD_HOME.replace('<div class="admonition info">', important
+                             + '<div class="admonition info">', 1)
+    code, out = _run_check(_write_site(tmp_path, home=home), _liferay_config(), capsys)
+    assert code == 0, out
+
+
+def test_the_pass_line_names_only_the_checks_that_ran(tmp_path, capsys):
+    code, out = _run_check(_write_site(tmp_path, home='<h1>demo</h1>'), {'site_name': 'demo'},
+                           capsys)
+    assert code == 0, out
+    assert 'MISSING-SOCIAL' not in out and 'MISSING-VERIFICATION' not in out

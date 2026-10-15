@@ -340,6 +340,8 @@ def check_social(site, pages, config):
     if not image:
         return []
     site_url = config.get("site_url") or ""
+    if site_url and not site_url.endswith("/"):
+        site_url += "/"          # as MkDocs normalises it before the template sees it
     if not site_url.startswith(("http://", "https://")):
         return ["extra.social_image is set but site_url is not an absolute URL, so og:image "
                 "cannot be absolute: a scraper has no page to resolve a relative one against"]
@@ -360,17 +362,25 @@ def check_notice(home_html, notice):
     marker = 'class="admonition info"'
     if marker not in above:
         return ["no `info` callout above the home page's first section heading"]
-    callout = above.split(marker, 1)[1].split("</div>", 1)[0]
-    problems = []
+    # Every `info` callout above the heading is a candidate, not just the first: [!IMPORTANT]
+    # renders as `info` too, and one placed before the notice must not hide it.
     title = notice.get("title", "")
-    if f'<p class="admonition-title">{title}</p>' not in callout:
-        problems.append(f"the callout is not titled {title!r}")
-    if notice.get("text") and notice["text"] not in callout:
-        problems.append(f"the callout does not say {notice['text']!r}")
     link = notice.get("link_text")
-    if link and not re.search(r'<a href="about/">' + re.escape(link) + "</a>", callout):
-        problems.append(f"the callout has no {link!r} link to about/")
-    return problems
+    best = None
+    for callout in above.split(marker)[1:]:
+        callout = callout.split("</div>", 1)[0]
+        problems = []
+        if f'<p class="admonition-title">{title}</p>' not in callout:
+            problems.append(f"the callout is not titled {title!r}")
+        if notice.get("text") and notice["text"] not in callout:
+            problems.append(f"the callout does not say {notice['text']!r}")
+        if link and not re.search(r'<a href="about/">' + re.escape(link) + "</a>", callout):
+            problems.append(f"the callout has no {link!r} link to about/")
+        if not problems:
+            return []
+        if best is None or len(problems) < len(best):
+            best = problems
+    return best
 
 
 def check_home_layout(home_html, standard, site_name):
@@ -508,6 +518,12 @@ def run(site, config):
     for name, problems in always.items():
         if problems:
             failures[name] = problems
+    # Name only the checks that ran: an unconfigured one checked nothing and did not "pass".
+    ran = [name for name in always if name not in ("MISSING-VERIFICATION", "MISSING-SOCIAL")]
+    if extra.get("google_site_verification") or extra.get("bing_site_verification"):
+        ran.append("MISSING-VERIFICATION")
+    if extra.get("social_image"):
+        ran.append("MISSING-SOCIAL")
     if standard.get("home_layout"):
         bad, ok = check_home_layout(home, standard, config.get("site_name", ""))
         if bad:
@@ -528,7 +544,7 @@ def run(site, config):
     for line in passes:
         print(f"  ✓ {line}")
     print(f"  ✓ nav: {' › '.join(labels)}")
-    checked = ", ".join(sorted(always) + (["HOME-LAYOUT"] if standard.get("home_layout") else []))
+    checked = ", ".join(sorted(ran) + (["HOME-LAYOUT"] if standard.get("home_layout") else []))
     print(f"✅ {len(pages)} page(s) pass: {checked}.")
     return 0
 
