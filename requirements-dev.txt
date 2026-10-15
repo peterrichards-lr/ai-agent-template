@@ -4,5 +4,5 @@
 # `bootstrap_template.py --clean-template` removes for non-Python languages.
 pre-commit==4.6.2
 detect-secrets==1.5.0
-actionlint-py==1.7.12.24
+actionlint-py==1.7.12.25
 PyYAML==6.0.3
