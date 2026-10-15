@@ -515,3 +515,221 @@ def test_template_sync_skill_documents_both_directions_and_the_tooling():
     assert TEMPLATE_REFERENCE_RELPATH.as_posix() in content
     assert 'Downstream' in content or 'downstream' in content
     assert 'Upstream' in content or 'upstream' in content
+
+
+# --------------------------------------------------------------------------------------
+# #135: path mapping, mismatch evidence, direction, and failing when nothing was compared
+# --------------------------------------------------------------------------------------
+
+from check_template_drift import (  # noqa: E402
+    DIRECTION_MESSAGE,
+    DOCS_SITE_SHARED_PATHS,
+    PATH_MAPPING_NONE_LINE,
+    classify_clone_failure,
+    describe_bytes,
+    parse_path_mappings,
+)
+
+HOOK_UPSTREAM = 'scripts/mkdocs_github_alerts.py'
+HOOK_LOCAL = 'mkdocs_hooks/github_alerts.py'
+HOOK_BODY = '"""SHARED FILE."""\n_TYPES = {"NOTE": "note"}\n'
+
+
+def write_mapping(reference_path: Path, *pairs):
+    """Append a Path mapping section to a fixture reference file."""
+    lines = '\n'.join(f'- `{local}` ← `{upstream}`' for local, upstream in pairs)
+    content = reference_path.read_text(encoding='utf-8').replace(
+        '## Known drift as of this check',
+        f'## Path mapping\n\nProse.\n\n{lines}\n\n## Known drift as of this check')
+    reference_path.write_text(content, encoding='utf-8')
+
+
+@pytest.fixture
+def docs_upstream(tmp_path):
+    """An upstream carrying the shared docs files, at the template's paths."""
+    origin = tmp_path / 'docs-upstream'
+    for rel, body in ((HOOK_UPSTREAM, HOOK_BODY),
+                      ('scripts/check_docs_rendered.py', '# check\n'),
+                      ('overrides/main.html', '{% extends "base.html" %}\n'),
+                      ('overrides/partials/copyright.html', '<div></div>\n'),
+                      ('.agents/templates/docs-profiles/liferay/liferay-blue.css', ':root {}\n')):
+        (origin / rel).parent.mkdir(parents=True, exist_ok=True)
+        (origin / rel).write_text(body, encoding='utf-8')
+    run_git(['init', '--quiet', '--initial-branch=main', '.'], origin)
+    run_git(['add', '.'], origin)
+    run_git(['commit', '--quiet', '-m', 'shared docs files'], origin)
+    return {'path': origin, 'url': origin.as_uri(),
+            'commit': run_git(['rev-parse', 'HEAD'], origin).stdout.strip()}
+
+
+def adopter_with_docs_files(root: Path, upstream: Path, skip=(), at=None):
+    """Copy the upstream's files into an adopter, optionally moving some (`at`: {up: local})."""
+    at = at or {}
+    for source in upstream.rglob('*'):
+        rel = source.relative_to(upstream).as_posix()
+        if not source.is_file() or rel.startswith('.git/') or rel in skip:
+            continue
+        target = root / at.get(rel, rel)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source.read_bytes())
+    return root
+
+
+def test_parse_path_mappings_reads_only_its_own_section():
+    content = (
+        "# Ref\n\n- `elsewhere` ← `not-a-mapping`\n\n"
+        "## Path mapping\n\nA line in prose: `a` ← `b` is not a list item.\n\n"
+        f"- `{HOOK_LOCAL}` ← `{HOOK_UPSTREAM}`\n"
+        "- `docs/x.css` <- `.agents/templates/x.css`\n\n"
+        "---\n\n## Known drift\n\n- `after` ← `the-section`\n")
+    assert parse_path_mappings(content) == {
+        HOOK_UPSTREAM: HOOK_LOCAL, '.agents/templates/x.css': 'docs/x.css'}
+
+
+def test_a_reference_file_without_a_mapping_section_maps_nothing():
+    assert parse_path_mappings(DOWNSTREAM_REFERENCE_STANZA) == {}
+
+
+def test_the_seed_ships_an_empty_path_mapping_section():
+    seed = (REPO_ROOT / TEMPLATE_REFERENCE_SEED_RELPATH).read_text(encoding='utf-8')
+    assert '## Path mapping' in seed and PATH_MAPPING_NONE_LINE in seed
+    assert parse_path_mappings(seed) == {}
+
+
+def test_a_moved_identical_file_is_compared_not_reported_twice(tmp_path, docs_upstream):
+    local = adopter_with_docs_files(tmp_path / 'local', docs_upstream['path'],
+                                    at={HOOK_UPSTREAM: HOOK_LOCAL})
+    comparison = compare_paths(docs_upstream['path'], local, ['scripts'],
+                               mappings={HOOK_UPSTREAM: HOOK_LOCAL})
+    assert not comparison.has_drift, comparison
+    assert comparison.missing_upstream == ()
+
+
+def test_without_the_mapping_a_moved_file_reads_as_missing(tmp_path, docs_upstream):
+    """The control: the same tree, no mapping, reports the hook as absent locally."""
+    local = adopter_with_docs_files(tmp_path / 'local', docs_upstream['path'],
+                                    at={HOOK_UPSTREAM: HOOK_LOCAL})
+    comparison = compare_paths(docs_upstream['path'], local, ['scripts'])
+    assert comparison.only_upstream == [HOOK_UPSTREAM]
+
+
+def test_a_moved_edited_file_reports_both_hashes_and_sizes(tmp_path, docs_upstream):
+    local = adopter_with_docs_files(tmp_path / 'local', docs_upstream['path'],
+                                    at={HOOK_UPSTREAM: HOOK_LOCAL})
+    edited = HOOK_BODY + '# a local edit\n'
+    (local / HOOK_LOCAL).write_text(edited, encoding='utf-8')
+
+    comparison = compare_paths(docs_upstream['path'], local, [HOOK_LOCAL],
+                               mappings={HOOK_UPSTREAM: HOOK_LOCAL})
+    assert comparison.modified == [HOOK_UPSTREAM]
+    evidence = comparison.evidence[HOOK_UPSTREAM]
+    assert f'local at {HOOK_LOCAL}: {describe_bytes(edited.encode())}' in evidence
+    assert f'upstream: {describe_bytes(HOOK_BODY.encode())}' in evidence
+
+
+def test_describe_bytes_is_a_short_sha256_and_a_size():
+    import hashlib
+    assert describe_bytes(b'abc') == f"sha256 {hashlib.sha256(b'abc').hexdigest()[:16]}, 3 bytes"
+
+
+@pytest.mark.parametrize('stderr, not_found', [
+    ("remote: Repository not found.\nfatal: repository 'https://github.com/x/y/' not found", True),
+    ("fatal: could not read Username for 'https://github.com': terminal prompts disabled", True),
+    ("fatal: unable to access 'https://x/': The requested URL returned error: 403", True),
+    ("fatal: '/nope' does not appear to be a git repository", True),
+    ("fatal: unable to access 'https://x/': Could not resolve host: x", False),
+    ("fatal: unable to access 'https://x/': Failed to connect to x port 443: Operation timed out",
+     False),
+    ("fatal: unable to access 'https://x/': The requested URL returned error: 502", False),
+    ("git clone timed out after 120s", False),
+])
+def test_clone_failures_split_into_not_found_and_transport(stderr, not_found):
+    assert classify_clone_failure(stderr) is not_found
+
+
+def test_cli_fails_when_the_upstream_repository_does_not_exist(tmp_path, capsys):
+    """A 404 will not fix itself: exit 3, never a green run that compared nothing."""
+    local_root = tmp_path / 'local'
+    write_reference_file(local_root, (tmp_path / 'no-such-repo').as_uri(), 'abc1234')
+
+    assert main(['--root', str(local_root)]) == 3
+    assert 'not found' in capsys.readouterr().err
+
+
+def test_cli_fails_when_a_requested_path_is_missing_upstream(tmp_path, docs_upstream, capsys):
+    local_root = adopter_with_docs_files(tmp_path / 'local', docs_upstream['path'])
+    write_reference_file(local_root, docs_upstream['url'], docs_upstream['commit'])
+
+    assert main(['--root', str(local_root), '--path', 'overrides/renamed.html']) == 3
+    captured = capsys.readouterr()
+    assert 'overrides/renamed.html' in captured.out
+    assert 'nothing was compared' in captured.err
+
+
+def test_cli_fails_when_a_local_governed_path_has_no_upstream_counterpart(
+        tmp_path, upstream_repo, capsys):
+    """`overrides` exists here and not in this upstream: comparing it against nothing fails."""
+    local_root = tmp_path / 'local'
+    (local_root / 'overrides').mkdir(parents=True)
+    (local_root / 'overrides' / 'main.html').write_text('x\n', encoding='utf-8')
+    write_reference_file(local_root, upstream_repo['url'], upstream_repo['head_commit'])
+
+    assert main(['--root', str(local_root)]) == 3
+
+
+def test_cli_docs_site_mode_passes_on_byte_identical_copies(tmp_path, docs_upstream, capsys):
+    local_root = adopter_with_docs_files(
+        tmp_path / 'local', docs_upstream['path'],
+        at={'.agents/templates/docs-profiles/liferay/liferay-blue.css':
+            'docs/assets/stylesheets/liferay-blue.css'})
+    reference = write_reference_file(local_root, docs_upstream['url'], docs_upstream['commit'])
+    write_mapping(reference, ('docs/assets/stylesheets/liferay-blue.css',
+                              '.agents/templates/docs-profiles/liferay/liferay-blue.css'))
+
+    assert main(['--root', str(local_root), '--docs-site', '--fail-on-drift']) == 0
+    assert 'No drift' in capsys.readouterr().out
+
+
+def test_cli_docs_site_mode_fails_a_local_edit_with_evidence_and_direction(
+        tmp_path, docs_upstream, capsys):
+    css_up = '.agents/templates/docs-profiles/liferay/liferay-blue.css'
+    css_local = 'docs/assets/stylesheets/liferay-blue.css'
+    local_root = adopter_with_docs_files(tmp_path / 'local', docs_upstream['path'],
+                                         at={css_up: css_local})
+    reference = write_reference_file(local_root, docs_upstream['url'], docs_upstream['commit'])
+    write_mapping(reference, (css_local, css_up))
+    (local_root / css_local).write_text(':root { --edited: 1; }\n', encoding='utf-8')
+
+    assert main(['--root', str(local_root), '--docs-site', '--fail-on-drift']) == 2
+    out = capsys.readouterr().out
+    assert f'{css_up}\n      local at {css_local}: sha256 ' in out
+    assert 'upstream: sha256 ' in out
+    assert DIRECTION_MESSAGE.format(repo_url=docs_upstream['url']) in out
+
+
+def test_cli_accepts_a_local_path_through_its_mapping(tmp_path, docs_upstream):
+    local_root = adopter_with_docs_files(tmp_path / 'local', docs_upstream['path'],
+                                         at={HOOK_UPSTREAM: HOOK_LOCAL})
+    reference = write_reference_file(local_root, docs_upstream['url'], docs_upstream['commit'])
+    write_mapping(reference, (HOOK_LOCAL, HOOK_UPSTREAM))
+
+    assert main(['--root', str(local_root), '--path', HOOK_LOCAL, '--fail-on-drift']) == 0
+
+
+def test_fail_on_drift_ignores_upstream_commits_when_content_matches(tmp_path, upstream_repo, capsys):
+    """Content, not history: matching HEAD exactly passes even with commits since the stamp."""
+    local_root = tmp_path / 'local'
+    for rel in ('.agents/skills/unit-testing/SKILL.md', 'AGENTS.md'):
+        (local_root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (local_root / rel).write_bytes((upstream_repo['path'] / rel).read_bytes())
+    write_reference_file(local_root, upstream_repo['url'], upstream_repo['baseline_commit'])
+
+    assert main(['--root', str(local_root), '--fail-on-drift']) == 0
+    assert 'harden the unit-testing rule' in capsys.readouterr().out, (
+        "the upstream commits are still reported")
+
+
+def test_docs_site_paths_are_all_shipped_by_the_template():
+    for rel in DOCS_SITE_SHARED_PATHS:
+        assert (REPO_ROOT / rel).exists(), f"{rel} is a docs-site shared path but not shipped"
+    assert 'overrides' in GOVERNED_PATHS

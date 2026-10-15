@@ -76,7 +76,7 @@ The bootstrapper will:
 4. Verify or create the `.claude/skills` auto-discovery symlink.
 5. Seed the community health stubs (`CODE_OF_CONDUCT.md`, `CHANGELOG.md`, `SECURITY.md`, `.github/CODEOWNERS`, `.github/ISSUE_TEMPLATE/config.yml`) with your project name, the GitHub owner (`--repo-owner`) and the contact address (`--conduct-email`), which seeds both the Code of Conduct enforcement contact and the vulnerability reporting address.
 6. With `--clean-template`, remove the template's own meta docs and Python scaffolding (`docs/TEMPLATE_GUIDE.md`, `tests/`, and -- outside `--lang python` -- `src/__init__.py` and `requirements-python.txt`), and reset `CHANGELOG.md` to an empty `[Unreleased]` stub linked to your repository, so you do not inherit the template's release history. This is the **only** way to request those deletions; there is no `-y` shortcut.
-7. With `--docs-site`, enable the optional MkDocs Material documentation site (`mkdocs.yml`, `.github/workflows/docs.yml`, `requirements-docs.txt`) and arm its GitHub Pages deploy; without it, `--clean-template` removes that scaffold entirely. See [docs/TEMPLATE_GUIDE.md](docs/TEMPLATE_GUIDE.md).
+7. With `--docs-site`, enable the optional MkDocs Material documentation site (`mkdocs.yml`, `.github/workflows/docs.yml`, `requirements-docs.txt` and the shared docs files) and arm its GitHub Pages deploy; add `--docs-profile liferay` for the Liferay tools profile. Without `--docs-site`, `--clean-template` removes that scaffold entirely. See [docs/TEMPLATE_GUIDE.md](docs/TEMPLATE_GUIDE.md).
 8. Initialize local Git pre-commit hooks.
 9. Inject initial documentation timestamps.
 10. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
@@ -177,6 +177,7 @@ is materialized as a text file and agent skill discovery silently finds nothing.
 │   ├── unit-testing/                  # TDD & non-interactive test rules
 │   ├── e2e-verification/              # Real-app evidence when unit tests aren't proof
 │   ├── documentation/                 # Timestamp & doc maintenance rules
+│   ├── docs-site-standard/            # Shared MkDocs site standard & its checks
 │   ├── documentation-review/          # Auditing an existing documentation set
 │   ├── github-workflow/               # Issue sync, PR review feedback loop & CI cleanup
 │   ├── tool-use-react/                # ReAct reasoning & CLI command boundaries
@@ -187,13 +188,16 @@ is materialized as a text file and agent skill discovery silently finds nothing.
 ├── .agents/templates/                 # Tracked seed files copied into place by bootstrap
 │   ├── agent-state.md                 # Starter scratchpad seed for .agent-state.md
 │   ├── template-ref.md                # Seed for the committed .agents/TEMPLATE_REF.md checkpoint
-│   └── ci/                            # Per-language CI workflow profiles (one per --lang choice)
+│   ├── ci/                            # Per-language CI workflow profiles (one per --lang choice)
+│   └── docs-profiles/                 # Opt-in docs site profiles (--docs-profile)
 ├── scripts/                           # Portable Python 3 helper utilities
 │   ├── append_timestamps.py           # Injects markdown footer timestamps
 │   ├── check_docs_review.py           # Validates doc freshness & review age
 │   ├── bootstrap_template.py          # Project initializer script
 │   ├── agent_push.py                  # Guarded commit-and-push behind `make push`
 │   ├── check_template_drift.py        # Compares this repo against the upstream template
+│   ├── mkdocs_github_alerts.py        # Docs site: GitHub alerts -> admonitions (shared file)
+│   ├── check_docs_rendered.py         # Docs site: checks the built site (shared file)
 │   ├── release.py                     # Semver proposal, issue-closure audit & tagging gate
 │   ├── doctor.py                      # Post-bootstrap placeholder & structure verification
 │   └── gh_issue_sync.py               # GitHub issue & task plan helper
@@ -222,4 +226,4 @@ This template is open source and available under the [MIT License](LICENSE).
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-06* | *Last Reviewed: 2026-09-06*
+*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*

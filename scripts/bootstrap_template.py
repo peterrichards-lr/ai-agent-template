@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent.resolve()))
 from check_docs_review import FOOTER_REGEX
 from doctor import ADOPTER_MODE, run_doctor_and_report
 from check_template_drift import (
+    PATH_MAPPING_NONE_LINE,
     TEMPLATE_REFERENCE_RELPATH,
     TEMPLATE_REFERENCE_SEED_RELPATH,
     UNKNOWN_STAMP_VALUE,
@@ -67,12 +68,31 @@ SECURITY_SCAN_WORKFLOW_RELPATH = Path('.github') / 'workflows' / 'security-scan.
 DOCS_SITE_WORKFLOW_RELPATH = Path('.github') / 'workflows' / 'docs.yml'
 DOCS_SITE_CONFIG_RELPATH = Path('mkdocs.yml')
 DOCS_SITE_REQUIREMENTS_RELPATH = Path('requirements-docs.txt')
+# The shared docs files (ai-agent-template#135): byte-identical in every project with a
+# site, governed by check_template_drift.py, and meaningless without one. See
+# .agents/skills/docs-site-standard/SKILL.md.
+DOCS_SITE_SHARED_RELPATHS = (
+    Path('overrides'),
+    Path('scripts') / 'mkdocs_github_alerts.py',
+    Path('scripts') / 'check_docs_rendered.py',
+    Path('docs') / 'about.md',
+)
 DOCS_SITE_SCAFFOLD_RELPATHS = (
     DOCS_SITE_WORKFLOW_RELPATH,
     DOCS_SITE_CONFIG_RELPATH,
     DOCS_SITE_REQUIREMENTS_RELPATH,
-)
+) + DOCS_SITE_SHARED_RELPATHS
 DOCS_SITE_OPT_IN_MARKER = 'OPT-IN PUSH TRIGGER'
+
+# Opt-in families on top of the generic site (`--docs-profile`). Each profile directory holds
+# `palette.yml` and `site.yml`, which replace the mkdocs.yml blocks of the same name between
+# DOCS PROFILE markers; an optional `about.md`, which replaces docs/about.md; and stylesheets,
+# copied to docs/assets/stylesheets/ and recorded as path mappings in .agents/TEMPLATE_REF.md
+# so the drift checker compares them against the canonical copy here.
+DOCS_PROFILE_DIR_RELPATH = Path('.agents') / 'templates' / 'docs-profiles'
+DOCS_PROFILES = ('liferay',)
+DOCS_PROFILE_BLOCKS = ('palette', 'site')
+DOCS_PROFILE_STYLESHEET_DIR_RELPATH = Path('docs') / 'assets' / 'stylesheets'
 
 # Community health and editor baseline files shipped as adopter-customisable stubs.
 # .editorconfig carries no placeholders but is listed here so this stays the single
@@ -666,6 +686,118 @@ def enable_docs_site(root_dir: Path, project_name: str, repo_owner: str = None,
     return True
 
 
+def replace_marked_yaml_block(content: str, name: str, body: str):
+    """Replace the lines between `# >>> DOCS PROFILE: <name>` and `# <<< DOCS PROFILE: <name>`.
+
+    The markers stay, so the block can be found again. Returns (content, replaced).
+    """
+    pattern = re.compile(
+        r'(^[ \t]*# >>> DOCS PROFILE: ' + re.escape(name) + r'\b[^\n]*\n)(.*?)'
+        r'(^[ \t]*# <<< DOCS PROFILE: ' + re.escape(name) + r'\b)',
+        re.MULTILINE | re.DOTALL)
+    if not body.endswith('\n'):
+        body += '\n'
+    return pattern.subn(lambda m: m.group(1) + body + m.group(3), content, count=1)
+
+
+def apply_docs_profile(root_dir: Path, profile: str, project_name: str, repo_owner: str = None,
+                       dry_run: bool = False) -> list:
+    """Apply an opt-in docs profile on top of the generic site; return the path mappings.
+
+    Aborts, like enable_docs_site, when a shipped piece is missing: the adopter asked for the
+    profile by name, and half of one -- the palette without its stylesheet -- is a site that
+    builds and looks wrong.
+    """
+    print(f"🎨 Applying the '{profile}' docs profile...")
+    profile_dir = root_dir / DOCS_PROFILE_DIR_RELPATH / profile
+    config_path = root_dir / DOCS_SITE_CONFIG_RELPATH
+
+    def substitute(text: str) -> str:
+        text = text.replace(PROJECT_NAME_PLACEHOLDER, project_name)
+        return text.replace(OWNER_PLACEHOLDER, repo_owner) if repo_owner else text
+
+    config = config_path.read_text(encoding='utf-8')
+    for block in DOCS_PROFILE_BLOCKS:
+        fragment = profile_dir / f'{block}.yml'
+        if not fragment.exists():
+            print(f"❌ Error: {fragment.relative_to(root_dir).as_posix()} not found.", file=sys.stderr)
+            sys.exit(1)
+        config, replaced = replace_marked_yaml_block(
+            config, block, substitute(fragment.read_text(encoding='utf-8')))
+        if replaced == 0:
+            print(f"❌ Error: Could not find the 'DOCS PROFILE: {block}' block in "
+                  f"{DOCS_SITE_CONFIG_RELPATH.as_posix()}.", file=sys.stderr)
+            sys.exit(1)
+
+    mappings = []
+    copies = []
+    for stylesheet in sorted(profile_dir.glob('*.css')):
+        local = DOCS_PROFILE_STYLESHEET_DIR_RELPATH / stylesheet.name
+        upstream = stylesheet.relative_to(root_dir).as_posix()
+        copies.append((stylesheet, root_dir / local, None))
+        mappings.append((local.as_posix(), upstream))
+    about = profile_dir / 'about.md'
+    if about.exists():
+        copies.append((about, root_dir / 'docs' / 'about.md', substitute))
+
+    if dry_run:
+        announce_planned_write(DOCS_SITE_CONFIG_RELPATH.as_posix(),
+                               f"replace the DOCS PROFILE blocks with the '{profile}' profile")
+        for source, target, _ in copies:
+            announce_planned_write(target.relative_to(root_dir).as_posix(),
+                                   f"copy from {source.relative_to(root_dir).as_posix()}")
+        return mappings
+
+    config_path.write_text(config, encoding='utf-8')
+    print(f"  ✓ Applied the '{profile}' palette and site blocks to {DOCS_SITE_CONFIG_RELPATH.as_posix()}")
+    for source, target, transform in copies:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if transform:
+            target.write_text(transform(source.read_text(encoding='utf-8')), encoding='utf-8')
+        else:
+            shutil.copyfile(source, target)   # byte for byte: the drift check compares bytes
+        print(f"  ✓ Copied {target.relative_to(root_dir).as_posix()}")
+    print("  ℹ️ Set extra.docs_standard.project_name in mkdocs.yml to the project's full name.")
+    return mappings
+
+
+def record_path_mappings(root_dir: Path, mappings: list, dry_run: bool = False) -> bool:
+    """Add `local <- upstream` lines to the Path mapping section of .agents/TEMPLATE_REF.md.
+
+    Idempotent: a mapping already recorded is not added twice, and the hand-maintained rest of
+    the file is untouched.
+    """
+    if not mappings:
+        return True
+    reference_path = root_dir / TEMPLATE_REFERENCE_RELPATH
+    lines = [f"- `{local}` ← `{upstream}`" for local, upstream in mappings]
+    if dry_run:
+        announce_planned_write(TEMPLATE_REFERENCE_RELPATH.as_posix(),
+                               "record path mapping(s): " + '; '.join(lines))
+        return True
+    if not reference_path.exists():
+        print(f"  ⚠️ Warning: {TEMPLATE_REFERENCE_RELPATH.as_posix()} not found; record these "
+              "path mappings in it by hand:\n     " + '\n     '.join(lines), file=sys.stderr)
+        return False
+    content = reference_path.read_text(encoding='utf-8')
+    section = re.search(r'^## Path mapping[ \t]*\n', content, re.MULTILINE)
+    if not section:
+        print(f"  ⚠️ Warning: no '## Path mapping' section in {TEMPLATE_REFERENCE_RELPATH.as_posix()};"
+              " add one (see the seed) with:\n     " + '\n     '.join(lines), file=sys.stderr)
+        return False
+    new = [line for line in lines if line not in content]
+    if not new:
+        return True
+    content = content.replace(PATH_MAPPING_NONE_LINE + '\n', '', 1)
+    # Insert after the section's prose, before the next horizontal rule.
+    rule = content.find('\n---\n', section.end())
+    insert_at = rule + 1 if rule != -1 else len(content)
+    content = content[:insert_at].rstrip('\n') + '\n\n' + '\n'.join(new) + '\n\n' + content[insert_at:]
+    reference_path.write_text(content, encoding='utf-8')
+    print(f"  ✓ Recorded {len(new)} path mapping(s) in {TEMPLATE_REFERENCE_RELPATH.as_posix()}")
+    return True
+
+
 def clean_docs_site_scaffold(root_dir: Path, docs_site: bool, dry_run: bool = False) -> list:
     """Remove the optional documentation site unless the adopter opted into it.
 
@@ -689,7 +821,10 @@ def clean_docs_site_scaffold(root_dir: Path, docs_site: bool, dry_run: bool = Fa
             announce_planned_write(rel_path.as_posix(), "remove the opt-in documentation site")
             continue
 
-        target.unlink()
+        if target.is_dir():
+            shutil.rmtree(target)
+        else:
+            target.unlink()
         print(f"  ✓ Removed the opt-in documentation site ({rel_path.as_posix()})")
 
     return sorted(removed)
@@ -1244,7 +1379,8 @@ def bootstrap(
     repo_owner: str = None,
     conduct_email: str = None,
     dry_run: bool = False,
-    docs_site: bool = False
+    docs_site: bool = False,
+    docs_profile: str = None
 ):
     root_dir = Path(__file__).parent.parent.resolve()
     print(f"🚀 Initializing AI Agent Project Template in: {root_dir}")
@@ -1278,8 +1414,12 @@ def bootstrap(
     # 2. Configure Language Profile & Clean Template Meta Docs
     configure_language_profile(root_dir, language, dry_run=dry_run)
     configure_semgrep_rulesets(root_dir, language, dry_run=dry_run)
+    docs_profile_mappings = []
     if docs_site:
         enable_docs_site(root_dir, project_name, repo_owner=repo_owner, dry_run=dry_run)
+        if docs_profile:
+            docs_profile_mappings = apply_docs_profile(
+                root_dir, docs_profile, project_name, repo_owner=repo_owner, dry_run=dry_run)
     # --clean-template and nothing else. This used to read `if clean_template or
     # non_interactive`, so `-y` -- the conventional "do not prompt me" flag, on a script
     # that has never prompted -- silently deleted docs/TEMPLATE_GUIDE.md, tests/ and
@@ -1291,6 +1431,7 @@ def bootstrap(
     # 3. Seed/update .agent-state.md and .agents/TEMPLATE_REF.md, and update AGENTS.md
     ensure_agent_state_scratchpad(root_dir, project_name, dry_run=dry_run)
     ensure_template_reference(root_dir, project_name, dry_run=dry_run)
+    record_path_mappings(root_dir, docs_profile_mappings, dry_run=dry_run)
 
     agents_path = root_dir / 'AGENTS.md'
     if agents_path.exists():
@@ -1433,13 +1574,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
     # not carrying mkdocs.yml, a Pages workflow and mkdocs-material at all than by
     # carrying them switched off, so --clean-template deletes the scaffold without this.
     parser.add_argument('--docs-site', action='store_true', help='Enable the optional MkDocs Material documentation site and its GitHub Pages workflow (without this, --clean-template removes mkdocs.yml, .github/workflows/docs.yml and requirements-docs.txt)')
+    parser.add_argument('--docs-profile', choices=DOCS_PROFILES, default=None, help='With --docs-site, apply an opt-in family profile on top of the generic site (liferay: the Liferay tools palette, community-project notice and related-tools rows; see .agents/skills/docs-site-standard/SKILL.md)')
     parser.add_argument('--repo-owner', type=str, required=True, help='GitHub org/user owning the repository, seeding CODEOWNERS, CHANGELOG links and the issue chooser (required)')
     parser.add_argument('--conduct-email', type=str, required=True, help='Contact email seeded into CODE_OF_CONDUCT.md enforcement and SECURITY.md vulnerability reporting (required)')
 
     return parser
 
 def main():
-    args = build_arg_parser().parse_args()
+    parser = build_arg_parser()
+    args = parser.parse_args()
+    # A profile is a layer on the site, not a site of its own. Refused before any file is
+    # touched, like every other usage error.
+    if args.docs_profile and not args.docs_site:
+        parser.error('--docs-profile requires --docs-site')
     bootstrap(
         project_name=args.name,
         language=args.lang,
@@ -1451,7 +1598,8 @@ def main():
         repo_owner=args.repo_owner,
         conduct_email=args.conduct_email,
         dry_run=args.dry_run,
-        docs_site=args.docs_site
+        docs_site=args.docs_site,
+        docs_profile=args.docs_profile
     )
 
 if __name__ == '__main__':

@@ -482,7 +482,9 @@ def clean_template_removals(tmp_path_factory, cleaned_project):
     opt_in = {rel_path.as_posix() for rel_path in DOCS_SITE_SCAFFOLD_RELPATHS}
 
     removed = set(fingerprint_tree(pristine)) - set(fingerprint_tree(cleaned_project))
-    return removed - opt_in
+    # An opt-in path may be a directory (overrides/): everything under it is opt-in too.
+    return {rel for rel in removed
+            if not any(rel == path or rel.startswith(path + '/') for path in opt_in)}
 
 def test_no_delivered_document_cites_a_path_clean_template_removed(
         cleaned_project, clean_template_removals):

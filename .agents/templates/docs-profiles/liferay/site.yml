@@ -1,0 +1,40 @@
+# Liferay profile (bootstrap_template.py --docs-profile liferay). The Liferay
+# tools family's shared values; see .agents/skills/docs-site-standard/SKILL.md,
+# "The Liferay profile". Each tool uses its own mark: no official Liferay logo or
+# waffle in the header, favicon, social preview or README (DESIGN-10350).
+copyright: >-
+  A community project &mdash; not an official Liferay product
+
+extra_css:
+  - assets/stylesheets/liferay-blue.css   # SHARED FILE, mapped in .agents/TEMPLATE_REF.md
+  # A site-specific stylesheet goes here, AFTER liferay-blue.css; never edit that one.
+
+extra:
+  # social_image: assets/social-preview.png    # 1280x640; needs site_url
+  # favicon_svg: assets/favicon.svg
+  # google_site_verification: TOKEN
+  # bing_site_verification: TOKEN
+  docs_standard:
+    # The H1 is "<project_name> documentation", and project_name picks out this
+    # site's own row in `related` below. Use the full name, not the repo slug.
+    project_name: <PROJECT_NAME_PLACEHOLDER>
+    home_layout: true
+    notice:
+      title: Community project
+      text: Not an official Liferay product and not covered by Liferay Support
+      link_text: About this project
+    related:
+      heading: Related Liferay tools
+      intro: >-
+        Three community tools from the same maintainer. None is an official
+        Liferay product or covered by Liferay Support.
+      rows:
+        - name: Liferay Docker Manager
+          url: https://peterrichards-lr.github.io/liferay-docker-manager/
+          description: Run, manage and develop Liferay DXP and Portal environments in Docker.
+        - name: Liferay AI Commerce Accelerator
+          url: https://peterrichards-lr.github.io/liferay-ai-commerce-accelerator/
+          description: Generate and manage AI-driven commerce data in Liferay DXP.
+        - name: Liferay Tunnel
+          url: https://peterrichards-lr.github.io/lfr-tunnel/
+          description: Securely expose a local Liferay environment on a public HTTPS subdomain.

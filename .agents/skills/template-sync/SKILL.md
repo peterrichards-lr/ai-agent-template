@@ -78,6 +78,7 @@ the next agent "fixes" it back to the upstream wording, and the decision behind 
 
 ```bash
 python3 scripts/check_template_drift.py                 # report only, never writes
+python3 scripts/check_template_drift.py --docs-site --fail-on-drift  # shared docs files, for docs CI
 python3 scripts/check_template_drift.py --update-stamp  # report, then move the stamp forward
 python3 scripts/check_template_drift.py --fail-on-drift # report, exit 2 on drift (CI gate)
 ```
@@ -88,6 +89,15 @@ python3 scripts/check_template_drift.py --fail-on-drift # report, exit 2 on drif
   governance helper that fails a build over a DNS lookup gets disabled, and a disabled check
   protects nothing. Exit `1` means the reference file is missing or unparseable -- a real,
   actionable configuration error.
+- **Comparing nothing is a failure.** An upstream that is not found or refuses access, or a
+  governed path that does not exist upstream, exits `3` with or without `--fail-on-drift`: it
+  will not fix itself on a re-run.
+- **`--fail-on-drift` gates on content.** Exit `2` means a governed file differs; the report
+  prints both SHA-256 prefixes and sizes, and says to copy FROM the template, never to edit the
+  local copy into agreement. Upstream commits since the stamp are reported but do not fail it.
+- **A moved file is mapped.** A governed file kept at another path is listed in the "Path
+  mapping" section of `.agents/TEMPLATE_REF.md` as `` `local` ← `upstream` ``, and compared
+  there. `--path` accepts either side of a mapping.
 - Only `--update-stamp` after acting on the report. Moving the stamp forward with the drift list
   untouched records a comparison that never happened.
 
@@ -100,4 +110,4 @@ sibling repositories already hand-maintain the same format.
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
+*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*

@@ -20,6 +20,9 @@ on:
   #     - 'mkdocs.yml'
   #     - 'README.md'
   #     - 'requirements-docs.txt'
+  #     - 'overrides/**'
+  #     - 'scripts/mkdocs_github_alerts.py'
+  #     - 'scripts/check_docs_rendered.py'
   #     - '.github/workflows/docs.yml'
   # <<< OPT-IN PUSH TRIGGER <<<
   workflow_dispatch:
@@ -90,6 +93,24 @@ jobs:
       # a reason to refuse to publish the documentation.
       - name: Build the site
         run: mkdocs build --site-dir _site
+
+      # Before the upload, never after: a check on the deployed site reports a broken page
+      # that readers already have. Configured from mkdocs.yml `extra:`; see
+      # .agents/skills/docs-site-standard/SKILL.md.
+      - name: Check the built site against the docs-site standard
+        run: python scripts/check_docs_rendered.py _site
+
+      # The shared docs files are byte-identical copies of the template's; a local edit fails
+      # here rather than drifting silently. Exit 3 (the template, or a governed file in it,
+      # not found) fails too; a network failure only warns. The template itself has no
+      # .agents/TEMPLATE_REF.md and nothing to compare against.
+      - name: Check the shared docs files against the template
+        run: |
+          if [ -f .agents/TEMPLATE_REF.md ]; then
+            python scripts/check_template_drift.py --docs-site --fail-on-drift
+          else
+            echo "No .agents/TEMPLATE_REF.md: this is the template itself, nothing to compare."
+          fi
 
       - name: Upload the Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

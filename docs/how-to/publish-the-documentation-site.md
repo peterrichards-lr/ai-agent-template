@@ -5,9 +5,11 @@ deploys it until you ask for it.
 
 This guide is kept whether or not the site was enabled at bootstrap, because the
 decision is reversible. If `mkdocs.yml` is not in the repository, the site was
-never turned on: copy `mkdocs.yml`, `.github/workflows/docs.yml` and
-`requirements-docs.txt` back from the template and apply the two edits
-`--docs-site` would have made, described below.
+never turned on: copy `mkdocs.yml`, `.github/workflows/docs.yml`,
+`requirements-docs.txt` and the shared docs files (`overrides/`,
+`scripts/mkdocs_github_alerts.py`, `scripts/check_docs_rendered.py`,
+`docs/about.md`) back from the template and apply the two edits `--docs-site`
+would have made, described below.
 
 ## Turn it on during bootstrap
 
@@ -27,8 +29,16 @@ python3 scripts/bootstrap_template.py \
 2. Uncomments the `push:` trigger in `.github/workflows/docs.yml`, which ships
    commented out so that a project that did not opt in never deploys.
 
+Add `--docs-profile liferay` for the Liferay tools family's palette, notice and
+related-tools rows.
+
+The site follows a shared standard (home-page layout, navigation order, alerts),
+described in `.agents/skills/docs-site-standard/SKILL.md`. The workflow checks
+the built site against it with `scripts/check_docs_rendered.py` before every
+upload; run the same command on your local build first.
+
 Without `--docs-site`, `--clean-template` deletes `mkdocs.yml`,
-`.github/workflows/docs.yml` and `requirements-docs.txt`. The Diátaxis
+`.github/workflows/docs.yml`, `requirements-docs.txt` and the shared docs files. The Diátaxis
 directories under `docs/` are kept either way — organising documentation by
 division is worth doing whether or not it is ever rendered.
 
@@ -86,4 +96,4 @@ horizontal rule.
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
+*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*

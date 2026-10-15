@@ -1,0 +1,141 @@
+/*
+ * Liferay Blue -- shared documentation palette for the Liferay tools family
+ * (lfr-tunnel, liferay-docker-manager, liferay-ai-commerce-accelerator).
+ *
+ * SHARED FILE. The canonical copy is
+ * .agents/templates/docs-profiles/liferay/liferay-blue.css on the main branch
+ * of peterrichards-lr/ai-agent-template; `bootstrap_template.py --docs-site
+ * --docs-profile liferay` copies it to docs/assets/stylesheets/liferay-blue.css
+ * and records that path mapping in .agents/TEMPLATE_REF.md. Never edit a copy:
+ * change the canonical file in the template, through a PR there, then copy it
+ * into each site unchanged. scripts/check_template_drift.py compares the
+ * copies. A site-specific need goes in a separate stylesheet listed after this
+ * one in extra_css. The rule is in the template's CONTRIBUTING.md, "Shared docs
+ * files", and .agents/skills/docs-site-standard/SKILL.md.
+ *
+ * Derived from LDM's original (LDM-#1822), which ports the lfr-tunnel portal's
+ * palette (pkg/server/static/themes/liferay.css) so the two surfaces of the
+ * same product family look related. It is a PALETTE, not a port of that theme:
+ * the portal's glassmorphism, gradients, card blur and glow shadows belong to
+ * an app shell and would fight Material's typography and reading measure.
+ *
+ *   Primary: #0B5FFF -- Liferay standard blue (light-scheme header and tabs,
+ *                         links in the light scheme)
+ *   Navy:    #12162a deep (dark-scheme header, dark footer) and #1a1f35
+ *            (light footer, dark page background)
+ *
+ * Blue and navy never touch: --lfr-blue sits on white (links, icons) or under
+ * white text (the light-scheme header, 5.13:1), and the navy carries the dark
+ * scheme, whose links use --lfr-blue-light. #0B5FFF on navy is 3.17:1 and
+ * fails AA.
+ *
+ * #0B5FFF is not one of Material's built-in palette colours, so it cannot be
+ * set through theme.palette.primary; it is applied here instead, which
+ * requires in mkdocs.yml:  theme.palette[*].primary: custom / accent: custom
+ */
+
+:root {
+  --lfr-blue: #0b5fff;
+  --lfr-blue-hover: #0048d4;
+  --lfr-blue-light: #5d9bff;   /* 5.88:1 on navy -- dark-scheme links */
+  --lfr-navy: #1a1f35;
+  --lfr-navy-deep: #12162a;
+  --lfr-navy-raised: #1e2442;
+  --lfr-text-main: #f0f2ff;
+  --lfr-text-secondary: #b0b8d8;
+  --lfr-text-muted: #8892b8;
+  --lfr-success: #17d09e;
+  --lfr-warning: #ffb84d;
+  --lfr-danger: #ff4d6a;
+}
+
+/* ---- Light scheme: white page, Liferay blue header, navy footer ---------
+   The source palette is dark-only. A dark-only documentation site is a real
+   accessibility and preference cost, so the brand colour carries into a light
+   scheme rather than forcing one mode on every reader. */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: var(--lfr-blue);
+  --md-primary-fg-color--light: #4a86ff;
+  --md-primary-fg-color--dark: var(--lfr-blue-hover);
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
+
+  --md-accent-fg-color: var(--lfr-blue-hover);
+  --md-accent-fg-color--transparent: rgba(11, 95, 255, 0.1);
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: rgba(255, 255, 255, 0.7);
+
+  --md-typeset-a-color: var(--lfr-blue);   /* 5.13:1 on white */
+
+  --md-footer-bg-color: var(--lfr-navy);
+  --md-footer-bg-color--dark: var(--lfr-navy-deep);
+}
+
+/* ---- Dark scheme: the Liferay palette as-is ------------------------------
+   The header here is the navy shell, not the blue: that is the portal
+   palette's own relationship -- its shell IS the navy, with blue as the accent
+   on top -- and a bright blue bar is harsh against a dark page. */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: var(--lfr-navy);
+  --md-default-bg-color--light: var(--lfr-navy-raised);
+  --md-default-bg-color--lighter: rgba(255, 255, 255, 0.06);
+  --md-default-bg-color--lightest: rgba(255, 255, 255, 0.03);
+
+  --md-default-fg-color: var(--lfr-text-main);
+  --md-default-fg-color--light: var(--lfr-text-secondary);
+  --md-default-fg-color--lighter: var(--lfr-text-muted);
+  --md-default-fg-color--lightest: rgba(136, 146, 184, 0.45);
+
+  --md-primary-fg-color: var(--lfr-navy-deep);
+  --md-primary-fg-color--light: var(--lfr-navy-raised);
+  --md-primary-fg-color--dark: #0d1020;
+  --md-primary-bg-color: var(--lfr-text-main);
+  --md-primary-bg-color--light: var(--lfr-text-secondary);
+
+  --md-accent-fg-color: var(--lfr-blue-light);
+  --md-accent-fg-color--transparent: rgba(11, 95, 255, 0.15);
+
+  /* Measured: #0b5fff on #1a1f35 is 3.17:1 and FAILS AA as body-size link
+     text. The lifted tint is 5.88:1 and passes; the portal palette reaches for
+     the same value for the same reason (--status-info-text). */
+  --md-typeset-a-color: var(--lfr-blue-light);
+
+  --md-code-bg-color: rgba(0, 0, 0, 0.3);
+  --md-code-fg-color: var(--lfr-text-main);
+
+  --md-footer-bg-color: var(--lfr-navy-deep);
+  --md-footer-bg-color--dark: #0d1020;
+
+  --md-typeset-mark-color: rgba(11, 95, 255, 0.3);
+  --md-typeset-table-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ---- Shared by both schemes ---------------------------------------------- */
+[data-md-color-scheme="default"],
+[data-md-color-scheme="slate"] {
+  --md-typeset-ins-color: var(--lfr-success);
+  --md-typeset-del-color: var(--lfr-danger);
+}
+
+/* Header and tabs: Liferay blue in the light scheme (from --md-primary-* above,
+   white text at 5.13:1), navy in the dark one -- a bright blue bar is harsh on
+   a dark page. The header logo is the light (white) variant of each site's
+   mark, shipped as docs/assets/logo.svg, which reads on either.
+   These two rules are scoped to the DARK scheme on purpose: unscoped, they won
+   every cascade and forced a navy header onto the light page whatever
+   --md-primary-fg-color said, so the light scheme's blue was declared and never
+   seen. */
+[data-md-color-scheme="slate"] .md-header { background-color: var(--lfr-navy-deep); color: var(--lfr-text-main); }
+[data-md-color-scheme="slate"] .md-tabs   { background-color: var(--lfr-navy);      color: var(--lfr-text-main); }
+
+/* Selection uses the blue at a low alpha rather than the browser default,
+   which clashes with the navy. */
+::selection { background-color: rgba(11, 95, 255, 0.3); }
+
+/* Review / maintenance footer lines ("*Last reviewed ...*") read as stray
+   prose at full size. The selector matches an <em> that is the ONLY child of
+   the paragraph after a horizontal rule; an emphasised phrase inside ordinary
+   prose has siblings and is untouched. (A footer with two <em>s, as in
+   `*Last Updated: …* | *Last Reviewed: …*`, has siblings too and is also left
+   at full size.) */
+.md-typeset hr + p > em:only-child { font-size: 0.75rem; opacity: 0.7; }

@@ -31,13 +31,28 @@ drift from it deliberate instead of silent.
 python3 scripts/check_template_drift.py                 # report only
 python3 scripts/check_template_drift.py --update-stamp  # report, then move the stamp forward
 python3 scripts/check_template_drift.py --fail-on-drift # report, exit 2 on drift (for CI)
+python3 scripts/check_template_drift.py --docs-site --fail-on-drift  # the shared docs files only
 ```
 
 The script clones the upstream template, lists what changed there since the commit recorded
 above, and diffs the governed paths (`.agents/skills/`, `.agents/subagents/`,
-`.agents/templates/`, `AGENTS.md`, `scripts/`, `.github/workflows/`, `.pre-commit-config.yaml`)
-against the local copies, ignoring `Last Updated` / `Last Reviewed` footers. With no network it
-prints a warning and exits 0 -- an offline checkout must never fail a build over this.
+`.agents/templates/`, `AGENTS.md`, `scripts/`, `overrides/`, `.github/workflows/`,
+`.pre-commit-config.yaml`) against the local copies, ignoring `Last Updated` / `Last Reviewed`
+footers. A mismatch prints both files' SHA-256 prefix and size. With no network it prints a
+warning and exits 0 -- an offline checkout must never fail a build over this. An upstream that
+is not found or refuses access, or a governed path that does not exist upstream, exits 3: a
+check that compared nothing must not pass.
+
+---
+
+## Path mapping
+
+A governed file this repository keeps at a different path from the template, one per line as
+`` `local path` ← `upstream path` ``. The drift checker compares the two files instead of
+reporting one as missing and the other as extra. `bootstrap_template.py --docs-profile` records
+its stylesheet here.
+
+- _None recorded._
 
 Reading the report is not the same as acting on it. For each real divergence, either adopt the
 upstream change or record it below as a deliberate decision with a linked issue.
@@ -96,4 +111,4 @@ Update the "Last checked" stamp and the drift list above whenever this compariso
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
+*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*
