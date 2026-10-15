@@ -607,7 +607,10 @@ def _nav(labels):
     items = ''.join(f'<li class="md-nav__item"><a href="#" class="md-nav__link">'
                     f'<span class="md-ellipsis">{label}</span></a>'
                     f'<nav class="md-nav"><ul class="md-nav__list"><li class="md-nav__item">'
-                    f'<a class="md-nav__link"><span class="md-ellipsis">Nested Page</span></a>'
+                    f'<a class="md-nav__link"><span class="md-ellipsis">Nested page</span></a>'
+                    f'<nav class="md-nav md-nav--secondary"><ul class="md-nav__list"><li>'
+                    f'<a class="md-nav__link"><span class="md-ellipsis">A Title Case Heading'
+                    f'</span></a></li></ul></nav>'
                     f'</li></ul></nav></li>' for label in labels)
     return (f'<nav class="md-nav md-nav--primary" data-md-level="0">'
             f'<ul class="md-nav__list">{items}</ul></nav>')
@@ -642,7 +645,7 @@ GOOD_HOME = (
 
 
 def _write_site(root: Path, home=GOOD_HOME, nav=None, page_body='<h1>Guide</h1><p>Text.</p>',
-                nested_about='../../about/', nested_footer=FOOTER_HTML):
+                nested_about='../../about/', nested_footer=FOOTER_HTML, nested=None):
     kwargs = {'nav': nav} if nav else {}
     pages = {
         'index.html': _page(home, 'about/', **kwargs),
@@ -650,6 +653,8 @@ def _write_site(root: Path, home=GOOD_HOME, nav=None, page_body='<h1>Guide</h1><
         'guides/setup/index.html': _page(page_body, nested_about, footer=nested_footer, **kwargs),
         '404.html': '<html><body>Not found</body></html>',
     }
+    if nested:
+        pages = {rel: html.replace('>Nested page<', f'>{nested}<') for rel, html in pages.items()}
     for rel, html in pages.items():
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_text(html, encoding='utf-8')
@@ -696,6 +701,9 @@ def test_rendered_check_passes_a_conforming_site(tmp_path, capsys):
     ('a title-case nav label', {'nav': ('Home', 'How-To Guides', 'About these docs')}, 'NAV'),
     ('a nav label outside the standard', {'nav': ('Home', 'Client Guides', 'About these docs')},
      'NAV'),
+    ('a title-case label below the top level',
+     {'nav': ('Home', 'How-to guides', 'About these docs'), 'nested': 'Getting Started Fast'},
+     'title case'),
     ('nav sections out of order', {'nav': ('Home', 'Reference', 'Tutorials', 'About these docs')},
      'NAV'),
     ('About these docs not last', {'nav': ('Home', 'About these docs', 'Reference')}, 'NAV'),
@@ -1015,3 +1023,14 @@ def test_the_pass_line_names_only_the_checks_that_ran(tmp_path, capsys):
                            capsys)
     assert code == 0, out
     assert 'MISSING-SOCIAL' not in out and 'MISSING-VERIFICATION' not in out
+
+
+def test_a_proper_noun_mid_label_passes_only_when_listed(tmp_path, capsys):
+    """Acronyms and inner-capital names pass by shape; "Liferay" needs proper_nouns."""
+    site = _write_site(tmp_path, nested='Expose Liferay SE demos to InfoSec reviewers')
+    code, out = _run_check(site, _liferay_config(), capsys)
+    assert code == 0, out
+    config = _liferay_config()
+    config['extra']['docs_standard'].pop('proper_nouns')
+    code, out = _run_check(site, config, capsys)
+    assert code == 1 and 'title case' in out
