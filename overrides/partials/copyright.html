@@ -1,0 +1,35 @@
+{#-
+  SHARED FILE. The canonical copy is overrides/partials/copyright.html on the
+  main branch of peterrichards-lr/ai-agent-template, which seeds it into every
+  project bootstrapped with --docs-site. Never edit a copy: change the
+  canonical file in the template, through a PR there, then copy it into each
+  project unchanged. scripts/check_template_drift.py compares the copies. The
+  rule is in the template's CONTRIBUTING.md, "Shared docs files", and
+  .agents/skills/docs-site-standard/SKILL.md.
+
+  The footer text is per-site: it comes from each site's `copyright:` in
+  mkdocs.yml. The link target is fixed, so every site must have an About page
+  at docs/about.md.
+
+  Material's partials/copyright.html (mkdocs-material 9.7.7), plus a link to the
+  About page in every page's footer (lfr-tunnel #2383).
+
+  Why a partial and not a link inside `copyright:`: that string is raw HTML and
+  is NOT Jinja-processed, so it cannot interpolate `site_url`. A relative
+  "about/" there 404s on every nested page, and a root-relative "/about/"
+  resolves to github.io/about/ on a project site. The `url` filter resolves
+  against the CURRENT page (`../../about/` on a page two levels down), so the
+  link is correct on nested pages and under `mkdocs serve` alike, and cannot
+  drift from `site_url` because it never reads it.
+-#}
+<div class="md-copyright">
+  <div class="md-copyright__highlight">
+    {% if config.copyright %}{{ config.copyright }} · {% endif %}<a href="{{ 'about/' | url }}">About these docs</a>
+  </div>
+  {% if not config.extra.generator == false %}
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  {% endif %}
+</div>

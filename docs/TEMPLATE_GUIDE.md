@@ -172,6 +172,7 @@ later change language.
 | **`unit-testing`** | Enforces test-driven development, fail-first verification gates (citing red-to-green empirical evidence), non-interactive execution, and prohibits superficial test deletion. |
 | **`e2e-verification`** | Covers changes a green unit suite cannot prove (UI, process/network boundaries, CLI, deployment): what real-system evidence counts, teardown duties, and specific human escalation. |
 | **`documentation`** | Governs timestamp footers (`*Last Updated* \| *Last Reviewed*`), post-feature doc updates, and staleness policy checks. |
+| **`docs-site-standard`** | Governs the shared MkDocs Material site standard: home-page layout, top-level navigation, GitHub alerts (GitHub's label as the title, a strict title lift), shared files that are never edited downstream, and the rendered-output and drift checks that hold a site to them. Includes the opt-in Liferay profile. |
 | **`documentation-review`** | Governs auditing an existing documentation set: measure before diagnosing, inspect the rendered output rather than the source, check documents against the code, and fix routing before restructuring. Sibling to `documentation`, which covers hygiene after a change. |
 | **`github-workflow`** | Standardizes `gh` CLI usage, forces PRs to link `Closes #<issue>`, drives the PR review feedback loop (pull review summaries and CI status with `gh pr view`, inline file/line comments with `gh api repos/{owner}/{repo}/pulls/<number>/comments`, close the loop on each one), logs tech-debt to the repo's one canonical tracker (with a documented external-tracker escape hatch), and cleans up historical CI failures. |
 | **`tool-use-react`** | Enforces reasoning before tool activation, non-interactive flags, and asynchronous task lifecycle management. |
@@ -245,6 +246,7 @@ python3 scripts/bootstrap_template.py --name "my-awesome-service" --lang go --cl
 | `mkdocs.yml` | removed by `--clean-template` | `site_name`, `site_url` and `repo_url` seeded from `--name`/`--repo-owner` |
 | `.github/workflows/docs.yml` | removed by `--clean-template` | the commented `push:` trigger is uncommented, arming the Pages deploy |
 | `requirements-docs.txt` | removed by `--clean-template` | kept; installed only by the docs workflow |
+| `overrides/`, `scripts/mkdocs_github_alerts.py`, `scripts/check_docs_rendered.py`, `docs/about.md` | removed by `--clean-template` | kept: the shared docs files, never edited downstream |
 | `docs/tutorials/`, `docs/how-to/`, `docs/reference/`, `docs/explanation/` | kept | kept |
 
 Three deliberate choices:
@@ -261,6 +263,26 @@ Three deliberate choices:
 - **`mkdocs-material` is not in `requirements-dev.txt`.** That file is installed by every
   adopter on every CI run; the docs site owns `requirements-docs.txt` instead, so a project
   without a published site pays nothing for one.
+
+**The shared standard.** Every site bootstrapped this way follows one standard: home-page
+layout, top-level navigation order, GitHub alerts rendered with GitHub's label, and shared
+files (`overrides/`, the alerts hook, the rendered-output check) that are changed only here and
+copied downstream. `.agents/skills/docs-site-standard/SKILL.md` states it.
+`scripts/check_docs_rendered.py` holds the built site to it before every Pages upload, and
+`scripts/check_template_drift.py --docs-site --fail-on-drift` holds the shared files to this
+template.
+
+**Profiles (`--docs-profile`).** A family of sites can share more than the generic standard.
+`--docs-site --docs-profile liferay` applies the Liferay tools profile from
+`.agents/templates/docs-profiles/liferay/`:
+
+| What | Where it lands |
+| :--- | :--- |
+| `palette.yml`, `site.yml` | replace the two `DOCS PROFILE` blocks in `mkdocs.yml`: the custom palette, the footer text, the community-project notice and the related-tools rows |
+| `liferay-blue.css` | copied to `docs/assets/stylesheets/`, with the path mapping recorded in `.agents/TEMPLATE_REF.md` |
+| `about.md` | replaces `docs/about.md` |
+
+`--docs-profile` without `--docs-site` is a usage error, raised before any file is touched.
 
 The site home page is generated from `README.md` at build time (`cp README.md
 docs/index.md`, run by the workflow and gitignored) so the GitHub landing page and the site
@@ -302,4 +324,4 @@ these placeholders is still live, citing the file and line. Supply `--repo-owner
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-06* | *Last Reviewed: 2026-09-06*
+*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*

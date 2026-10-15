@@ -16,7 +16,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- Add the `docs-site-standard` skill: the shared MkDocs site standard (home-page layout,
+  top-level navigation order, GitHub alerts titled with GitHub's label and a strict title
+  lift, shared files never edited downstream), routed from `AGENTS.md` (#135).
+- `--docs-site` now seeds the shared docs files: the alerts hook
+  `scripts/mkdocs_github_alerts.py`, `overrides/main.html`, `overrides/partials/copyright.html`,
+  a generic `docs/about.md`, and `scripts/check_docs_rendered.py`, which checks the built site
+  before the Pages upload and is configured from `mkdocs.yml` `extra.docs_standard` (#135).
+- `--docs-profile liferay` applies the Liferay tools profile on top of `--docs-site`: the
+  `liferay-blue.css` palette, the community-project notice, the About page opening and the
+  "Related Liferay tools" rows (#135).
+- `check_template_drift.py`: a "Path mapping" section in `.agents/TEMPLATE_REF.md` compares a
+  governed file kept at another path; a mismatch prints both SHA-256 prefixes and sizes and
+  says which way to copy; `--docs-site` compares only the shared docs files, and names a
+  profile stylesheet left unmapped. `overrides/main.html` and `overrides/partials/copyright.html`
+  are governed paths (#135).
+
+### Changed
+
+- `check_template_drift.py --fail-on-drift` fails on content differences only. Upstream
+  commits since the recorded ref are still reported, but no longer fail the check (#135).
+- `check_template_drift.py` exits 3 when nothing could be compared: the upstream repository
+  was not found or refused access, or a governed path does not exist upstream. A network
+  failure still warns and exits 0 (#135).
+- The template's own docs nav follows the standard order and sentence case ("How-to guides",
+  "About these docs" last) (#135).
 
 ## [2.1.0] - 2026-09-22
 
@@ -225,4 +251,4 @@ Example of a released version, kept commented out so the stub starts clean:
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-22* | *Last Reviewed: 2026-09-22*
+*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*

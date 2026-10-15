@@ -8,11 +8,19 @@
 #   python3 scripts/bootstrap_template.py --docs-site ...
 #       seeds site_name/site_url/repo_url below and activates the push trigger in
 #       .github/workflows/docs.yml.
+#   python3 scripts/bootstrap_template.py --docs-site --docs-profile liferay ...
+#       also replaces the two DOCS PROFILE blocks below with the Liferay tools
+#       family's palette, notice and related-tools rows.
 #   python3 scripts/bootstrap_template.py --clean-template ...   (no --docs-site)
-#       deletes this file, that workflow and requirements-docs.txt outright.
+#       deletes this file, that workflow, requirements-docs.txt and the shared
+#       docs files (overrides/, the alerts hook and the rendered-output check).
 #
 # A 200-line utility should not inherit a documentation engine it never asked
 # for, so nothing here runs until somebody asks for it. See #58.
+#
+# The shared standard -- home-page layout, navigation, alerts, the shared files
+# and the checks that hold a site to them -- is
+# .agents/skills/docs-site-standard/SKILL.md. Read it before changing this file.
 #
 # Build locally with:  pip install -r requirements-docs.txt
 #                      cp README.md docs/index.md && mkdocs serve
@@ -30,36 +38,68 @@ site_description: >-
 
 theme:
   name: material
+  # overrides/main.html (Open Graph, verification tags, favicons) and
+  # overrides/partials/copyright.html (the footer's "About these docs" link).
+  # Both are SHARED FILES: never edit them here, see their headers.
+  custom_dir: overrides
   features:
     - navigation.sections
     - navigation.top
+    - navigation.footer
     - content.code.copy
     - search.highlight
   palette:
     # Respect the reader's OS setting rather than forcing one scheme on them.
+    # >>> DOCS PROFILE: palette (replaced by bootstrap_template.py --docs-profile) >>>
     - media: "(prefers-color-scheme: light)"
       scheme: default
       toggle:
-        icon: material/brightness-7
+        icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       toggle:
-        icon: material/brightness-4
+        icon: material/weather-sunny
         name: Switch to light mode
+    # <<< DOCS PROFILE: palette <<<
 
 plugins:
   - search
 
+# GitHub alerts (`> [!NOTE]`) are native on github.com and unknown to
+# Python-Markdown, which prints the marker to readers as literal text. The source
+# stays GitHub-native -- that is where contributors read it -- and the build
+# translates. A SHARED FILE: see its header.
+hooks:
+  - scripts/mkdocs_github_alerts.py
+
+# >>> DOCS PROFILE: site (replaced by bootstrap_template.py --docs-profile) >>>
+# Per-site values for overrides/main.html and scripts/check_docs_rendered.py.
+# Uncomment what applies; the check for each runs only when it is set.
+extra:
+  # social_image: assets/social-preview.png    # 1280x640; needs site_url
+  # favicon_svg: assets/favicon.svg
+  # google_site_verification: TOKEN
+  # bing_site_verification: TOKEN
+  docs_standard:
+    # true holds the home page to the shared layout (docs-site-standard, rule 1).
+    home_layout: false
+# <<< DOCS PROFILE: site <<<
+
 # --------------------------------------------------------------------------
-# Navigation: the Diataxis model (https://diataxis.fr)
+# Navigation: the shared top-level order (docs-site-standard, rule 2)
 # --------------------------------------------------------------------------
-# Tutorials teach, how-to guides solve, reference describes, explanation
-# justifies. Keeping the four apart is the whole point -- a "how do I ...?"
-# answer buried inside an architecture essay is unfindable. Which division a
-# new page belongs in is documented for agents in
+# In this order, with sentence-case labels; omit a section only when it has no
+# pages, never rename or reorder one:
+#
+#   Home, Tutorials, How-to guides, Reference, Explanation, Troubleshooting,
+#   Showcase, Project and contributing, About these docs (always last)
+#
+# scripts/check_docs_rendered.py holds the built site to it. Which section a
+# page belongs in is the Diataxis decision, documented for agents in
 # .agents/skills/documentation/SKILL.md and, at length, in
-# docs/explanation/index.md.
+# docs/explanation/index.md. Moving a page between sections is a nav-only
+# change: never move the file, or its published URL breaks.
 #
 # `Home` is generated: .github/workflows/docs.yml copies README.md to
 # docs/index.md at build time so the GitHub landing page and the site home are
@@ -69,7 +109,7 @@ nav:
   - Home: index.md
   - Tutorials:
       - Overview: tutorials/index.md
-  - How-To Guides:
+  - How-to guides:
       - Overview: how-to/index.md
       - Publish this documentation site: how-to/publish-the-documentation-site.md
       - Protect the main branch: BRANCH_PROTECTION.md
@@ -77,6 +117,7 @@ nav:
       - Overview: reference/index.md
   - Explanation:
       - Overview: explanation/index.md
+  - About these docs: about.md
 
 # docs/TEMPLATE_GUIDE.md documents the template itself and is deleted by
 # `--clean-template`, so it must not be a nav entry an adopter inherits as a
@@ -86,9 +127,17 @@ not_in_nav: |
   TEMPLATE_GUIDE.md
 
 markdown_extensions:
-  - admonition
+  - admonition          # the target syntax the alerts hook converts GitHub alerts into
   - attr_list
+  - md_in_html
+  - tables
   - toc:
       permalink: true
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        # Hands ```mermaid blocks to Material's bundled mermaid.js instead of
+        # the code highlighter. Without it every diagram is a wall of text.
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format

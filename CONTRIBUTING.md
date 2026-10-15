@@ -105,6 +105,28 @@ All Markdown (`.md`) files in this repository MUST include a standardized footer
 
 Run `python3 scripts/check_docs_review.py` before submitting changes to verify compliance.
 
+### Shared docs files
+
+This repository is the canonical home of the documentation site's shared files. Every project
+bootstrapped with `--docs-site` carries byte-identical copies:
+
+- `scripts/mkdocs_github_alerts.py`
+- `scripts/check_docs_rendered.py`
+- `overrides/main.html` and `overrides/partials/copyright.html`
+- `.agents/templates/docs-profiles/liferay/liferay-blue.css` (the Liferay profile)
+
+The rule:
+
+1. **Change them here, through a PR to this repository.** Never edit a downstream copy, not
+   even to make a check pass; the drift check will fail it.
+2. **Then copy them into each project unchanged**, and let
+   `scripts/check_template_drift.py --docs-site --fail-on-drift` confirm it.
+3. **Per-site values go in `mkdocs.yml`** (`extra:`), never in the files, and site-specific
+   styling in a separate stylesheet listed after the shared one.
+
+Each file's header repeats this rule. `.agents/skills/docs-site-standard/SKILL.md` is the
+standard the files implement.
+
 ---
 
 ## 5. AI Agent Authentication & Fine-Grained PAT Configuration
@@ -132,4 +154,4 @@ Expired PATs trigger `401 Unauthorized` errors on `gh` commands. Set calendar re
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
+*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*
