@@ -160,6 +160,22 @@ def test_clean_python_scaffolding_is_idempotent(tmp_path):
 
     assert clean_python_scaffolding(tmp_path, 'go') == []
 
+@pytest.mark.parametrize('language', ['python', 'go'])
+def test_the_self_test_workflow_goes_with_the_self_tests(tmp_path, language):
+    """docs-site-tests.yml runs tests/test_docs_*.py; left behind, it fails on missing files."""
+    from bootstrap_template import TEMPLATE_SELF_TEST_WORKFLOW_RELPATH
+
+    make_scaffolded_tree(tmp_path)
+    (tmp_path / TEMPLATE_SELF_TEST_WORKFLOW_RELPATH).parent.mkdir(parents=True)
+    (tmp_path / TEMPLATE_SELF_TEST_WORKFLOW_RELPATH).write_text('name: x\n', encoding='utf-8')
+
+    removed = clean_python_scaffolding(tmp_path, language)
+
+    assert TEMPLATE_SELF_TEST_WORKFLOW_RELPATH.as_posix() in removed
+    assert not (tmp_path / TEMPLATE_SELF_TEST_WORKFLOW_RELPATH).exists()
+    assert (REPO_ROOT / TEMPLATE_SELF_TEST_WORKFLOW_RELPATH).exists(), (
+        "the constant must name the workflow the template actually ships")
+
 # --- #56: --dry-run must preview without mutating -----------------------------
 
 def test_dry_run_leaves_the_language_profile_untouched(tmp_path):

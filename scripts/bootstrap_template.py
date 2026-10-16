@@ -128,6 +128,8 @@ TEMPLATE_PROJECT_NAME = 'ai-agent-template'
 # just finished running) and the Python source/dependency scaffolding for every
 # language except Python. See #55.
 TEMPLATE_SELF_TEST_RELPATH = Path('tests')
+# Runs tests/test_docs_*.py with requirements-docs.txt installed, so it goes with tests/.
+TEMPLATE_SELF_TEST_WORKFLOW_RELPATH = Path('.github') / 'workflows' / 'docs-site-tests.yml'
 PYTHON_PACKAGE_MARKER_RELPATH = Path('src') / '__init__.py'
 PYTHON_REQUIREMENTS_RELPATH = Path('requirements-python.txt')
 
@@ -848,12 +850,13 @@ def clean_python_scaffolding(root_dir: Path, language: str, dry_run: bool = Fals
     """Remove the Python-only scaffolding the template ships for its own benefit.
 
     The self-test suite tests the bootstrapper that has just finished running, so it is
-    dead weight in every adopter's repository. src/__init__.py and requirements-python.txt
+    dead weight in every adopter's repository, and so is the workflow that runs its docs-site
+    modules. src/__init__.py and requirements-python.txt
     are Python artefacts and are kept only for --lang python. See #55.
 
     Returns the sorted relative POSIX paths that were (or, in a dry run, would be) removed.
     """
-    removable = [TEMPLATE_SELF_TEST_RELPATH]
+    removable = [TEMPLATE_SELF_TEST_RELPATH, TEMPLATE_SELF_TEST_WORKFLOW_RELPATH]
     if language != 'python':
         removable.extend([PYTHON_PACKAGE_MARKER_RELPATH, PYTHON_REQUIREMENTS_RELPATH])
 

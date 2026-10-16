@@ -1,0 +1,65 @@
+name: Docs Site Tests
+
+# The template's own self-test, not a project workflow. `bootstrap_template.py
+# --clean-template` deletes it together with tests/, whose modules it runs.
+#
+# The docs-site tests that build a real site (mkdocs-material through the shared hook,
+# overrides and stylesheet: the #143 section-title fixture, the #146 social and icon
+# checks, the Liferay profile end to end) skip wherever mkdocs is not installed. That is
+# every other job here: requirements-docs.txt is deliberately kept out of the
+# language-agnostic gate (see that file), so `Build & Test` never runs them. This job
+# installs it, and fails if any of those tests still skips for the want of mkdocs, so
+# "passed" cannot quietly mean "never ran".
+#
+# Not a required status check: .github/rulesets/protect-main-branch.json names only the
+# contexts every adopter needs. A failure here is still a red check on the pull request.
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Nothing gates on this job, so a superseded run is pure waste (security-scan.yml's case).
+  cancel-in-progress: true
+
+jobs:
+  docs-site-tests:
+    name: Docs Site Tests (real mkdocs builds)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements-dev.txt
+            requirements-python.txt
+            requirements-docs.txt
+
+      - name: Install the test and documentation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt -r requirements-python.txt -r requirements-docs.txt
+
+      # -rs prints every skip reason. The needs_mkdocs markers all say "mkdocs ... is not
+      # installed"; with requirements-docs.txt installed, any such skip is a broken
+      # install, not a pass. Other skips (actionlint, the optional git-revision-date
+      # plugin, which requirements-docs.txt does not pin) are left alone.
+      - name: Run the docs-site tests, real builds included
+        run: |
+          set -euo pipefail
+          python -m pytest -q -rs tests/test_docs_*.py | tee pytest.log
+          if grep -E '^SKIPPED .*mkdocs(-material)? is not installed' pytest.log; then
+            echo "::error::A real-build test skipped for want of mkdocs, which this job installs."
+            exit 1
+          fi

@@ -16,7 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- A **Docs Site Tests** workflow (`.github/workflows/docs-site-tests.yml`) installs
+  `requirements-docs.txt` and runs `tests/test_docs_*.py` on every pull request, so the tests
+  that build a real site run in CI. Until now they skipped wherever mkdocs was not installed,
+  which was every CI job. These are the #143 section-title fixture, the #146 social and icon
+  checks, and the Liferay profile end to end. The job fails if any of them still skips for the
+  want of mkdocs. It is the template's own self-test: `--clean-template` removes it with
+  `tests/`, and it is not a required status check.
+
+### Changed
+
+- The shipped `.github/workflows/docs.yml` deploy runs the drift check with
+  `--against-recorded` when `.agents/TEMPLATE_REF.md` records a real commit, so a template merge
+  can no longer block publishing, while a local edit to a shared file still fails. While the
+  stamp is still `unknown`, as on a fresh project, it compares against upstream HEAD as before.
+  The stamp is read with the drift checker's own parser.
+- `check_template_drift.py --docs-site` exits 3 on a profile stylesheet present locally with no
+  path mapping, with or without `--fail-on-drift`, like its other "nothing was compared" cases.
+  A report-only run used to warn and exit 0.
 
 ## [2.3.1] - 2026-10-16
 

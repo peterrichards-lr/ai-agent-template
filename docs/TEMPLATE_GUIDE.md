@@ -248,6 +248,7 @@ python3 scripts/bootstrap_template.py --name "my-awesome-service" --lang go --cl
 | `requirements-docs.txt` | removed by `--clean-template` | kept; installed only by the docs workflow |
 | `overrides/`, `scripts/mkdocs_github_alerts.py`, `scripts/check_docs_rendered.py`, `docs/about.md` | removed by `--clean-template` | kept: the shared docs files, never edited downstream |
 | `docs/tutorials/`, `docs/how-to/`, `docs/reference/`, `docs/explanation/` | kept | kept |
+| `.github/workflows/docs-site-tests.yml` | removed by `--clean-template` | removed by `--clean-template`: the template's own self-test, which runs `tests/test_docs_*.py` (real mkdocs builds included) with `requirements-docs.txt` installed, and goes with `tests/` |
 
 Three deliberate choices:
 
@@ -324,4 +325,4 @@ these placeholders is still live, citing the file and line. Supply `--repo-owner
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*
+*Last Updated: 2026-10-16* | *Last Reviewed: 2026-10-16*
