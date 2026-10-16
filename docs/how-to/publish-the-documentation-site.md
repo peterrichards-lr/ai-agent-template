@@ -26,8 +26,9 @@ python3 scripts/bootstrap_template.py \
 
 1. Seeds `site_name`, `site_url` and `repo_url` in `mkdocs.yml` from `--name` and
    `--repo-owner`.
-2. Uncomments the `push:` trigger in `.github/workflows/docs.yml`, which ships
-   commented out so that a project that did not opt in never deploys.
+2. Uncomments the `push:` and `pull_request:` triggers in `.github/workflows/docs.yml`,
+   which ship commented out so that a project that did not opt in never deploys. On a pull
+   request the workflow builds and checks the site; on a push to main it also deploys.
 
 Add `--docs-profile liferay` for the Liferay tools family's palette, notice and
 related-tools rows.
@@ -96,4 +97,4 @@ horizontal rule.
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*
+*Last Updated: 2026-10-16* | *Last Reviewed: 2026-10-16*
