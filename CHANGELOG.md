@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `.github/dependabot.yml` no longer sets `cooldown.semver-major-days` on the `github-actions`
+  entry. Dependabot does not support it for that ecosystem and rejected the whole file, so
+  Dependabot could not run; the key had shipped since v2.0.0 (#88), and the validator
+  caught it when the file next changed. `pip` keeps its 14-day major-version cooldown (#171).
 - Under the Liferay profile, a required `HOME-LAYOUT` needs the `related` block itself, not just
   its sub-keys when the block exists. Deleting `extra.docs_standard.related`, together with the
   home page's "Related Liferay tools" section, used to build a site with no related section and
