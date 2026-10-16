@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Dependabot's pull requests skip the docs drift step (a step-level `if` on
+  `dependabot[bot]`), so a required docs check reports success rather than pending. They still
+  build the site and run `check_docs_rendered.py`, because dependency bumps are what break
+  rendering. The template's `.github/dependabot.yml` ignores `mkdocs` versions `>= 2`, which
+  remove the plugin system and theme overrides the docs site depends on (#167).
+
 ### Changed
 
 - **Docs PR CI compares the shared files against the recorded commit**, as the deploy does:
@@ -32,13 +40,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cannot displace a queued deploy. The drift step is one command, the script's own fallback
   replacing the shell that read the stamp (#166).
 
-### Added
+### Fixed
 
-- Dependabot's pull requests skip the docs drift step (a step-level `if` on
-  `dependabot[bot]`), so a required docs check reports success rather than pending. They still
-  build the site and run `check_docs_rendered.py`, because dependency bumps are what break
-  rendering. The template's `.github/dependabot.yml` ignores `mkdocs` versions `>= 2`, which
-  remove the plugin system and theme overrides the docs site depends on (#167).
+- Under the Liferay profile, a required `HOME-LAYOUT` needs the `related` block itself, not just
+  its sub-keys when the block exists. Deleting `extra.docs_standard.related`, together with the
+  home page's "Related Liferay tools" section, used to build a site with no related section and
+  pass with exit 0; it now fails and names `extra.docs_standard.related`. A site with a reason
+  waives `HOME-LAYOUT`, as before. A site with no profile is unchanged (#164).
+- The profile stylesheet is recognised in `extra_css` with any query string or fragment
+  ignored, so a cache-busting `liferay-blue.css?v=2` no longer hides the profile and its four
+  required checks. `SECTION-TITLE` reads the same entries from the build, and now finds a
+  suffixed stylesheet's file too (#164).
 
 ## [2.4.0] - 2026-10-16
 
