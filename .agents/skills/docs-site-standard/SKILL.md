@@ -71,6 +71,16 @@ has no pages, and never rename or reorder one:
   Acronyms (SSO) and inner-capital names (InfoSec) pass by their shape; any other proper noun
   a label needs mid-label goes in `extra.docs_standard.proper_nouns` (the Liferay profile lists
   `Liferay`). The page's own table of contents is not nav, and is not checked.
+- **Index pages are optional, and render the same.** A section may have an index page
+  (`navigation.indexes`, a `<section>/index.md` listed first under it) or not, and either kind
+  is fine. A section title must look the same either way. Material renders a title with an
+  index page as a link, in the primary text colour, and a title without one as a label, in the
+  secondary colour. With one stylesheet, liferay-docker-manager had white titles and lfr-tunnel
+  muted ones (ai-agent-template#143). The shared rule, `SECTION_TITLE_RULE` in
+  `scripts/check_docs_rendered.py`, gives the link the label's colour at desktop width. Hover
+  and the active page keep the link colour, so a title with an index page still reads as
+  clickable. The Liferay profile's stylesheet carries the rule. Any other site that uses index
+  pages adds it to its own stylesheet. Checked as `SECTION-TITLE`.
 
 ### 3. Alerts
 
@@ -106,10 +116,10 @@ alerts hook, `scripts/mkdocs_github_alerts.py`, converts it at build time:
 | Rendered-output check | `scripts/check_docs_rendered.py` | Rule 5 |
 | Theme override | `overrides/main.html` | Open Graph and Twitter tags, verification tags, favicons |
 | Footer partial | `overrides/partials/copyright.html` | The "About these docs" link, through the `url` filter |
+| Liferay stylesheet | `.agents/templates/docs-profiles/liferay/liferay-blue.css` | Rule 6 |
 
 A site's own extra override goes in `overrides/` beside them (Material has one `custom_dir`);
-only these two files are governed.
-| Liferay stylesheet | `.agents/templates/docs-profiles/liferay/liferay-blue.css` | Rule 6 |
+only the two override files above are governed there.
 
 - **Change them here, in a template PR, then copy them into each project unchanged.** Never
   edit a local copy to make a check pass, and never push a local edit upstream as if it were
@@ -141,6 +151,7 @@ never after. Configured from `mkdocs.yml`:
 | `UNDATED-PAGE` | always | every page shows its Last Updated / Last Reviewed footer |
 | `ABOUT-LINK` | always | every page's footer link resolves to a built page, at every depth |
 | `NAV` | always | rule 2 |
+| `SECTION-TITLE` | a section has an index page | its title is in the markup `SECTION_TITLE_RULE` targets, and a stylesheet in `extra_css` carries the rule (rule 2) |
 | `MISSING-VERIFICATION` | `extra.google_site_verification` / `bing_site_verification` | the tag on every page |
 | `MISSING-SOCIAL` | `extra.social_image` | an absolute `og:image` on every page, and the image in the build |
 | `NO-NOTICE` | `extra.docs_standard.notice` | an `info` callout above the first H2, with its title, text and link |
@@ -157,6 +168,7 @@ every nested page.
 - **Palette**: `liferay-blue.css`. Light scheme with a #0B5FFF header and tabs (white text,
   5.13:1); dark scheme with a navy header, scoped to `slate`; links #0B5FFF / #5d9bff; navy
   footers. Needs `primary: custom` and `accent: custom`, which the profile sets.
+  Carries `SECTION_TITLE_RULE` (rule 2), so section titles match with or without an index page.
 - **Notice**, written straight after the home page's intro:
 
   ```markdown
@@ -189,4 +201,4 @@ every nested page.
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*
+*Last Updated: 2026-10-16* | *Last Reviewed: 2026-10-16*
