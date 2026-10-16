@@ -18,6 +18,8 @@ extra:
     # The H1 is "<project_name> documentation", and project_name picks out this
     # site's own row in `related` below. Use the full name, not the repo slug.
     project_name: <PROJECT_NAME_PLACEHOLDER>
+    # Names a sentence-case nav label may capitalise mid-label (NAV check).
+    proper_nouns: [Liferay]
     # OFF until the home page follows the standard (docs-site-standard, rules 1 and 6): a new
     # project's home has neither the notice nor the layout yet, and its first deploy would
     # fail on them. Turn both on in the same change that writes them.

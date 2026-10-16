@@ -84,6 +84,8 @@ extra:
   docs_standard:
     # true holds the home page to the shared layout (docs-site-standard, rule 1).
     home_layout: false
+    # Names a sentence-case nav label may capitalise mid-label (rule 2).
+    # proper_nouns: [ExampleCorp]
 # <<< DOCS PROFILE: site <<<
 
 # --------------------------------------------------------------------------

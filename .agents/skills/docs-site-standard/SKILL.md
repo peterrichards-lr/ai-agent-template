@@ -67,8 +67,10 @@ has no pages, and never rename or reorder one:
 - Which section a page belongs in is the Diátaxis decision in
   [`documentation/SKILL.md`](../documentation/SKILL.md). If a page mixes divisions, raise it
   rather than splitting it as part of a nav change.
-- Labels below the top level are sentence case too ("Control plane setup"). Not checked: a
-  label's proper nouns cannot be told from title case mechanically.
+- Labels below the top level are sentence case too ("Control plane setup"), and are checked.
+  Acronyms (SSO) and inner-capital names (InfoSec) pass by their shape; any other proper noun
+  a label needs mid-label goes in `extra.docs_standard.proper_nouns` (the Liferay profile lists
+  `Liferay`). The page's own table of contents is not nav, and is not checked.
 
 ### 3. Alerts
 
