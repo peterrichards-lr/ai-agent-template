@@ -193,14 +193,17 @@ check fails under its own name, naming each missing key, instead of being skippe
 | `MISSING-VERIFICATION` | `extra.google_site_verification` or `extra.bing_site_verification` |
 | `MISSING-SOCIAL` | `extra.social_image`, `extra.favicon_svg` and `theme.favicon` |
 | `NO-NOTICE` | `notice.title`, `notice.text` and `notice.link_text` |
-| `HOME-LAYOUT` | `home_layout: true`; with a `related` block, `related.heading`, `intro` and `rows` |
+| `HOME-LAYOUT` | `home_layout: true`; with a `related` block, `related.heading`, `intro` and `rows`. Under the Liferay profile, the `related` block itself |
 
 The sub-keys matter as much as the keys: a deleted `notice.text` or `related.heading` left the
 check running and checking less, with exit 0 (ai-agent-template#155).
 
 - **A profile requires its checks by default.** The Liferay profile requires all four (rule
-  6), and is known by its stylesheet in `extra_css`. Deleting `required`, or a name in it,
-  cannot turn one off.
+  6), and is known by its stylesheet in `extra_css`, with any query string or fragment ignored
+  (`liferay-blue.css?v=2` counts). Deleting `required`, or a name in it, cannot turn one off.
+  A profile may require more of a check than a site that names it: every Liferay profile site
+  carries the related-tools rows, so its HOME-LAYOUT needs the `related` block itself, and
+  deleting the block (with the home page's section) fails (ai-agent-template#164).
 - **A site drops a required check only by waiving it, with a reason.** A waive without a
   reason, or of a check nothing requires, fails as `REQUIRED`. A waived check still runs if it
   is configured; only the requirement goes.
