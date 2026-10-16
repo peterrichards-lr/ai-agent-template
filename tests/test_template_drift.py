@@ -550,6 +550,7 @@ def docs_upstream(tmp_path):
     origin = tmp_path / 'docs-upstream'
     for rel, body in ((HOOK_UPSTREAM, HOOK_BODY),
                       ('scripts/check_docs_rendered.py', '# check\n'),
+                      ('scripts/check_template_drift.py', '# drift\n'),
                       ('overrides/main.html', '{% extends "base.html" %}\n'),
                       ('overrides/partials/copyright.html', '<div></div>\n'),
                       ('.agents/templates/docs-profiles/liferay/liferay-blue.css', ':root {}\n')):
@@ -773,3 +774,158 @@ def test_the_copy_direction_is_only_given_for_shared_files(tmp_path, upstream_re
     assert main(['--root', str(local_root)]) == 0
     out = capsys.readouterr().out
     assert 'AGENTS.md' in out and 'copy the file FROM' not in out
+
+
+# --------------------------------------------------------------------------------------
+# #141: lessons from the first adopter migration (lfr-tunnel#2408)
+# --------------------------------------------------------------------------------------
+
+CSS_UPSTREAM = '.agents/templates/docs-profiles/liferay/liferay-blue.css'
+CSS_LOCAL = 'docs/assets/stylesheets/liferay-blue.css'
+
+
+def test_docs_site_mode_compares_the_drift_checker_itself(tmp_path, docs_upstream, capsys):
+    """It is copied verbatim, so an edit to it must fail docs CI like any other shared file."""
+    assert 'scripts/check_template_drift.py' in DOCS_SITE_SHARED_PATHS
+    local_root = adopter_with_docs_files(tmp_path / 'local', docs_upstream['path'])
+    write_reference_file(local_root, docs_upstream['url'], docs_upstream['commit'])
+    (local_root / 'scripts' / 'check_template_drift.py').write_text('# patched\n',
+                                                                    encoding='utf-8')
+
+    assert main(['--root', str(local_root), '--docs-site', '--fail-on-drift']) == 2
+    out = capsys.readouterr().out
+    assert 'scripts/check_template_drift.py' in out
+    assert DIRECTION_MESSAGE.format(repo_url=docs_upstream['url']) in out
+
+
+def test_the_drift_checker_runs_beside_a_diverged_check_docs_review(tmp_path):
+    """A shared file must not need a non-shared one patched to import. lfr-tunnel keeps its
+    own check_docs_review.py, without FOOTER_REGEX, and had to add the name by hand (#141)."""
+    import json
+    from check_docs_review import FOOTER_REGEX, IGNORE_DIRS
+
+    scripts = tmp_path / 'scripts'
+    scripts.mkdir()
+    (scripts / 'check_template_drift.py').write_bytes(
+        (REPO_ROOT / 'scripts' / 'check_template_drift.py').read_bytes())
+    (scripts / 'check_docs_review.py').write_text(
+        '"""A diverged copy, with its own names."""\n'
+        'import re\nFOOTER_PATTERN = re.compile(r"Last Updated")\n', encoding='utf-8')
+    probe = ('import json, check_template_drift as m; '
+             'print(json.dumps([m.FOOTER_REGEX.pattern, sorted(m.IGNORE_DIRS)]))')
+    result = subprocess.run([sys.executable, '-c', probe], cwd=scripts,
+                            capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr
+    # The fallback is the template's own definition, word for word.
+    assert json.loads(result.stdout) == [FOOTER_REGEX.pattern, sorted(IGNORE_DIRS)]
+
+
+def test_docs_site_fail_on_drift_fails_an_unmapped_profile_stylesheet(
+        tmp_path, docs_upstream, capsys):
+    """A deleted mapping must not leave the shared stylesheet uncompared on a green run."""
+    local_root = adopter_with_docs_files(tmp_path / 'local', docs_upstream['path'],
+                                         at={CSS_UPSTREAM: CSS_LOCAL})
+    write_reference_file(local_root, docs_upstream['url'], docs_upstream['commit'])
+
+    assert main(['--root', str(local_root), '--docs-site', '--fail-on-drift']) == 3
+    captured = capsys.readouterr()
+    assert f"- `{CSS_LOCAL}` ← `{CSS_UPSTREAM}`" in captured.out
+    assert 'not compared' in captured.err
+
+
+def test_the_copy_direction_ignores_upstream_only_profile_files(tmp_path, docs_upstream, capsys):
+    """The profile's about.md and site.yml are upstream only, and are not shared files: with
+    only a customised AGENTS.md differing, no copy-FROM direction is printed (lfr-tunnel#2408)."""
+    origin = docs_upstream['path']
+    for rel, body in (('.agents/templates/docs-profiles/liferay/about.md', '# About\n'),
+                      ('.agents/templates/docs-profiles/liferay/site.yml', 'extra: {}\n'),
+                      ('AGENTS.md', '# Agents\n\nupstream\n')):
+        (origin / rel).write_text(body, encoding='utf-8')
+    run_git(['add', '.'], origin)
+    run_git(['commit', '--quiet', '-m', 'profile files'], origin)
+    local_root = adopter_with_docs_files(tmp_path / 'local', origin,
+                                         skip=('.agents/templates/docs-profiles/liferay/about.md',
+                                               '.agents/templates/docs-profiles/liferay/site.yml'))
+    (local_root / 'AGENTS.md').write_text('# Agents\n\ncustomised\n', encoding='utf-8')
+    write_reference_file(local_root, docs_upstream['url'], 'unknown')
+
+    assert main(['--root', str(local_root)]) == 0
+    out = capsys.readouterr().out
+    assert 'about.md' in out and 'AGENTS.md' in out
+    assert 'copy the file FROM' not in out
+
+    # The control: the shared stylesheet differing does get the direction.
+    (local_root / CSS_UPSTREAM).write_text(':root { --edited: 1; }\n', encoding='utf-8')
+    assert main(['--root', str(local_root)]) == 0
+    assert 'copy the file FROM' in capsys.readouterr().out
+
+
+def test_a_customised_profile_seed_is_not_a_shared_file():
+    from check_template_drift import is_shared_file
+    assert is_shared_file(CSS_UPSTREAM)
+    assert not is_shared_file('.agents/templates/docs-profiles/liferay/site.yml')
+    assert not is_shared_file('.agents/templates/docs-profiles/liferay/about.md')
+
+
+def _adopter_at_baseline(tmp_path, upstream_repo):
+    """An adopter holding the upstream's BASELINE content, stamped at the baseline commit."""
+    local_root = tmp_path / 'local'
+    run_git(['checkout', '--quiet', upstream_repo['baseline_commit']], upstream_repo['path'])
+    try:
+        for rel in ('.agents/skills/unit-testing/SKILL.md', 'AGENTS.md'):
+            (local_root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (local_root / rel).write_bytes((upstream_repo['path'] / rel).read_bytes())
+    finally:
+        run_git(['checkout', '--quiet', 'main'], upstream_repo['path'])
+    reference = write_reference_file(local_root, upstream_repo['url'],
+                                     upstream_repo['baseline_commit'])
+    return local_root, reference
+
+
+def test_against_recorded_ignores_a_template_merge(tmp_path, upstream_repo, capsys):
+    """A merge to the template's main must not turn an untouched adopter red (#141)."""
+    local_root, _ = _adopter_at_baseline(tmp_path, upstream_repo)
+
+    assert main(['--root', str(local_root), '--fail-on-drift']) == 2, (
+        "the control: against HEAD, the template's later commit is drift")
+    capsys.readouterr()
+    assert main(['--root', str(local_root), '--fail-on-drift', '--against-recorded']) == 0
+    out = capsys.readouterr().out
+    assert 'vs the recorded ref' in out and 'No drift' in out
+
+
+def test_against_recorded_still_fails_a_local_edit(tmp_path, upstream_repo, capsys):
+    local_root, _ = _adopter_at_baseline(tmp_path, upstream_repo)
+    (local_root / 'AGENTS.md').write_text('# Agents\n\nedited here\n', encoding='utf-8')
+
+    assert main(['--root', str(local_root), '--fail-on-drift', '--against-recorded']) == 2
+    assert 'AGENTS.md' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('recorded', [UNKNOWN_STAMP_VALUE, 'abc1234'])
+def test_against_recorded_fails_when_the_recorded_commit_is_unusable(
+        tmp_path, upstream_repo, capsys, recorded):
+    """No baseline to compare against is "nothing compared", not a pass."""
+    local_root, _ = _adopter_at_baseline(tmp_path, upstream_repo)
+    write_reference_file(local_root, upstream_repo['url'], recorded)
+
+    assert main(['--root', str(local_root), '--against-recorded']) == 3
+    assert '--update-stamp' in capsys.readouterr().err
+
+
+def test_against_recorded_refuses_to_move_the_stamp(tmp_path, upstream_repo, capsys):
+    """The stamp records a comparison against HEAD; this mode never makes one."""
+    local_root, reference = _adopter_at_baseline(tmp_path, upstream_repo)
+    before = reference.read_text(encoding='utf-8')
+
+    with pytest.raises(SystemExit):
+        main(['--root', str(local_root), '--against-recorded', '--update-stamp'])
+    assert 'not allowed with' in capsys.readouterr().err
+    assert reference.read_text(encoding='utf-8') == before
+
+
+def test_the_drift_checker_names_the_template_as_canonical():
+    """Now a shared file, its header must send a downstream editor upstream, like the others."""
+    header = (REPO_ROOT / 'scripts' / 'check_template_drift.py').read_text(encoding='utf-8')[:1500]
+    assert 'SHARED FILE' in header and 'Never edit a copy' in header
+    assert 'peterrichards-lr/ai-agent-template' in header
