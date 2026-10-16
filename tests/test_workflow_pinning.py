@@ -158,6 +158,16 @@ def test_dependabot_declares_a_cooldown_for_every_ecosystem():
         ), f"Dependabot ecosystem '{ecosystem}' has a `cooldown:` with no positive day count"
 
 
+def test_github_actions_cooldown_uses_no_semver_keys():
+    """Dependabot rejects `semver-*-days` for github-actions, and a rejected file stops it
+    running for the whole repository (#171): the key shipped from #88 until #168 re-validated."""
+    config = yaml.safe_load(DEPENDABOT_CONFIG.read_text(encoding='utf-8')) or {}
+    for entry in config.get('updates', []):
+        if entry.get('package-ecosystem') == 'github-actions':
+            semver = [key for key in entry.get('cooldown', {}) if key.startswith('semver-')]
+            assert not semver, f"github-actions cooldown declares unsupported {semver}"
+
+
 def test_security_policy_documents_the_pinning_rules():
     """The policy must be written down, including why pinning does not freeze updates."""
     policy = SECURITY_POLICY.read_text(encoding='utf-8')
