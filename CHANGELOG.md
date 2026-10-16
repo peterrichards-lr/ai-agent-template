@@ -36,6 +36,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `check_template_drift.py --docs-site` exits 3 on a profile stylesheet present locally with no
   path mapping, with or without `--fail-on-drift`, like its other "nothing was compared" cases.
   A report-only run used to warn and exit 0.
+- **The Liferay profile requires its four checks by default**: `NO-NOTICE`, `HOME-LAYOUT`,
+  `MISSING-VERIFICATION` and `MISSING-SOCIAL`. The profile is known by `liferay-blue.css` in
+  `extra_css`, so deleting `required`, or one name in it, no longer turns a check off. A site
+  drops a required check only through `extra.docs_standard.waive`, which names the check and
+  gives a reason. A waive with no reason, or of a check nothing requires, fails as `REQUIRED`.
+  The profile's `site.yml` ships all four waived with their reasons, so a fresh project's first
+  deploy passes, and deleting a waive only ever turns a check on. This replaces the profile's
+  "checks start off" rule (#155).
+- A required check now needs its sub-keys too, and a missing one fails and is named.
+  `NO-NOTICE` needs `notice.title`, `text` and `link_text`. `HOME-LAYOUT` with a `related` block
+  needs `related.heading`, `intro` and `rows`. A deleted `notice.text`, `notice.link_text` or
+  `related.heading` used to leave the check running and checking less, with exit 0 (#155).
+- A required `MISSING-SOCIAL` also needs `extra.favicon_svg` and `theme.favicon`, not just
+  `extra.social_image` (#155).
 
 ## [2.3.1] - 2026-10-16
 
