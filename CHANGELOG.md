@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [2.3.0] - 2026-10-16
+
 ### Added
 
 - `check_docs_rendered.py`: `extra.docs_standard.required` lists the checks a site cannot do
@@ -36,6 +40,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `--docs-site --fail-on-drift` exits 3 on a profile stylesheet present locally with no path
+  mapping, instead of warning and passing with the shared file uncompared (#141).
+- The "copy the file FROM" direction is printed only for a shared file whose content differs,
+  not for the profile's upstream-only `about.md`, `palette.yml` and `site.yml` (#141).
+
+## [2.2.1] - 2026-10-16
+
+### Fixed
+
 - Section titles in the docs-site nav now render the same with or without an index page. With
   `navigation.indexes`, Material showed a section that has an index page as a link in the
   primary text colour, and one without as a label in the secondary colour, so one stylesheet
@@ -53,10 +66,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   aside, matched by its structure because Material localises its title. A page showing only
   one of the two dates still fails. The `docs-site-standard` skill states both renderings
   (#142).
-- `--docs-site --fail-on-drift` exits 3 on a profile stylesheet present locally with no path
-  mapping, instead of warning and passing with the shared file uncompared (#141).
-- The "copy the file FROM" direction is printed only for a shared file whose content differs,
-  not for the profile's upstream-only `about.md`, `palette.yml` and `site.yml` (#141).
 
 ## [2.2.0] - 2026-10-16
 
@@ -297,7 +306,9 @@ Example of a released version, kept commented out so the stub starts clean:
 [1.0.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v1.0.0
 -->
 
-[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.3.0
+[2.2.1]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.2.1
 [2.2.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.2.0
 [2.1.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.1.0
 [2.0.1]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.0.1
