@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `MISSING-SOCIAL` in `check_docs_rendered.py` now checks everything `overrides/main.html`
+  emits for link previews and icons, not just `og:image`: `twitter:card` is
+  `summary_large_image`, `twitter:image` equals the absolute `og:image`, and the SVG favicon
+  (`extra.favicon_svg`), Material's `theme.favicon` and the apple-touch-icon are each linked from
+  every page to a file in the build. A broken one used to leave previews and icons failing with
+  CI green. Each part is checked only when configured, and the check now runs when
+  `extra.social_image`, `extra.favicon_svg` or `theme.favicon` is set; a site that sets none of
+  them is unchanged (#146).
 - `check_template_drift.py`, a shared file, no longer imports `FOOTER_REGEX` and `IGNORE_DIRS`
   from `check_docs_review.py`, which is not shared and which adopters diverge. v2.3.0 fell back
   to the template's names only when an adopter's copy lacked them, so a copy that defined them

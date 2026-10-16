@@ -998,7 +998,12 @@ def test_social_check_accepts_a_site_url_without_its_trailing_slash(tmp_path, ca
     site = _write_site(tmp_path)
     (site / 'assets').mkdir()
     (site / 'assets' / 'social.png').write_bytes(b'png')
-    tag = '<meta property="og:image" content="https://acme.github.io/demo/assets/social.png">'
+    (site / 'assets' / 'apple-touch-icon.png').write_bytes(b'png')
+    url = 'https://acme.github.io/demo/assets/social.png'
+    tag = (f'<meta property="og:image" content="{url}">'
+           '<meta name="twitter:card" content="summary_large_image">'
+           f'<meta name="twitter:image" content="{url}">'
+           '<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">')
     for page in site.rglob('*.html'):
         html = page.read_text(encoding='utf-8').replace('<html><body>', '<html><head><body>')
         page.write_text(html.replace('<head>', '<head>' + tag, 1), encoding='utf-8')
