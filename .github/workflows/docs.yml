@@ -6,15 +6,30 @@ name: Deploy Documentation
 # from this template therefore never deploys to GitHub Pages by accident, and
 # never assumes Pages is enabled -- which it is not, on a fresh repository.
 #
-# `python3 scripts/bootstrap_template.py --docs-site` uncomments the push
-# trigger between the OPT-IN markers. Bootstrapping without --docs-site (with
-# --clean-template) deletes this file, mkdocs.yml and requirements-docs.txt.
-# Before the first deploy, set Settings > Pages > Source to "GitHub Actions".
+# `python3 scripts/bootstrap_template.py --docs-site` uncomments the push and
+# pull_request triggers between the OPT-IN markers. Bootstrapping without
+# --docs-site (with --clean-template) deletes this file, mkdocs.yml and
+# requirements-docs.txt. Before the first deploy, set Settings > Pages > Source to
+# "GitHub Actions".
+#
+# One workflow, two jobs of work. On a pull request it is PR CI: it builds the
+# site and runs both checks, and never uploads or deploys. On a push to main it
+# is the deploy: the same build and checks, then the upload and the deploy.
 
 on:
   # >>> OPT-IN PUSH TRIGGER (uncommented by bootstrap_template.py --docs-site) >>>
   # push:
   #   branches: [ main, master ]
+  #   paths:
+  #     - 'docs/**'
+  #     - 'mkdocs.yml'
+  #     - 'README.md'
+  #     - 'requirements-docs.txt'
+  #     - 'overrides/**'
+  #     - 'scripts/mkdocs_github_alerts.py'
+  #     - 'scripts/check_docs_rendered.py'
+  #     - '.github/workflows/docs.yml'
+  # pull_request:
   #   paths:
   #     - 'docs/**'
   #     - 'mkdocs.yml'
@@ -53,9 +68,14 @@ permissions:
 # state the deploy had reached published to real readers. Hence false, for a
 # different reason than the required checks: not "report last", but "never stop
 # half way".
+#
+# A pull request run deploys nothing, so it gets a group of its own, per pull
+# request, where a superseded run is cancelled. In the "pages" group a PR run would
+# queue behind deploys, and GitHub keeps only the newest pending run in a group, so
+# a PR could knock a queued deploy out of the queue.
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('docs-pr-{0}', github.event.pull_request.number) || 'pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -105,29 +125,29 @@ jobs:
       # not found) fails too; a network failure only warns. The template itself has no
       # .agents/TEMPLATE_REF.md and nothing to compare against.
       #
-      # This is the deploy, so it compares against the commit the stamp records
-      # (--against-recorded): a template merge must not block publishing over a change nobody
-      # made here, while a local edit still fails. PR CI is where the HEAD comparison belongs.
-      # A fresh project's stamp is `unknown`, and --against-recorded would exit 3 on it, so
-      # until --update-stamp records a real commit this falls back to HEAD. The stamp is read
-      # with the drift checker's own parser, so the two cannot disagree about its format.
+      # PR CI and the deploy both compare against the commit the stamp records
+      # (--against-recorded): a template merge must not turn a pull request red, or block
+      # publishing, over a change nobody made here, while a local edit still fails. A newer
+      # template release is printed as a notice, naming the shared files it changes, and
+      # does not fail. An `unknown` stamp (a fresh project) falls back to upstream HEAD.
+      #
+      # Skipped on Dependabot's pull requests: a dependency bump changes no shared file, so
+      # there is nothing here to check, and a skipped step lets a required docs check report
+      # success rather than pending. Those pull requests still build the site and run the
+      # rendered check above, because dependency bumps are what break rendering. On a push,
+      # github.event.pull_request is empty and the step runs.
       # See .agents/skills/docs-site-standard/SKILL.md, rule 4.
       - name: Check the shared docs files against the template
+        if: ${{ github.event.pull_request.user.login != 'dependabot[bot]' }}
         run: |
-          if [ ! -f .agents/TEMPLATE_REF.md ]; then
-            echo "No .agents/TEMPLATE_REF.md: this is the template itself, nothing to compare."
-            exit 0
-          fi
-          recorded=$(python -c 'import sys; sys.path.insert(0, "scripts"); from pathlib import Path; from check_template_drift import UNKNOWN_STAMP_VALUE, parse_template_reference; commit = parse_template_reference(Path(".agents/TEMPLATE_REF.md").read_text(encoding="utf-8")).commit; print("" if commit == UNKNOWN_STAMP_VALUE else commit)')
-          if [ -n "$recorded" ]; then
-            echo "Comparing against the recorded commit $recorded."
+          if [ -f .agents/TEMPLATE_REF.md ]; then
             python scripts/check_template_drift.py --docs-site --fail-on-drift --against-recorded
           else
-            echo "The stamp records no commit yet (unknown): comparing against upstream HEAD."
-            python scripts/check_template_drift.py --docs-site --fail-on-drift
+            echo "No .agents/TEMPLATE_REF.md: this is the template itself, nothing to compare."
           fi
 
       - name: Upload the Pages artifact
+        if: ${{ github.event_name != 'pull_request' }}
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
@@ -135,6 +155,8 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: build
+    # PR CI builds and checks; only a push or a manual run publishes.
+    if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
 
     # Scoped to this job so the build above -- the step that runs third-party

@@ -78,10 +78,10 @@ the next agent "fixes" it back to the upstream wording, and the decision behind 
 
 ```bash
 python3 scripts/check_template_drift.py                 # report only, never writes
-python3 scripts/check_template_drift.py --docs-site --fail-on-drift  # shared docs files, for docs CI
+python3 scripts/check_template_drift.py --docs-site --fail-on-drift --against-recorded  # docs PR CI and deploy
 python3 scripts/check_template_drift.py --update-stamp  # report, then move the stamp forward
 python3 scripts/check_template_drift.py --fail-on-drift # report, exit 2 on drift (CI gate)
-python3 scripts/check_template_drift.py --fail-on-drift --against-recorded  # vs the recorded commit, not HEAD
+python3 scripts/check_template_drift.py --fail-on-drift --against-recorded  # vs the recorded commit; notes a newer release
 ```
 
 - The script is **read-only by default**. It rewrites the stamp only with `--update-stamp`, or
