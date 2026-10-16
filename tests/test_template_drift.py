@@ -8,6 +8,7 @@ Deliberately a separate module from test_template_scripts.py: that file is the h
 source of merge conflicts in this repository and is already large.
 """
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -798,26 +799,47 @@ def test_docs_site_mode_compares_the_drift_checker_itself(tmp_path, docs_upstrea
     assert DIRECTION_MESSAGE.format(repo_url=docs_upstream['url']) in out
 
 
-def test_the_drift_checker_runs_beside_a_diverged_check_docs_review(tmp_path):
-    """A shared file must not need a non-shared one patched to import. lfr-tunnel keeps its
-    own check_docs_review.py, without FOOTER_REGEX, and had to add the name by hand (#141)."""
+def test_the_drift_checker_imports_nothing_from_check_docs_review():
+    """A shared file must not depend on a non-shared one (#147). lfr-tunnel's and LDM's own
+    check_docs_review.py lacked or redefined FOOTER_REGEX, and each patched it by hand (#141)."""
+    source = (REPO_ROOT / 'scripts' / 'check_template_drift.py').read_text(encoding='utf-8')
+    assert not re.search(r'^\s*(from|import)\s+check_docs_review\b', source, re.M)
+
+
+def test_the_drift_checkers_own_names_match_the_templates_check_docs_review():
+    """Behaviour is unchanged: the definitions moved, their values did not."""
+    import check_docs_review
+    import check_template_drift
+
+    assert check_template_drift.FOOTER_REGEX.pattern == check_docs_review.FOOTER_REGEX.pattern
+    assert check_template_drift.COMPARISON_IGNORE_DIRS == (
+        check_docs_review.IGNORE_DIRS | {'__pycache__', '.idea', '.vscode'})
+
+
+@pytest.mark.parametrize('diverged', [
+    None,                                                     # no check_docs_review.py at all
+    '"""Without the names."""\nimport re\nFOOTER_PATTERN = re.compile(r"Last Updated")\n',
+    '"""With other values."""\nimport re\nFOOTER_REGEX = re.compile(r"x")\n'
+    'IGNORE_DIRS = {"docs"}\n',
+    'raise SystemExit("an adopter\'s check_docs_review.py must not even be imported")\n',
+])
+def test_the_drift_checker_is_unaffected_by_an_adopters_check_docs_review(tmp_path, diverged):
     import json
-    from check_docs_review import FOOTER_REGEX, IGNORE_DIRS
+    import check_template_drift
 
     scripts = tmp_path / 'scripts'
     scripts.mkdir()
     (scripts / 'check_template_drift.py').write_bytes(
         (REPO_ROOT / 'scripts' / 'check_template_drift.py').read_bytes())
-    (scripts / 'check_docs_review.py').write_text(
-        '"""A diverged copy, with its own names."""\n'
-        'import re\nFOOTER_PATTERN = re.compile(r"Last Updated")\n', encoding='utf-8')
+    if diverged is not None:
+        (scripts / 'check_docs_review.py').write_text(diverged, encoding='utf-8')
     probe = ('import json, check_template_drift as m; '
-             'print(json.dumps([m.FOOTER_REGEX.pattern, sorted(m.IGNORE_DIRS)]))')
+             'print(json.dumps([m.FOOTER_REGEX.pattern, sorted(m.COMPARISON_IGNORE_DIRS)]))')
     result = subprocess.run([sys.executable, '-c', probe], cwd=scripts,
                             capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr
-    # The fallback is the template's own definition, word for word.
-    assert json.loads(result.stdout) == [FOOTER_REGEX.pattern, sorted(IGNORE_DIRS)]
+    assert json.loads(result.stdout) == [check_template_drift.FOOTER_REGEX.pattern,
+                                         sorted(check_template_drift.COMPARISON_IGNORE_DIRS)]
 
 
 def test_docs_site_fail_on_drift_fails_an_unmapped_profile_stylesheet(
