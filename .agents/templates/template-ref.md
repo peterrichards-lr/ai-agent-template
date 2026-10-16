@@ -31,7 +31,7 @@ drift from it deliberate instead of silent.
 python3 scripts/check_template_drift.py                 # report only
 python3 scripts/check_template_drift.py --update-stamp  # report, then move the stamp forward
 python3 scripts/check_template_drift.py --fail-on-drift # report, exit 2 on drift (for CI)
-python3 scripts/check_template_drift.py --docs-site --fail-on-drift  # the shared docs files only
+python3 scripts/check_template_drift.py --docs-site --fail-on-drift --against-recorded  # shared docs files, as docs CI runs it
 ```
 
 The script clones the upstream template, lists what changed there since the commit recorded
@@ -111,4 +111,4 @@ Update the "Last checked" stamp and the drift list above whenever this compariso
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*
+*Last Updated: 2026-10-16* | *Last Reviewed: 2026-10-16*

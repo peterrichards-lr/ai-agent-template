@@ -120,8 +120,9 @@ The rule:
 
 1. **Change them here, through a PR to this repository.** Never edit a downstream copy, not
    even to make a check pass; the drift check will fail it.
-2. **Then copy them into each project unchanged**, and let
-   `scripts/check_template_drift.py --docs-site --fail-on-drift` confirm it.
+2. **Then copy them into each project unchanged**, in a sync PR that also runs
+   `scripts/check_template_drift.py --update-stamp`. Docs CI then confirms it with
+   `--docs-site --fail-on-drift --against-recorded`.
 3. **Per-site values go in `mkdocs.yml`** (`extra:`), never in the files, and site-specific
    styling in a separate stylesheet listed after the shared one.
 

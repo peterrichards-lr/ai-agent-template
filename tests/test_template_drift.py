@@ -928,12 +928,12 @@ def test_against_recorded_still_fails_a_local_edit(tmp_path, upstream_repo, caps
     assert 'AGENTS.md' in capsys.readouterr().out
 
 
-@pytest.mark.parametrize('recorded', [UNKNOWN_STAMP_VALUE, 'abc1234'])
-def test_against_recorded_fails_when_the_recorded_commit_is_unusable(
-        tmp_path, upstream_repo, capsys, recorded):
-    """No baseline to compare against is "nothing compared", not a pass."""
+def test_against_recorded_fails_when_the_recorded_commit_is_not_upstream(
+        tmp_path, upstream_repo, capsys):
+    """A real commit the template does not have is "nothing compared", not a pass. An
+    `unknown` stamp falls back to HEAD instead: tests/test_drift_release_notice.py."""
     local_root, _ = _adopter_at_baseline(tmp_path, upstream_repo)
-    write_reference_file(local_root, upstream_repo['url'], recorded)
+    write_reference_file(local_root, upstream_repo['url'], 'abc1234')
 
     assert main(['--root', str(local_root), '--against-recorded']) == 3
     assert '--update-stamp' in capsys.readouterr().err

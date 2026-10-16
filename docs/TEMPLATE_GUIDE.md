@@ -244,7 +244,7 @@ python3 scripts/bootstrap_template.py --name "my-awesome-service" --lang go --cl
 | Path | Without `--docs-site` | With `--docs-site` |
 | :--- | :--- | :--- |
 | `mkdocs.yml` | removed by `--clean-template` | `site_name`, `site_url` and `repo_url` seeded from `--name`/`--repo-owner` |
-| `.github/workflows/docs.yml` | removed by `--clean-template` | the commented `push:` trigger is uncommented, arming the Pages deploy |
+| `.github/workflows/docs.yml` | removed by `--clean-template` | the commented `push:` and `pull_request:` triggers are uncommented, arming the Pages deploy and docs PR CI |
 | `requirements-docs.txt` | removed by `--clean-template` | kept; installed only by the docs workflow |
 | `overrides/`, `scripts/mkdocs_github_alerts.py`, `scripts/check_docs_rendered.py`, `docs/about.md` | removed by `--clean-template` | kept: the shared docs files, never edited downstream |
 | `docs/tutorials/`, `docs/how-to/`, `docs/reference/`, `docs/explanation/` | kept | kept |
@@ -270,8 +270,8 @@ layout, top-level navigation order, GitHub alerts rendered with GitHub's label, 
 files (`overrides/`, the alerts hook, the rendered-output check) that are changed only here and
 copied downstream. `.agents/skills/docs-site-standard/SKILL.md` states it.
 `scripts/check_docs_rendered.py` holds the built site to it before every Pages upload, and
-`scripts/check_template_drift.py --docs-site --fail-on-drift` holds the shared files to this
-template.
+`scripts/check_template_drift.py --docs-site --fail-on-drift --against-recorded` holds the
+shared files to this template, in PR CI and on every deploy.
 
 **Profiles (`--docs-profile`).** A family of sites can share more than the generic standard.
 `--docs-site --docs-profile liferay` applies the Liferay tools profile from

@@ -147,24 +147,36 @@ adopter's `check_docs_review.py` cannot change what it compares (ai-agent-templa
   otherwise leave the shared stylesheet uncompared on a green run.
   The "copy the file FROM the template" direction is printed only for a shared file whose
   content differs.
-- **It compares against the template's HEAD, not the version you recorded.** A template merge
-  that changes a shared file therefore turns every adopter's check red, with no change on their
-  side, until a sync PR copies the new version in. That is the point in PR CI: it is how an
-  adopter learns the standard moved, and the fix is the sync PR. It is wrong on a deploy, where
-  it blocks publishing over a change nobody made here. So:
+- **Compare against the version you recorded, not the template's HEAD.** Compared against
+  HEAD, a template merge that changes a shared file turns every adopter's docs PR red with no
+  change on their side. Five template merges in one morning did exactly that
+  (ai-agent-template#166). So PR CI and the deploy run the same command:
 
   | Where | Run |
   | :--- | :--- |
-  | PR CI | `--docs-site --fail-on-drift` (against HEAD) |
-  | Deploy | `--docs-site --fail-on-drift --against-recorded`, or nothing |
+  | PR CI | `--docs-site --fail-on-drift --against-recorded` |
+  | Deploy | `--docs-site --fail-on-drift --against-recorded` |
 
-  `--against-recorded` compares against the commit in `.agents/TEMPLATE_REF.md`: a local edit
-  still fails, a template merge cannot. It needs a real recorded commit, and exits 3 on
-  `unknown` (set one with `--update-stamp` first), and it never moves the stamp. The shipped
-  `.github/workflows/docs.yml` is the deploy: it reads the stamp and runs `--against-recorded`
-  when it records a real commit, and the HEAD comparison while it is still `unknown`, as on a
-  fresh project. Running `--update-stamp` once is what moves a deploy onto the recorded
-  comparison.
+  `--against-recorded` compares against the commit in `.agents/TEMPLATE_REF.md`. A local edit
+  to a shared file still fails, in both places. A template merge cannot.
+  - **An `unknown` stamp** (a fresh project) has no recorded commit, so the run falls back to
+    upstream HEAD, and says so. A recorded commit the template does not have exits 3.
+  - **A newer release is a notice, not a failure.** When upstream has a newer release tag
+    than the recorded version, the run names it and lists the shared files it changes, and
+    exits 0. That is how an adopter learns the standard moved; the fix is a sync PR that
+    copies the files in and runs `--update-stamp` in the same change. A sync that copies the
+    files but forgets the stamp fails, because the copies then differ from the recorded
+    commit.
+  - The run never moves the stamp.
+
+  The shipped `.github/workflows/docs.yml` is both: on a pull request it is PR CI (build, the
+  rendered check, the drift check; nothing uploaded or deployed), and on a push to main it is
+  the deploy. `--docs-site` arms both triggers.
+- **Dependabot's pull requests skip the drift step**, with a step-level
+  `if: github.event.pull_request.user.login != 'dependabot[bot]'`. A dependency bump changes no
+  shared file, so the step has nothing to check, and a skipped step lets a required docs check
+  report success rather than pending. They still build the site and run
+  `check_docs_rendered.py`: dependency bumps are what break rendering.
 
 ### 5. Rendered-output checks
 
@@ -271,6 +283,11 @@ fails (ai-agent-template#142).
 - **ruff**: a repository that runs it sets `allowed-confusables = ["ℹ"]` under
   `[tool.ruff.lint]`, rather than rewording the hook's `ℹ` comments, which would break the
   byte-identical copy.
+- **mkdocs 2**: the template's `.github/dependabot.yml` ignores `mkdocs` versions `>= 2` on its
+  pip entry. mkdocs 2.0 removes the plugin system and rewrites theming, and Material for MkDocs
+  warns that every plugin and theme override breaks with no migration path; the alerts hook and
+  `overrides/main.html` are both. Patch and minor 1.x releases still come through. A site with
+  its own Dependabot config adds the same `ignore` entry.
 
 <!-- markdownlint-disable MD049 -->
 ---

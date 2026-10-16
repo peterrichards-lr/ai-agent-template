@@ -16,7 +16,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- **Docs PR CI compares the shared files against the recorded commit**, as the deploy does:
+  `check_template_drift.py --docs-site --fail-on-drift --against-recorded`. Compared against
+  upstream HEAD, five template merges in one morning turned every adopter's docs PR red with no
+  local change. A local edit to a shared file still fails. `--against-recorded` now falls back
+  to HEAD, saying so, when the stamp is `unknown`, instead of exiting 3; a recorded commit the
+  template does not have still exits 3. When upstream has a newer release tag than the
+  recorded version, the run prints a notice naming it and the shared files it changes, and
+  exits 0 (#166).
+- The shipped `.github/workflows/docs.yml` is PR CI as well as the deploy: `--docs-site` now
+  arms a `pull_request` trigger over the same paths as `push`. A pull request builds the site
+  and runs both checks, and never uploads or deploys; it has its own concurrency group, so it
+  cannot displace a queued deploy. The drift step is one command, the script's own fallback
+  replacing the shell that read the stamp (#166).
+
+### Added
+
+- Dependabot's pull requests skip the docs drift step (a step-level `if` on
+  `dependabot[bot]`), so a required docs check reports success rather than pending. They still
+  build the site and run `check_docs_rendered.py`, because dependency bumps are what break
+  rendering. The template's `.github/dependabot.yml` ignores `mkdocs` versions `>= 2`, which
+  remove the plugin system and theme overrides the docs site depends on (#167).
 
 ## [2.4.0] - 2026-10-16
 

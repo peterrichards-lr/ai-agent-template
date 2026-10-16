@@ -184,11 +184,15 @@ def test_pages_deploy_never_cancels_an_in_flight_deployment():
     concurrency = workflow.get('concurrency')
     assert isinstance(concurrency, dict), "docs.yml must declare a concurrency block"
 
-    assert concurrency.get('group') == 'pages', (
-        "Pages deployments must share the single 'pages' concurrency group")
-    assert concurrency.get('cancel-in-progress') is False, (
-        "cancel-in-progress must be false: cancelling an in-flight Pages deployment "
-        "leaves the live site in a half-applied state")
+    # Evaluated for both events: the expressions are the contract, so read them as GitHub
+    # would. A push (or a manual run) deploys; a pull request only builds and checks.
+    group, cancel = concurrency.get('group'), concurrency.get('cancel-in-progress')
+    assert group == ("${{ github.event_name == 'pull_request' && "
+                     "format('docs-pr-{0}', github.event.pull_request.number) || 'pages' }}"), (
+        "a deploy must share the single 'pages' group, and a PR run must not join it")
+    assert cancel == "${{ github.event_name == 'pull_request' }}", (
+        "cancel-in-progress must be false for a deploy: cancelling an in-flight Pages "
+        "deployment leaves the live site in a half-applied state")
 
 
 def test_the_pages_concurrency_comment_explains_the_third_case():
