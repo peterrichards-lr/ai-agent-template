@@ -63,23 +63,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, List, NamedTuple, Optional, Sequence, Tuple
 
-# Allow importing sibling script helpers regardless of invocation working directory
-sys.path.insert(0, str(Path(__file__).parent.resolve()))
-try:
-    from check_docs_review import FOOTER_REGEX, IGNORE_DIRS
-except ImportError:
-    # This file is a shared docs-site file, copied verbatim (DOCS_SITE_SHARED_PATHS), and
-    # check_docs_review.py is not: an adopter may keep its own, without these names (lfr-tunnel
-    # does, #141). Rather than make that adopter patch either file, fall back to the template's
-    # definitions, word for word; tests/test_template_drift.py holds the two copies equal.
-    FOOTER_REGEX = re.compile(
-        r"([*_])Last Updated:\s*(\d{4}-\d{2}-\d{2})\1\s*\|\s*\1Last Reviewed:\s*(\d{4}-\d{2}-\d{2})\1"
-    )
-    IGNORE_DIRS = {
-        '.git', 'node_modules', '.venv', 'venv', 'env', '.smoke_venv',
-        'coverage', 'target', 'build', 'dist', 'bin', '.gemini', '.agent_scratch', '.pytest_cache',
-        'site', '_site'
-    }
+# The footer this repository's documents carry. The drift check strips it before comparing, so a
+# copy whose only difference is its review dates is not drift, and rewrites it when it stamps.
+# Defined here, not imported from check_docs_review.py: this file is shared and copied verbatim
+# (DOCS_SITE_SHARED_PATHS), and check_docs_review.py is not, so an adopter's copy may lack the
+# name or define it differently (lfr-tunnel's and LDM's do, #141, #147). The format is the
+# template's; tests/test_template_drift.py holds it equal to check_docs_review.FOOTER_REGEX.
+FOOTER_REGEX = re.compile(
+    r"([*_])Last Updated:\s*(\d{4}-\d{2}-\d{2})\1\s*\|\s*\1Last Reviewed:\s*(\d{4}-\d{2}-\d{2})\1"
+)
 
 # The upstream this template *is*. Recorded into every adopter's reference file at
 # bootstrap time and overridable per invocation with --repo-url for forks.
@@ -124,9 +116,9 @@ GOVERNED_PATHS = (
 # the directory would fail docs CI on a file the template does not ship.
 #
 # This script is one of them: it is copied verbatim, and an edit to it would otherwise pass the
-# check it implements (#141). check_docs_review.py, which it imports from, is not: adopters
-# legitimately keep their own (lfr-tunnel's adds --review-only and --changed-files), and the
-# import falls back rather than make it shared.
+# check it implements (#141). check_docs_review.py is not: adopters legitimately keep their own
+# (lfr-tunnel's adds --review-only and --changed-files), so this script imports nothing from it
+# (#147).
 DOCS_SITE_SHARED_PATHS = (
     'overrides/main.html',
     'overrides/partials/copyright.html',
@@ -177,10 +169,16 @@ NOT_FOUND_PATTERNS = (
     'access denied',
 )
 
-# check_docs_review.IGNORE_DIRS is tuned for scanning documentation; a tree comparison
-# must additionally skip artefacts that exist in a working checkout and in no git tree.
-# Left in, `scripts/__pycache__/*.pyc` heads the report for every Python adopter.
-COMPARISON_IGNORE_DIRS = IGNORE_DIRS | {'__pycache__', '.idea', '.vscode'}
+# Directories a tree comparison skips: dependency, build and tool-state directories, plus the
+# artefacts that exist in a working checkout and in no git tree. Left in,
+# `scripts/__pycache__/*.pyc` heads the report for every Python adopter. The first set is
+# check_docs_review.IGNORE_DIRS as the template ships it, held equal by a test; it is not
+# imported, for the reason FOOTER_REGEX is not (#147).
+COMPARISON_IGNORE_DIRS = {
+    '.git', 'node_modules', '.venv', 'venv', 'env', '.smoke_venv',
+    'coverage', 'target', 'build', 'dist', 'bin', '.gemini', '.agent_scratch', '.pytest_cache',
+    'site', '_site',
+} | {'__pycache__', '.idea', '.vscode'}
 COMPARISON_IGNORE_SUFFIXES = ('.pyc', '.pyo', '.orig', '.rej')
 
 # Git subcommands are cheap; a hung network call is not. Bound every one of them.
