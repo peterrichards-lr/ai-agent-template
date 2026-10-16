@@ -143,7 +143,8 @@ adopter's `check_docs_review.py` cannot change what it compares (ai-agent-templa
   A mismatch prints both SHA-256 prefixes and sizes and exits 2. The template not found, or a
   shared path missing from it, exits 3. A network failure warns and exits 0. A profile
   stylesheet present locally but not mapped is named, with the mapping line to add, and exits
-  3: a deleted mapping would otherwise leave the shared stylesheet uncompared on a green run.
+  3 with or without `--fail-on-drift`, like the other exit-3 cases: a deleted mapping would
+  otherwise leave the shared stylesheet uncompared on a green run.
   The "copy the file FROM the template" direction is printed only for a shared file whose
   content differs.
 - **It compares against the template's HEAD, not the version you recorded.** A template merge
@@ -160,8 +161,10 @@ adopter's `check_docs_review.py` cannot change what it compares (ai-agent-templa
   `--against-recorded` compares against the commit in `.agents/TEMPLATE_REF.md`: a local edit
   still fails, a template merge cannot. It needs a real recorded commit, and exits 3 on
   `unknown` (set one with `--update-stamp` first), and it never moves the stamp. The shipped
-  `.github/workflows/docs.yml` is the deploy and runs the HEAD comparison, because a fresh
-  project's stamp may be `unknown`; switch it once the stamp is real.
+  `.github/workflows/docs.yml` is the deploy: it reads the stamp and runs `--against-recorded`
+  when it records a real commit, and the HEAD comparison while it is still `unknown`, as on a
+  fresh project. Running `--update-stamp` once is what moves a deploy onto the recorded
+  comparison.
 
 ### 5. Rendered-output checks
 

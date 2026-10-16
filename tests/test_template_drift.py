@@ -751,16 +751,20 @@ def test_a_sites_own_extra_override_is_not_drift(tmp_path, docs_upstream):
     assert main(['--root', str(local_root), '--docs-site', '--fail-on-drift']) == 0
 
 
-def test_docs_site_mode_names_an_unmapped_profile_stylesheet(tmp_path, docs_upstream, capsys):
-    """A TEMPLATE_REF.md from before #135 maps nothing: say so, with the line to add."""
+def test_docs_site_mode_names_and_fails_an_unmapped_profile_stylesheet(
+        tmp_path, docs_upstream, capsys):
+    """A TEMPLATE_REF.md from before #135 maps nothing: say so, with the line to add. A
+    report-only run exits 3 too, like every other "nothing was compared" case."""
     css_up = '.agents/templates/docs-profiles/liferay/liferay-blue.css'
     local_root = adopter_with_docs_files(
         tmp_path / 'local', docs_upstream['path'],
         at={css_up: 'docs/assets/stylesheets/liferay-blue.css'})
     write_reference_file(local_root, docs_upstream['url'], docs_upstream['commit'])
 
-    assert main(['--root', str(local_root), '--docs-site']) == 0
-    assert f"- `docs/assets/stylesheets/liferay-blue.css` ← `{css_up}`" in capsys.readouterr().out
+    assert main(['--root', str(local_root), '--docs-site']) == 3
+    captured = capsys.readouterr()
+    assert f"- `docs/assets/stylesheets/liferay-blue.css` ← `{css_up}`" in captured.out
+    assert 'not compared' in captured.err
 
 
 def test_the_copy_direction_is_only_given_for_shared_files(tmp_path, upstream_repo, capsys):

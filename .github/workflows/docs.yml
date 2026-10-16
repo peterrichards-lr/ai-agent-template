@@ -104,12 +104,27 @@ jobs:
       # here rather than drifting silently. Exit 3 (the template, or a governed file in it,
       # not found) fails too; a network failure only warns. The template itself has no
       # .agents/TEMPLATE_REF.md and nothing to compare against.
+      #
+      # This is the deploy, so it compares against the commit the stamp records
+      # (--against-recorded): a template merge must not block publishing over a change nobody
+      # made here, while a local edit still fails. PR CI is where the HEAD comparison belongs.
+      # A fresh project's stamp is `unknown`, and --against-recorded would exit 3 on it, so
+      # until --update-stamp records a real commit this falls back to HEAD. The stamp is read
+      # with the drift checker's own parser, so the two cannot disagree about its format.
+      # See .agents/skills/docs-site-standard/SKILL.md, rule 4.
       - name: Check the shared docs files against the template
         run: |
-          if [ -f .agents/TEMPLATE_REF.md ]; then
-            python scripts/check_template_drift.py --docs-site --fail-on-drift
-          else
+          if [ ! -f .agents/TEMPLATE_REF.md ]; then
             echo "No .agents/TEMPLATE_REF.md: this is the template itself, nothing to compare."
+            exit 0
+          fi
+          recorded=$(python -c 'import sys; sys.path.insert(0, "scripts"); from pathlib import Path; from check_template_drift import UNKNOWN_STAMP_VALUE, parse_template_reference; commit = parse_template_reference(Path(".agents/TEMPLATE_REF.md").read_text(encoding="utf-8")).commit; print("" if commit == UNKNOWN_STAMP_VALUE else commit)')
+          if [ -n "$recorded" ]; then
+            echo "Comparing against the recorded commit $recorded."
+            python scripts/check_template_drift.py --docs-site --fail-on-drift --against-recorded
+          else
+            echo "The stamp records no commit yet (unknown): comparing against upstream HEAD."
+            python scripts/check_template_drift.py --docs-site --fail-on-drift
           fi
 
       - name: Upload the Pages artifact
