@@ -112,6 +112,7 @@ bootstrapped with `--docs-site` carries byte-identical copies:
 
 - `scripts/mkdocs_github_alerts.py`
 - `scripts/check_docs_rendered.py`
+- `scripts/check_template_drift.py` (it compares the others, so it is held to the template too)
 - `overrides/main.html` and `overrides/partials/copyright.html`
 - `.agents/templates/docs-profiles/liferay/liferay-blue.css` (the Liferay profile)
 
@@ -154,4 +155,4 @@ Expired PATs trigger `401 Unauthorized` errors on `gh` commands. Set calendar re
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*
+*Last Updated: 2026-10-16* | *Last Reviewed: 2026-10-16*

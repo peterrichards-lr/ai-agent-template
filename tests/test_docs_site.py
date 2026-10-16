@@ -650,6 +650,7 @@ def _write_site(root: Path, home=GOOD_HOME, nav=None, page_body='<h1>Guide</h1><
     pages = {
         'index.html': _page(home, 'about/', **kwargs),
         'about/index.html': _page('<h1>About these docs</h1>', './', **kwargs),
+        'guides/index.html': _page('<h1>Guides</h1>', '../about/', **kwargs),  # MIN_PAGES (#141)
         'guides/setup/index.html': _page(page_body, nested_about, footer=nested_footer, **kwargs),
         '404.html': '<html><body>Not found</body></html>',
     }

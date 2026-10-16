@@ -28,6 +28,10 @@ extra:
     #   title: Community project
     #   text: Not an official Liferay product and not covered by Liferay Support
     #   link_text: About this project
+    # Deleting a key above switches its check off, and the build stays green. Once the site
+    # meets them, name the checks it cannot do without: each fails, naming its key, if that
+    # key is ever removed (docs-site-standard, rule 5).
+    # required: [MISSING-VERIFICATION, MISSING-SOCIAL, NO-NOTICE, HOME-LAYOUT]
     related:
       heading: Related Liferay tools
       intro: >-
