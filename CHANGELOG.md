@@ -36,6 +36,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Section titles in the docs-site nav now render the same with or without an index page. With
+  `navigation.indexes`, Material showed a section that has an index page as a link in the
+  primary text colour, and one without as a label in the secondary colour, so one stylesheet
+  gave liferay-docker-manager white section titles and lfr-tunnel muted ones. The Liferay
+  profile's `liferay-blue.css` now gives the link the label's colour at desktop width; hover and
+  the active page keep the link colour. The `docs-site-standard` skill states that index pages
+  are optional and must render the same, and a new `SECTION-TITLE` check in
+  `check_docs_rendered.py` fails a site with an index page whose stylesheets lack the rule, or
+  whose markup the rule no longer reaches (#143).
+- The `docs-site-standard` skill's shared-files table had the Liferay stylesheet row stranded
+  below a paragraph, outside the table.
+- `check_docs_rendered.py`'s `UNDATED-PAGE` now accepts a "Last updated" generated from git:
+  a page passes with both dates typed in its footer, as before, or with `Last Reviewed` typed
+  and the date `mkdocs-git-revision-date-localized-plugin` renders in Material's source-file
+  aside, matched by its structure because Material localises its title. A page showing only
+  one of the two dates still fails. The `docs-site-standard` skill states both renderings
+  (#142).
 - `--docs-site --fail-on-drift` exits 3 on a profile stylesheet present locally with no path
   mapping, instead of warning and passing with the shared file uncompared (#141).
 - The "copy the file FROM" direction is printed only for a shared file whose content differs,

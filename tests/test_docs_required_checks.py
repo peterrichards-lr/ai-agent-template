@@ -115,3 +115,12 @@ def test_a_four_page_build_is_too_few_to_be_real(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(check_docs_rendered, 'MIN_PAGES', 4)
     code, out = _run_check(site, {'site_name': 'demo'}, capsys)
     assert code == 0, out
+
+
+def test_section_title_is_a_known_name_on_a_build_it_did_not_run_on(tmp_path, capsys):
+    """SECTION-TITLE runs only on a build with an index page (#143); naming it elsewhere is not
+    a typo, and must neither fail nor be reported as having run."""
+    site = _write_site(tmp_path, home=PLAIN_HOME)
+    code, out = _run_check(site, _required('SECTION-TITLE'), capsys)
+    assert code == 0, out
+    assert 'SECTION-TITLE' not in out
