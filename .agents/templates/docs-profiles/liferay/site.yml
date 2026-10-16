@@ -20,8 +20,9 @@ extra:
     project_name: <PROJECT_NAME_PLACEHOLDER>
     # Names a sentence-case nav label may capitalise mid-label (NAV check).
     proper_nouns: [Liferay]
-    # The Liferay profile REQUIRES NO-NOTICE, HOME-LAYOUT, MISSING-VERIFICATION and
-    # MISSING-SOCIAL (docs-site-standard, rules 5 and 6). A required check fails, naming the
+    # The Liferay profile REQUIRES NO-NOTICE, HOME-LAYOUT, MISSING-VERIFICATION (Google's
+    # token specifically, MISSING-VERIFICATION:google) and MISSING-SOCIAL (docs-site-standard,
+    # rules 5 and 6). A required check fails, naming the
     # key, when a key it needs is missing, so deleting one cannot switch a check off.
     home_layout: false
     # notice:

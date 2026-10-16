@@ -68,7 +68,7 @@ Every `uses:` in [`.github/workflows/`](./.github/workflows) is pinned to a **fu
 
 **Pinning does not freeze you.** This is the obvious objection, and it is wrong: Dependabot understands SHA pins natively. Its `github-actions` ecosystem updater bumps the SHA *and* rewrites the trailing version comment in the same PR, so the automated weekly bumps in [`.github/dependabot.yml`](./.github/dependabot.yml) continue to work exactly as they did with mutable tags -- the only difference is that each bump is now a reviewable diff instead of a silent substitution.
 
-**Cooldown.** Both ecosystems in `.github/dependabot.yml` declare a `cooldown:` (`default-days: 7`, `semver-major-days: 14`). Supply-chain compromises are usually detected and the malicious release yanked within hours to days, so a cooldown ensures this repository is never the canary. Security updates raised from a published advisory are *not* delayed by `cooldown:` and still arrive immediately.
+**Cooldown.** Both ecosystems in `.github/dependabot.yml` declare a `cooldown:` of `default-days: 7`, and `pip` adds `semver-major-days: 14`; Dependabot does not support the `semver-*` keys for `github-actions`, and rejects the whole file if they appear there. Supply-chain compromises are usually detected and the malicious release yanked within hours to days, so a cooldown ensures this repository is never the canary. Security updates raised from a published advisory are *not* delayed by `cooldown:` and still arrive immediately.
 
 ### Updating a pin by hand
 

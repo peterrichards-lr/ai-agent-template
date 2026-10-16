@@ -22,6 +22,12 @@ _Nothing yet._
 
 ### Added
 
+- A site can require a specific verification token: `required` and `waive` accept
+  `MISSING-VERIFICATION:google` and `MISSING-VERIFICATION:bing`, and the Liferay profile now
+  requires Google's. Plain `MISSING-VERIFICATION` was satisfied by either token, so Bing's in
+  place of Google's passed with no Google tag on any page, which a site that depends on Search
+  Console cannot afford. Waiving `MISSING-VERIFICATION` waives its qualified forms too, so the
+  profile's shipped waive still covers a fresh project (#161).
 - Dependabot's pull requests skip the docs drift step (a step-level `if` on
   `dependabot[bot]`), so a required docs check reports success rather than pending. They still
   build the site and run `check_docs_rendered.py`, because dependency bumps are what break
@@ -46,6 +52,10 @@ _Nothing yet._
 
 ### Fixed
 
+- `.github/dependabot.yml` no longer sets `cooldown.semver-major-days` on the `github-actions`
+  entry. Dependabot does not support it for that ecosystem and rejected the whole file, so
+  Dependabot could not run; the key had shipped since v2.0.0 (#88), and the validator
+  caught it when the file next changed. `pip` keeps its 14-day major-version cooldown (#171).
 - Under the Liferay profile, a required `HOME-LAYOUT` needs the `related` block itself, not just
   its sub-keys when the block exists. Deleting `extra.docs_standard.related`, together with the
   home page's "Related Liferay tools" section, used to build a site with no related section and
