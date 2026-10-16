@@ -16,8 +16,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The Liferay profile's stylesheet is identified by a `docs-profile: liferay` marker line inside
+  it, not by its filename. The rendered check finds it anywhere in the built site, so a query
+  string, a rename, a moved path, or dropping it from `extra_css` no longer switches the
+  profile's required checks off. The drift check finds an unmapped copy by the same marker
+  wherever it is kept, so renaming it, deleting its mapping and editing it exits 3 instead of
+  "No drift". A copy from before the marker existed is still recognised by its shipped name
+  (#164, #162).
+
+## [2.5.0] - 2026-10-16
+
 ### Added
 
+- A site can require a specific verification token: `required` and `waive` accept
+  `MISSING-VERIFICATION:google` and `MISSING-VERIFICATION:bing`, and the Liferay profile now
+  requires Google's. Plain `MISSING-VERIFICATION` was satisfied by either token, so Bing's in
+  place of Google's passed with no Google tag on any page, which a site that depends on Search
+  Console cannot afford. Waiving `MISSING-VERIFICATION` waives its qualified forms too, so the
+  profile's shipped waive still covers a fresh project (#161).
 - Dependabot's pull requests skip the docs drift step (a step-level `if` on
   `dependabot[bot]`), so a required docs check reports success rather than pending. They still
   build the site and run `check_docs_rendered.py`, because dependency bumps are what break
@@ -42,6 +60,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `.github/dependabot.yml` no longer sets `cooldown.semver-major-days` on the `github-actions`
+  entry. Dependabot does not support it for that ecosystem and rejected the whole file, so
+  Dependabot could not run; the key had shipped since v2.0.0 (#88), and the validator
+  caught it when the file next changed. `pip` keeps its 14-day major-version cooldown (#171).
 - Under the Liferay profile, a required `HOME-LAYOUT` needs the `related` block itself, not just
   its sub-keys when the block exists. Deleting `extra.docs_standard.related`, together with the
   home page's "Related Liferay tools" section, used to build a site with no related section and
@@ -51,13 +73,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ignored, so a cache-busting `liferay-blue.css?v=2` no longer hides the profile and its four
   required checks. `SECTION-TITLE` reads the same entries from the build, and now finds a
   suffixed stylesheet's file too (#164).
-- The Liferay profile's stylesheet is identified by a `docs-profile: liferay` marker line inside
-  it, not by its filename. The rendered check finds it anywhere in the built site, so a query
-  string, a rename, a moved path, or dropping it from `extra_css` no longer switches the
-  profile's required checks off. The drift check finds an unmapped copy by the same marker
-  wherever it is kept, so renaming it, deleting its mapping and editing it exits 3 instead of
-  "No drift". A copy from before the marker existed is still recognised by its shipped name
-  (#164, #162).
 
 ## [2.4.0] - 2026-10-16
 
@@ -403,7 +418,8 @@ Example of a released version, kept commented out so the stub starts clean:
 [1.0.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v1.0.0
 -->
 
-[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.5.0
 [2.4.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.4.0
 [2.3.1]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.3.1
 [2.3.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.3.0

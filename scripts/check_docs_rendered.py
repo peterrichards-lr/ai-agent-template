@@ -56,7 +56,8 @@ Liferay profile requires all four, and PROFILE_KEYS what more it needs of them, 
 a profile site when its build holds a stylesheet with the PROFILE_MARKER line), plus
 extra.docs_standard.required, less what
 extra.docs_standard.waive drops with a reason. An unknown name, or a waive with no reason or of
-a check nothing requires, fails as REQUIRED.
+a check nothing requires, fails as REQUIRED. MISSING-VERIFICATION:google and :bing require
+that token specifically (#161); waiving a check waives its qualified forms.
 
 Exit codes: 0 every assertion passed; 1 an assertion failed, or nothing was scanned.
 """
@@ -756,6 +757,14 @@ CONFIGURED_CHECKS = {
          lambda c: _extra(c).get("google_site_verification")
          or _extra(c).get("bing_site_verification")),
     ],
+    # A specific token: a site that depends on Search Console cannot let Bing's token stand in
+    # for Google's (lfr-tunnel#2381, #161). Waiving MISSING-VERIFICATION drops these too.
+    "MISSING-VERIFICATION:google": [
+        ("extra.google_site_verification", lambda c: _extra(c).get("google_site_verification")),
+    ],
+    "MISSING-VERIFICATION:bing": [
+        ("extra.bing_site_verification", lambda c: _extra(c).get("bing_site_verification")),
+    ],
     "MISSING-SOCIAL": [
         ("extra.social_image", lambda c: _extra(c).get("social_image")),
         ("extra.favicon_svg", lambda c: _extra(c).get("favicon_svg")),
@@ -776,17 +785,18 @@ CONFIGURED_CHECKS = {
 }
 
 # A profile requires its checks by default, so a site cannot turn one off by deleting
-# `required` (#155). The profile is known by the shared stylesheet in extra_css, which it
-# cannot drop without losing its palette. A site drops a check only through an entry in
+# `required` (#155). The profile is known by the marker line in its stylesheet (PROFILE_MARKER,
+# below), wherever the file is in the build. A site drops a check only through an entry in
 # extra.docs_standard.waive, which names it and gives a reason.
 PROFILE_REQUIRED = {
     "liferay": ("the Liferay profile",
-                ("NO-NOTICE", "HOME-LAYOUT", "MISSING-VERIFICATION", "MISSING-SOCIAL")),
+                ("NO-NOTICE", "HOME-LAYOUT", "MISSING-VERIFICATION", "MISSING-SOCIAL",
+                 "MISSING-VERIFICATION:google")),
 }
 
 # A profile stylesheet carries a `docs-profile: <name>` line, and that marker is what identifies
 # it: a query string, a rename or a moved path cannot hide the profile (#164, #162). The same
-# pattern is in check_template_drift.py; tests/test_docs_required_profile.py holds them equal.
+# pattern is in check_template_drift.py; tests/test_profile_marker.py holds them equal.
 PROFILE_MARKER = re.compile(r"^[ \t]*\*?[ \t]*docs-profile:[ \t]*([a-z0-9-]+)[ \t]*$", re.M)
 # The profile stylesheet by its shipped name in extra_css: a copy from before the marker
 # existed is still recognised, so its checks stay on until it is synced.
@@ -862,14 +872,16 @@ def check_required(config, always_run, site=None):
         if not isinstance(reason, str) or not reason.strip():
             problems.setdefault("REQUIRED", []).append(
                 f"extra.docs_standard.waive.{name} gives no reason; a waived check needs one")
-        elif name not in by_profile and name not in required:
+        elif not any(other == name or other.split(":")[0] == name
+                     for other in list(by_profile) + list(required)):
             problems.setdefault("REQUIRED", []).append(
                 f"extra.docs_standard.waive.{name}: nothing requires {name}, so there is nothing "
                 "to waive")
 
     waived = {name for name, reason in waive.items() if isinstance(reason, str) and reason.strip()}
     for name in dict.fromkeys(list(by_profile) + list(required)):
-        if name not in CONFIGURED_CHECKS or name in waived:
+        # Waiving a check waives its qualified forms too (MISSING-VERIFICATION:google).
+        if name not in CONFIGURED_CHECKS or name in waived or name.split(":")[0] in waived:
             continue
         why = f"by {profile}" if name in by_profile else "by extra.docs_standard.required"
         needs = CONFIGURED_CHECKS[name] + (

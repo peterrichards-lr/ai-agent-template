@@ -29,7 +29,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 from check_docs_rendered import check_required, profile_required  # noqa: E402
 from test_docs_site import _liferay_config, _run_check, _write_site  # noqa: E402
 
-PROFILE_CHECKS = ('NO-NOTICE', 'HOME-LAYOUT', 'MISSING-VERIFICATION', 'MISSING-SOCIAL')
+PROFILE_CHECKS = ('NO-NOTICE', 'HOME-LAYOUT', 'MISSING-VERIFICATION', 'MISSING-SOCIAL',
+                  'MISSING-VERIFICATION:google')
+BASE_CHECKS = tuple(dict.fromkeys(name.split(':')[0] for name in PROFILE_CHECKS))
 
 
 def _met():
@@ -218,7 +220,7 @@ def test_a_generic_site_still_requires_nothing_by_default(tmp_path, capsys):
 
 def test_the_shipped_profile_waives_all_four_with_reasons():
     waive = _liferay_fresh()['extra']['docs_standard']['waive']
-    assert sorted(waive) == sorted(PROFILE_CHECKS)
+    assert sorted(waive) == sorted(BASE_CHECKS), "one waive per check; it covers :google too"
     assert all(isinstance(r, str) and r.strip() for r in waive.values())
 
 

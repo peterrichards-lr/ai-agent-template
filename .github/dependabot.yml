@@ -12,9 +12,11 @@ updates:
     # (tj-actions/changed-files, reviewdog) are typically caught and yanked within
     # hours-to-days; a cooldown means this repository is never the canary. Security
     # updates raised from a published advisory are NOT delayed by `cooldown:`.
+    # Only `default-days` here: Dependabot rejects the `semver-*-days` keys for the
+    # github-actions ecosystem, and a rejected file stops Dependabot running at all
+    # (#171). The pip entry below supports them.
     cooldown:
       default-days: 7
-      semver-major-days: 14
     # An explicit `labels:` REPLACES GitHub's automatic per-ecosystem labels
     # rather than adding to them, so "dependencies"/"github_actions" must be
     # re-listed here. Without "no-issue-needed", every Dependabot PR fails the

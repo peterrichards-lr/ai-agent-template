@@ -205,6 +205,7 @@ check fails under its own name, naming each missing key, instead of being skippe
 | Required check | Needs |
 | :--- | :--- |
 | `MISSING-VERIFICATION` | `extra.google_site_verification` or `extra.bing_site_verification` |
+| `MISSING-VERIFICATION:google` / `:bing` | that token specifically. The Liferay profile requires `:google` |
 | `MISSING-SOCIAL` | `extra.social_image`, `extra.favicon_svg` and `theme.favicon` |
 | `NO-NOTICE` | `notice.title`, `notice.text` and `notice.link_text` |
 | `HOME-LAYOUT` | `home_layout: true`; with a `related` block, `related.heading`, `intro` and `rows`. Under the Liferay profile, the `related` block itself |
@@ -233,8 +234,13 @@ check running and checking less, with exit 0 (ai-agent-template#155).
         MISSING-VERIFICATION: Not submitted to Search Console yet.
   ```
 
+- **A specific token.** Plain `MISSING-VERIFICATION` is satisfied by either token, so a site
+  that depends on Search Console requires `MISSING-VERIFICATION:google`: Bing's token in place
+  of Google's passed with no Google tag on any page (ai-agent-template#161). Waiving
+  `MISSING-VERIFICATION` waives its `:google` and `:bing` forms too; a profile site that does
+  not use Search Console waives only `MISSING-VERIFICATION:google`, and still needs a token.
 - **A site with no profile** lists what it cannot do without in `required`, for example
-  `required: [MISSING-VERIFICATION, NO-NOTICE]`. An unknown name fails as `REQUIRED`; any other
+  `required: [MISSING-VERIFICATION:google, NO-NOTICE]`. An unknown name fails as `REQUIRED`; any other
   check above may be named, and changes nothing.
 
 A build with fewer than 5 HTML pages fails as `NO-SCAN`.
