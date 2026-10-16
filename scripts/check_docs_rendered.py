@@ -52,7 +52,8 @@ Checked when mkdocs.yml configures them:
 Deleting a key switches its check off. So a check can be REQUIRED: one that is fails, naming
 each missing key and sub-key (CONFIGURED_CHECKS), instead of being skipped or checking less
 (ai-agent-template#141, #155). Required: what the site's profile requires (PROFILE_REQUIRED: the
-Liferay profile requires all four, and PROFILE_KEYS what more it needs of them, #164), plus
+Liferay profile requires all four, and PROFILE_KEYS what more it needs of them, #164; a site is
+a profile site when its build holds a stylesheet with the PROFILE_MARKER line), plus
 extra.docs_standard.required, less what
 extra.docs_standard.waive drops with a reason. An unknown name, or a waive with no reason or of
 a check nothing requires, fails as REQUIRED. MISSING-VERIFICATION:google and :bing require
@@ -784,14 +785,22 @@ CONFIGURED_CHECKS = {
 }
 
 # A profile requires its checks by default, so a site cannot turn one off by deleting
-# `required` (#155). The profile is known by the shared stylesheet in extra_css, which it
-# cannot drop without losing its palette. A site drops a check only through an entry in
+# `required` (#155). The profile is known by the marker line in its stylesheet (PROFILE_MARKER,
+# below), wherever the file is in the build. A site drops a check only through an entry in
 # extra.docs_standard.waive, which names it and gives a reason.
 PROFILE_REQUIRED = {
-    "liferay-blue.css": ("the Liferay profile",
-                         ("NO-NOTICE", "HOME-LAYOUT", "MISSING-VERIFICATION", "MISSING-SOCIAL",
-                          "MISSING-VERIFICATION:google")),
+    "liferay": ("the Liferay profile",
+                ("NO-NOTICE", "HOME-LAYOUT", "MISSING-VERIFICATION", "MISSING-SOCIAL",
+                 "MISSING-VERIFICATION:google")),
 }
+
+# A profile stylesheet carries a `docs-profile: <name>` line, and that marker is what identifies
+# it: a query string, a rename or a moved path cannot hide the profile (#164, #162). The same
+# pattern is in check_template_drift.py; tests/test_profile_marker.py holds them equal.
+PROFILE_MARKER = re.compile(r"^[ \t]*\*?[ \t]*docs-profile:[ \t]*([a-z0-9-]+)[ \t]*$", re.M)
+# The profile stylesheet by its shipped name in extra_css: a copy from before the marker
+# existed is still recognised, so its checks stay on until it is synced.
+PROFILE_STYLESHEETS = {"liferay-blue.css": "liferay"}
 
 # What a profile requires of a check beyond CONFIGURED_CHECKS. Every Liferay profile site carries
 # the related-tools rows, so its HOME-LAYOUT needs the related block itself: deleting the block,
@@ -804,16 +813,25 @@ PROFILE_KEYS = {
 }
 
 
-def profile_required(config):
-    """(the profile's name, the checks it requires), or (None, ()) for a site with no profile."""
+def profile_required(config, site=None):
+    """(the profile's name, the checks it requires), or (None, ()) for a site with no profile.
+
+    Found by the marker in any stylesheet in the built site, so it holds however the file is
+    named, moved or linked; or, failing that, by the profile stylesheet's name in extra_css.
+    """
+    if site is not None:
+        for sheet in sorted(Path(site).rglob("*.css")):
+            match = PROFILE_MARKER.search(sheet.read_text(encoding="utf-8", errors="replace"))
+            if match and match.group(1) in PROFILE_REQUIRED:
+                return PROFILE_REQUIRED[match.group(1)]
     for sheet in config.get("extra_css") or []:
         name = (stylesheet_path(sheet) or "").rsplit("/", 1)[-1]
-        if name in PROFILE_REQUIRED:
-            return PROFILE_REQUIRED[name]
+        if name in PROFILE_STYLESHEETS:
+            return PROFILE_REQUIRED[PROFILE_STYLESHEETS[name]]
     return None, ()
 
 
-def check_required(config, always_run):
+def check_required(config, always_run, site=None):
     """Failures for the required checks, as {check name: problems}.
 
     Required: what the site's profile requires, plus extra.docs_standard.required, less what
@@ -841,7 +859,7 @@ def check_required(config, always_run):
             f"not {waive!r}")
         waive = {}
 
-    profile, by_profile = profile_required(config)
+    profile, by_profile = profile_required(config, site)
     known = set(CONFIGURED_CHECKS) | set(always_run)
     unknown = [name for name in list(required) + list(waive) if name not in known]
     if unknown:
@@ -930,7 +948,7 @@ def run(site, config):
             failures["HOME-LAYOUT"] = bad
         passes += [f"home: {line}" for line in ok]
     # SECTION-TITLE is a known name even on a build without an index page, where it did not run.
-    failures.update(check_required(config, set(always) | {"SECTION-TITLE"}))
+    failures.update(check_required(config, set(always) | {"SECTION-TITLE"}, site))
 
     if failures:
         for name, problems in failures.items():
