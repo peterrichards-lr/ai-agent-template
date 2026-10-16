@@ -81,6 +81,7 @@ python3 scripts/check_template_drift.py                 # report only, never wri
 python3 scripts/check_template_drift.py --docs-site --fail-on-drift  # shared docs files, for docs CI
 python3 scripts/check_template_drift.py --update-stamp  # report, then move the stamp forward
 python3 scripts/check_template_drift.py --fail-on-drift # report, exit 2 on drift (CI gate)
+python3 scripts/check_template_drift.py --fail-on-drift --against-recorded  # vs the recorded commit, not HEAD
 ```
 
 - The script is **read-only by default**. It rewrites the stamp only with `--update-stamp`, or
@@ -95,6 +96,11 @@ python3 scripts/check_template_drift.py --fail-on-drift # report, exit 2 on drif
 - **`--fail-on-drift` gates on content.** Exit `2` means a governed file differs; the report
   prints both SHA-256 prefixes and sizes, and says to copy FROM the template, never to edit the
   local copy into agreement. Upstream commits since the stamp are reported but do not fail it.
+- **The comparison is against upstream HEAD**, so a template merge can fail a gate with no
+  change here; the fix is a sync PR. `--against-recorded` compares against the recorded commit
+  instead (exit `3` when it is `unknown` or not upstream, and it never moves the stamp): use it
+  where a template merge must not block, such as a deploy. `docs-site-standard/SKILL.md` rule 4
+  has the workflow placement.
 - **A moved file is mapped.** A governed file kept at another path is listed in the "Path
   mapping" section of `.agents/TEMPLATE_REF.md` as `` `local` ← `upstream` ``, and compared
   there. `--path` accepts either side of a mapping.
@@ -110,4 +116,4 @@ sibling repositories already hand-maintain the same format.
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*
+*Last Updated: 2026-10-16* | *Last Reviewed: 2026-10-16*

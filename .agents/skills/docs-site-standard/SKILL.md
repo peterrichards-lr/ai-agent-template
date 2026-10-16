@@ -116,10 +116,13 @@ alerts hook, `scripts/mkdocs_github_alerts.py`, converts it at build time:
 | Rendered-output check | `scripts/check_docs_rendered.py` | Rule 5 |
 | Theme override | `overrides/main.html` | Open Graph and Twitter tags, verification tags, favicons |
 | Footer partial | `overrides/partials/copyright.html` | The "About these docs" link, through the `url` filter |
+| Drift check | `scripts/check_template_drift.py` | This rule: it compares the others, so an edit to it must fail too |
 | Liferay stylesheet | `.agents/templates/docs-profiles/liferay/liferay-blue.css` | Rule 6 |
 
 A site's own extra override goes in `overrides/` beside them (Material has one `custom_dir`);
-only the two override files above are governed there.
+only the two override files above are governed there. `scripts/check_docs_review.py`, which the drift
+check imports from, is **not** shared: adopters keep their own, and the import falls back to the
+template's definitions when theirs lacks the names.
 
 - **Change them here, in a template PR, then copy them into each project unchanged.** Never
   edit a local copy to make a check pass, and never push a local edit upstream as if it were
@@ -138,7 +141,26 @@ only the two override files above are governed there.
 
   A mismatch prints both SHA-256 prefixes and sizes and exits 2. The template not found, or a
   shared path missing from it, exits 3. A network failure warns and exits 0. A profile
-  stylesheet present locally but not mapped is named, with the mapping line to add.
+  stylesheet present locally but not mapped is named, with the mapping line to add, and exits
+  3: a deleted mapping would otherwise leave the shared stylesheet uncompared on a green run.
+  The "copy the file FROM the template" direction is printed only for a shared file whose
+  content differs.
+- **It compares against the template's HEAD, not the version you recorded.** A template merge
+  that changes a shared file therefore turns every adopter's check red, with no change on their
+  side, until a sync PR copies the new version in. That is the point in PR CI: it is how an
+  adopter learns the standard moved, and the fix is the sync PR. It is wrong on a deploy, where
+  it blocks publishing over a change nobody made here. So:
+
+  | Where | Run |
+  | :--- | :--- |
+  | PR CI | `--docs-site --fail-on-drift` (against HEAD) |
+  | Deploy | `--docs-site --fail-on-drift --against-recorded`, or nothing |
+
+  `--against-recorded` compares against the commit in `.agents/TEMPLATE_REF.md`: a local edit
+  still fails, a template merge cannot. It needs a real recorded commit, and exits 3 on
+  `unknown` (set one with `--update-stamp` first), and it never moves the stamp. The shipped
+  `.github/workflows/docs.yml` is the deploy and runs the HEAD comparison, because a fresh
+  project's stamp may be `unknown`; switch it once the stamp is real.
 
 ### 5. Rendered-output checks
 
@@ -156,6 +178,22 @@ never after. Configured from `mkdocs.yml`:
 | `MISSING-SOCIAL` | `extra.social_image` | an absolute `og:image` on every page, and the image in the build |
 | `NO-NOTICE` | `extra.docs_standard.notice` | an `info` callout above the first H2, with its title, text and link |
 | `HOME-LAYOUT` | `extra.docs_standard.home_layout: true` | rule 1 |
+| `REQUIRED` | `extra.docs_standard.required` is set | every name in it is a check above, and each configured-only one it names is configured |
+
+**Deleting a key switches its check off**, and the build stays green: lfr-tunnel lost its Search
+Console verification that way (lfr-tunnel#2381). List the checks a site cannot do without:
+
+```yaml
+extra:
+  docs_standard:
+    required: [MISSING-VERIFICATION, MISSING-SOCIAL, NO-NOTICE, HOME-LAYOUT]
+```
+
+A required check with no configuration fails under its own name, naming the missing key,
+instead of being skipped. An unknown name fails as `REQUIRED`; any other check above may be named
+and changes nothing. Add `required` once the site meets the checks: a fresh project's first
+deploy must not fail on a home page nobody has written yet. A build with fewer than 5 HTML pages
+fails as `NO-SCAN`.
 
 `ABOUT-LINK` exists because `mkdocs build --strict` passes a relative footer link that 404s on
 every nested page.

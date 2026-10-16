@@ -16,7 +16,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- `check_docs_rendered.py`: `extra.docs_standard.required` lists the checks a site cannot do
+  without (`MISSING-VERIFICATION`, `MISSING-SOCIAL`, `NO-NOTICE`, `HOME-LAYOUT`). A required
+  check with no configuration fails, naming the missing key, instead of being skipped; an
+  unknown name fails as `REQUIRED` (#141).
+- `check_template_drift.py --against-recorded` compares against the commit recorded in
+  `.agents/TEMPLATE_REF.md` instead of upstream HEAD, so a template merge cannot fail a deploy;
+  a local edit still does. `docs-site-standard` rule 4 documents the trade-off and where each
+  mode belongs (#141).
+
+### Changed
+
+- `scripts/check_template_drift.py` is a shared docs-site file: `--docs-site --fail-on-drift`
+  now compares it. It no longer needs an adopter's own `check_docs_review.py` to define
+  `FOOTER_REGEX` and `IGNORE_DIRS` (#141).
+- `check_docs_rendered.py` refuses a build of fewer than 5 HTML pages (was 3) (#141).
+
+### Fixed
+
+- `--docs-site --fail-on-drift` exits 3 on a profile stylesheet present locally with no path
+  mapping, instead of warning and passing with the shared file uncompared (#141).
+- The "copy the file FROM" direction is printed only for a shared file whose content differs,
+  not for the profile's upstream-only `about.md`, `palette.yml` and `site.yml` (#141).
 
 ## [2.2.1] - 2026-10-16
 
