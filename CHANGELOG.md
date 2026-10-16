@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ignored, so a cache-busting `liferay-blue.css?v=2` no longer hides the profile and its four
   required checks. `SECTION-TITLE` reads the same entries from the build, and now finds a
   suffixed stylesheet's file too (#164).
+- The Liferay profile's stylesheet is identified by a `docs-profile: liferay` marker line inside
+  it, not by its filename. The rendered check finds it anywhere in the built site, so a query
+  string, a rename, a moved path, or dropping it from `extra_css` no longer switches the
+  profile's required checks off. The drift check finds an unmapped copy by the same marker
+  wherever it is kept, so renaming it, deleting its mapping and editing it exits 3 instead of
+  "No drift". A copy from before the marker existed is still recognised by its shipped name
+  (#164, #162).
 
 ## [2.4.0] - 2026-10-16
 

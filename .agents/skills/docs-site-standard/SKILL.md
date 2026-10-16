@@ -144,7 +144,9 @@ adopter's `check_docs_review.py` cannot change what it compares (ai-agent-templa
   shared path missing from it, exits 3. A network failure warns and exits 0. A profile
   stylesheet present locally but not mapped is named, with the mapping line to add, and exits
   3 with or without `--fail-on-drift`, like the other exit-3 cases: a deleted mapping would
-  otherwise leave the shared stylesheet uncompared on a green run.
+  otherwise leave the shared stylesheet uncompared on a green run. It is found by its
+  `docs-profile:` marker line anywhere in the repository, not only by its shipped name, so
+  renaming or moving it does not hide it (ai-agent-template#162).
   The "copy the file FROM the template" direction is printed only for a shared file whose
   content differs.
 - **It compares against the template's HEAD, not the version you recorded.** A template merge
@@ -199,8 +201,12 @@ The sub-keys matter as much as the keys: a deleted `notice.text` or `related.hea
 check running and checking less, with exit 0 (ai-agent-template#155).
 
 - **A profile requires its checks by default.** The Liferay profile requires all four (rule
-  6), and is known by its stylesheet in `extra_css`, with any query string or fragment ignored
-  (`liferay-blue.css?v=2` counts). Deleting `required`, or a name in it, cannot turn one off.
+  6). The site is known as a profile site by the `docs-profile: liferay` marker line inside
+  `liferay-blue.css`, found anywhere in the built site, not by the file's name or how
+  `extra_css` links it. A query string, a rename, a moved path, or dropping it from
+  `extra_css` cannot switch the checks off. A copy from before the marker existed is still
+  known by its name in `extra_css`. Deleting `required`, or a name in it, cannot turn one off
+  either (ai-agent-template#164).
   A profile may require more of a check than a site that names it: every Liferay profile site
   carries the related-tools rows, so its HOME-LAYOUT needs the `related` block itself, and
   deleting the block (with the home page's section) fails (ai-agent-template#164).
