@@ -85,9 +85,75 @@ def test_deleting_a_key_a_required_check_needs_fails_and_names_it(dotted, check)
     assert any(key in line for line in problems[check]), problems[check]
 
 
-def test_a_site_with_no_related_block_needs_no_related_keys():
-    """'HOME-LAYOUT with a related block': a site with no related projects has no section."""
-    assert check_required(_delete(_met(), 'extra.docs_standard.related'), set()) == {}
+def test_a_site_with_no_profile_and_no_related_block_needs_no_related_keys():
+    """Required by name, HOME-LAYOUT needs related.* only with a related block: a site with no
+    related projects has no section to check."""
+    config = _delete(_met(), 'extra.docs_standard.related')
+    config['extra_css'] = []
+    config['extra']['docs_standard']['required'] = ['HOME-LAYOUT']
+    assert check_required(config, set()) == {}
+
+
+# --- #164: what v2.4.0 still let through, from lfr-tunnel#2412 and #155 -----------------------
+
+def test_under_the_profile_a_deleted_related_block_fails_and_is_named():
+    """lfr-tunnel's case 3: v2.4.0 needed related.* only when the block existed."""
+    problems = check_required(_delete(_met(), 'extra.docs_standard.related'), set())
+    assert any('extra.docs_standard.related is not set' in line
+               for line in problems.get('HOME-LAYOUT', [])), problems
+
+
+def test_a_deleted_related_block_and_home_section_fail_the_build(tmp_path, capsys):
+    """The whole of case 3, through the real check: the block deleted from mkdocs.yml and the
+    "Related Liferay tools" section deleted from the home page. v2.4.0 exited 0."""
+    from test_docs_site import GOOD_HOME
+    home = GOOD_HOME.split('<h2 id="related-liferay-tools">', 1)[0]
+    assert 'Related Liferay tools' not in home
+    config = _delete(copy.deepcopy(_liferay_config()), 'extra.docs_standard.related')
+    code, out = _run_check(_write_site(tmp_path, home=home), config, capsys)
+    assert code == 1, out
+    assert '[HOME-LAYOUT]' in out and 'extra.docs_standard.related' in out, out
+
+
+def test_a_waive_with_a_reason_still_drops_home_layout_and_its_related_block():
+    config = _delete(_met(), 'extra.docs_standard.related')
+    config['extra']['docs_standard']['waive'] = {'HOME-LAYOUT': 'No sibling tools yet.'}
+    assert 'HOME-LAYOUT' not in check_required(config, set())
+
+
+@pytest.mark.parametrize('entry', [
+    'assets/stylesheets/liferay-blue.css?v=2',
+    'assets/stylesheets/liferay-blue.css#print',
+    'assets/stylesheets/liferay-blue.css?v=2#x',
+    '/assets/stylesheets/liferay-blue.css?v=2',
+])
+def test_a_cache_busting_suffix_does_not_hide_the_profile(entry):
+    """lfr-tunnel's case 4: the exact filename match missed `liferay-blue.css?v=2`."""
+    config = _met()
+    config['extra_css'] = [entry]
+    assert profile_required(config) == ('the Liferay profile', PROFILE_CHECKS)
+    # With `required` and the token deleted too, as lfr-tunnel tried: still caught.
+    config['extra']['docs_standard'].pop('required', None)
+    _delete(config, 'extra.google_site_verification')
+    assert 'MISSING-VERIFICATION' in check_required(config, set())
+
+
+def test_a_suffixed_stylesheet_still_carries_the_section_title_rule(tmp_path):
+    """SECTION-TITLE reads the same extra_css entries from the build: the suffix is part of the
+    URL, not of the file, so the rule is still found."""
+    from test_docs_section_titles import CSS_PATH, INDEXED, LIFERAY_CSS, PLAIN, _home, _site
+    site = _site(tmp_path, LIFERAY_CSS.read_text(encoding='utf-8'))
+    from check_docs_rendered import check_section_titles
+    problems, indexed = check_section_titles(site, _home(INDEXED, PLAIN),
+                                             {'extra_css': [CSS_PATH + '?v=2']})
+    assert problems == [] and indexed == ['Tutorials']
+
+
+def test_a_different_stylesheet_is_still_not_the_profile():
+    """The narrowness control: only the profile's own file, whatever its suffix."""
+    for entry in ('assets/stylesheets/liferay-blue.css.bak', 'assets/liferay-blue-dark.css',
+                  'assets/stylesheets/site.css?v=liferay-blue.css'):
+        assert profile_required({'extra_css': [entry]}) == (None, ()), entry
 
 
 def test_deleting_required_does_not_turn_a_profile_check_off():

@@ -16,7 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- Under the Liferay profile, a required `HOME-LAYOUT` needs the `related` block itself, not just
+  its sub-keys when the block exists. Deleting `extra.docs_standard.related`, together with the
+  home page's "Related Liferay tools" section, used to build a site with no related section and
+  pass with exit 0; it now fails and names `extra.docs_standard.related`. A site with a reason
+  waives `HOME-LAYOUT`, as before. A site with no profile is unchanged (#164).
+- The profile stylesheet is recognised in `extra_css` with any query string or fragment
+  ignored, so a cache-busting `liferay-blue.css?v=2` no longer hides the profile and its four
+  required checks. `SECTION-TITLE` reads the same entries from the build, and now finds a
+  suffixed stylesheet's file too (#164).
 
 ## [2.4.0] - 2026-10-16
 
