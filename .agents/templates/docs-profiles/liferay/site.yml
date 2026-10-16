@@ -20,18 +20,25 @@ extra:
     project_name: <PROJECT_NAME_PLACEHOLDER>
     # Names a sentence-case nav label may capitalise mid-label (NAV check).
     proper_nouns: [Liferay]
-    # OFF until the home page follows the standard (docs-site-standard, rules 1 and 6): a new
-    # project's home has neither the notice nor the layout yet, and its first deploy would
-    # fail on them. Turn both on in the same change that writes them.
+    # The Liferay profile REQUIRES NO-NOTICE, HOME-LAYOUT, MISSING-VERIFICATION and
+    # MISSING-SOCIAL (docs-site-standard, rules 5 and 6). A required check fails, naming the
+    # key, when a key it needs is missing, so deleting one cannot switch a check off.
     home_layout: false
     # notice:
     #   title: Community project
     #   text: Not an official Liferay product and not covered by Liferay Support
     #   link_text: About this project
-    # Deleting a key above switches its check off, and the build stays green. Once the site
-    # meets them, name the checks it cannot do without: each fails, naming its key, if that
-    # key is ever removed (docs-site-standard, rule 5).
-    # required: [MISSING-VERIFICATION, MISSING-SOCIAL, NO-NOTICE, HOME-LAYOUT]
+    # A new project meets none of the four yet, and its first deploy would fail on them, so
+    # each starts waived, with its reason. Delete a line in the change that meets it: the
+    # notice and the layout switch, together with the home page; the verification token
+    # (extra.google_site_verification) once Search Console has one; extra.social_image,
+    # extra.favicon_svg and theme.favicon once the site has its mark. Deleting a waive only
+    # ever turns a check on.
+    waive:
+      NO-NOTICE: New project; the home page and its notice are not written yet.
+      HOME-LAYOUT: New project; the home page does not follow the shared layout yet.
+      MISSING-VERIFICATION: No search-engine verification token yet.
+      MISSING-SOCIAL: No social preview image or favicons yet.
     related:
       heading: Related Liferay tools
       intro: >-

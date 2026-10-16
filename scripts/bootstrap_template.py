@@ -762,8 +762,9 @@ def apply_docs_profile(root_dir: Path, profile: str, project_name: str, repo_own
             shutil.copyfile(source, target)   # byte for byte: the drift check compares bytes
         print(f"  ✓ Copied {target.relative_to(root_dir).as_posix()}")
     print("  ℹ️ Set extra.docs_standard.project_name in mkdocs.yml to the project's full name, then\n"
-          "     turn on its notice and home_layout checks once the home page follows the standard\n"
-          "     (.agents/skills/docs-site-standard/SKILL.md, rules 1 and 6).")
+          "     delete each waive under extra.docs_standard.waive in the change that meets its\n"
+          "     check: the profile requires all four (.agents/skills/docs-site-standard/SKILL.md,\n"
+          "     rules 5 and 6).")
     return mappings
 
 

@@ -585,8 +585,12 @@ FOOTER_HTML = '<p><em>Last Updated: 2026-10-15</em> | <em>Last Reviewed: 2026-10
 
 
 def turn_on_profile_checks(text: str) -> str:
-    """What an adopter does once the home page is written: switch on the notice and layout."""
+    """What an adopter does once the home page is written: switch on the notice and layout,
+    and delete their two waives, so the profile requires them (#155)."""
     out = text.replace('home_layout: false', 'home_layout: true', 1)
+    for name in ('NO-NOTICE', 'HOME-LAYOUT'):
+        out, removed = re.subn(r'\n +' + name + r': [^\n]*', '', out, count=1)
+        assert removed == 1, f"the profile ships no {name} waive to delete"
     out = out.replace('# notice:', 'notice:', 1)
     for key in ('title:', 'text:', 'link_text:'):
         out = re.sub(r'#   (' + key + ')', r'  \1', out, count=1)

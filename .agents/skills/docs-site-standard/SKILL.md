@@ -182,22 +182,41 @@ never after. Configured from `mkdocs.yml`:
 | `MISSING-SOCIAL` | `extra.social_image`, `extra.favicon_svg` or `theme.favicon` | what `overrides/main.html` emits, each part only when configured, on every page. `extra.social_image`: an absolute `og:image` that is in the build, `twitter:card` `summary_large_image`, and `twitter:image` equal to `og:image` (one edited without the other is drift). `extra.favicon_svg` and `theme.favicon`: the icon's `<link>`, resolving to a file in the build. Whenever it runs: the apple-touch-icon `<link>` and `assets/apple-touch-icon.png` |
 | `NO-NOTICE` | `extra.docs_standard.notice` | an `info` callout above the first H2, with its title, text and link |
 | `HOME-LAYOUT` | `extra.docs_standard.home_layout: true` | rule 1 |
-| `REQUIRED` | `extra.docs_standard.required` is set | every name in it is a check above, and each configured-only one it names is configured |
+| `REQUIRED` | `required` or `waive` is set | every name in them is a check above; every waive gives a reason and drops a check something requires |
 
 **Deleting a key switches its check off**, and the build stays green: lfr-tunnel lost its Search
-Console verification that way (lfr-tunnel#2381). List the checks a site cannot do without:
+Console verification that way (lfr-tunnel#2381). So a check can be **required**, and a required
+check fails under its own name, naming each missing key, instead of being skipped:
 
-```yaml
-extra:
-  docs_standard:
-    required: [MISSING-VERIFICATION, MISSING-SOCIAL, NO-NOTICE, HOME-LAYOUT]
-```
+| Required check | Needs |
+| :--- | :--- |
+| `MISSING-VERIFICATION` | `extra.google_site_verification` or `extra.bing_site_verification` |
+| `MISSING-SOCIAL` | `extra.social_image`, `extra.favicon_svg` and `theme.favicon` |
+| `NO-NOTICE` | `notice.title`, `notice.text` and `notice.link_text` |
+| `HOME-LAYOUT` | `home_layout: true`; with a `related` block, `related.heading`, `intro` and `rows` |
 
-A required check with no configuration fails under its own name, naming the missing key,
-instead of being skipped. An unknown name fails as `REQUIRED`; any other check above may be named
-and changes nothing. Add `required` once the site meets the checks: a fresh project's first
-deploy must not fail on a home page nobody has written yet. A build with fewer than 5 HTML pages
-fails as `NO-SCAN`.
+The sub-keys matter as much as the keys: a deleted `notice.text` or `related.heading` left the
+check running and checking less, with exit 0 (ai-agent-template#155).
+
+- **A profile requires its checks by default.** The Liferay profile requires all four (rule
+  6), and is known by its stylesheet in `extra_css`. Deleting `required`, or a name in it,
+  cannot turn one off.
+- **A site drops a required check only by waiving it, with a reason.** A waive without a
+  reason, or of a check nothing requires, fails as `REQUIRED`. A waived check still runs if it
+  is configured; only the requirement goes.
+
+  ```yaml
+  extra:
+    docs_standard:
+      waive:
+        MISSING-VERIFICATION: Not submitted to Search Console yet.
+  ```
+
+- **A site with no profile** lists what it cannot do without in `required`, for example
+  `required: [MISSING-VERIFICATION, NO-NOTICE]`. An unknown name fails as `REQUIRED`; any other
+  check above may be named, and changes nothing.
+
+A build with fewer than 5 HTML pages fails as `NO-SCAN`.
 
 `ABOUT-LINK` exists because `mkdocs build --strict` passes a relative footer link that 404s on
 every nested page.
@@ -233,10 +252,13 @@ fails (ai-agent-template#142).
 - **Related Liferay tools**: the three rows in the profile's `site.yml`. Set
   `extra.docs_standard.project_name` to this tool's name as it appears there, so its row is
   the "You are here." one.
-- **Checks start off.** The profile ships `home_layout: false` and the notice commented out: a
-  new project's home page has neither yet, and its first deploy would fail on them. Turn both
-  on in the change that writes the home page. A site that already follows the standard turns
-  them on at once.
+- **Its four checks are required, and start waived.** The profile requires `NO-NOTICE`,
+  `HOME-LAYOUT`, `MISSING-VERIFICATION` and `MISSING-SOCIAL` (rule 5). A new project meets none
+  of them yet, so its `site.yml` ships a `waive` entry for each, with its reason, and the first
+  deploy passes. Delete a waive in the change that meets its check. For example, the notice and
+  `home_layout: true` go in with the home page, and their two waives come out in the same change.
+  A site that already follows the standard deletes them at once. Deleting a waive only ever turns
+  a check on.
 - **Branding**: each tool uses its own mark. No official Liferay logo or waffle in the header,
   favicon, social preview or README; "Liferay" appears in text only (Liferay brand ticket
   DESIGN-10350). Not checked.
