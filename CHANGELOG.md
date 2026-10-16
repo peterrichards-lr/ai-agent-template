@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [2.4.0] - 2026-10-16
+
 ### Added
 
 - A **Docs Site Tests** workflow (`.github/workflows/docs-site-tests.yml`) installs
@@ -24,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which was every CI job. These are the #143 section-title fixture, the #146 social and icon
   checks, and the Liferay profile end to end. The job fails if any of them still skips for the
   want of mkdocs. It is the template's own self-test: `--clean-template` removes it with
-  `tests/`, and it is not a required status check.
+  `tests/`, and it is not a required status check (#156).
 
 ### Changed
 
@@ -32,10 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--against-recorded` when `.agents/TEMPLATE_REF.md` records a real commit, so a template merge
   can no longer block publishing, while a local edit to a shared file still fails. While the
   stamp is still `unknown`, as on a fresh project, it compares against upstream HEAD as before.
-  The stamp is read with the drift checker's own parser.
+  The stamp is read with the drift checker's own parser (#156).
 - `check_template_drift.py --docs-site` exits 3 on a profile stylesheet present locally with no
   path mapping, with or without `--fail-on-drift`, like its other "nothing was compared" cases.
-  A report-only run used to warn and exit 0.
+  A report-only run used to warn and exit 0 (#156).
 
 ## [2.3.1] - 2026-10-16
 
@@ -344,7 +348,8 @@ Example of a released version, kept commented out so the stub starts clean:
 [1.0.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v1.0.0
 -->
 
-[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.3.1...HEAD
+[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.4.0
 [2.3.1]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.3.1
 [2.3.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.3.0
 [2.2.1]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.2.1
