@@ -23,7 +23,10 @@ text and every diagram rendered as code. `mkdocs build --strict` passes a footer
 Always checked:
   LEAKED-ALERT        no `[!NOTE]`-style marker is printed as text (the alerts hook ran)
   UNRENDERED-DIAGRAM  no mermaid block is rendered as code
-  UNDATED-PAGE        every page shows its Last Updated / Last Reviewed footer
+  UNDATED-PAGE        every page shows when it was last updated and last reviewed: both dates
+                      in its footer, or "Last Reviewed" in its footer and the date that
+                      mkdocs-git-revision-date-localized-plugin generates in Material's
+                      source-file aside
   ABOUT-LINK          every page's footer "About these docs" link resolves to a built page
   STYLE-TITLE         no alert is titled with Material's style name ("Info", "Danger")
   NAV                 the top-level nav is an ordered subset of STANDARD_NAV, with "About
@@ -73,6 +76,11 @@ ABOUT_LABEL = "About these docs"
 ALERT_MARKER = re.compile(r"\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]")
 FOOTER = re.compile(r"<p><em>Last Updated: ?\d{4}-\d{2}-\d{2}</em> \| "
                     r"<em>Last Reviewed: ?\d{4}-\d{2}-\d{2}</em></p>")
+# The review date alone, for a site whose "Last updated" is generated from git (#142).
+REVIEWED = re.compile(r"<p><em>Last Reviewed: ?\d{4}-\d{2}-\d{2}</em></p>")
+# Material's source-file aside, where mkdocs-git-revision-date-localized-plugin's date renders.
+SOURCE_FILE = re.compile(r'<aside class="md-source-file">(.*?)</aside>', re.S)
+SOURCE_FACT = '<span class="md-source-file__fact">'
 # The markup the alerts hook produces when a title is the STYLE name rather than GitHub's label.
 STYLE_TITLES = ('<div class="admonition info"><p class="admonition-title">Info</p>',
                 '<div class="admonition danger"><p class="admonition-title">Danger</p>')
@@ -287,9 +295,35 @@ def check_diagrams(pages):
             for rel, html in pages.items() if 'class="language-mermaid"' in html]
 
 
+def has_generated_update(html):
+    """Material's source-file aside shows a date: the plugin's "Last update" (#142).
+
+    Matched by structure, not by the icon's title, which is Material's localised
+    `source.file.date.updated` string ("Last update", "Letztes Update"). A date fact is one
+    holding text and no <nav>; the contributor facts beside it hold a <nav> of names."""
+    aside = SOURCE_FILE.search(html)
+    return bool(aside) and any(
+        "<nav" not in fact and re.sub(r"<[^>]+>", "", fact).strip()
+        for fact in aside.group(1).split(SOURCE_FACT)[1:])
+
+
 def check_footers(pages):
-    return [f"{rel}: no Last Updated / Last Reviewed footer"
-            for rel, html in pages.items() if rel != "404.html" and not FOOTER.search(html)]
+    """Both dates typed in the body, or the review date typed and the update generated."""
+    problems = []
+    for rel, html in pages.items():
+        if rel == "404.html" or FOOTER.search(html):
+            continue
+        reviewed, updated = bool(REVIEWED.search(html)), has_generated_update(html)
+        if reviewed and updated:
+            continue
+        if reviewed:
+            problems.append(f"{rel}: Last Reviewed but no Last Updated, in the footer or in "
+                            "Material's source-file aside")
+        elif updated:
+            problems.append(f"{rel}: a generated last update but no Last Reviewed")
+        else:
+            problems.append(f"{rel}: no Last Updated / Last Reviewed footer")
+    return problems
 
 
 def check_about_links(site, pages):

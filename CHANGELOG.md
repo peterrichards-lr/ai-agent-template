@@ -16,7 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed
+
+- `check_docs_rendered.py`'s `UNDATED-PAGE` now accepts a "Last updated" generated from git:
+  a page passes with both dates typed in its footer, as before, or with `Last Reviewed` typed
+  and the date `mkdocs-git-revision-date-localized-plugin` renders in Material's source-file
+  aside, matched by its structure because Material localises its title. A page showing only
+  one of the two dates still fails. The `docs-site-standard` skill states both renderings
+  (#142).
 
 ## [2.2.0] - 2026-10-16
 
