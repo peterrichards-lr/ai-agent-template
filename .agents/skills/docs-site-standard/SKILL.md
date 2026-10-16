@@ -208,7 +208,7 @@ check fails under its own name, naming each missing key, instead of being skippe
 | `MISSING-VERIFICATION:google` / `:bing` | that token specifically. The Liferay profile requires `:google` |
 | `MISSING-SOCIAL` | `extra.social_image`, `extra.favicon_svg` and `theme.favicon` |
 | `NO-NOTICE` | `notice.title`, `notice.text` and `notice.link_text` |
-| `HOME-LAYOUT` | `home_layout: true`; with a `related` block, `related.heading`, `intro` and `rows`. Under the Liferay profile, the `related` block itself |
+| `HOME-LAYOUT` | `home_layout: true`, the `related` block, and its `heading`, `intro` and `rows` |
 
 The sub-keys matter as much as the keys: a deleted `notice.text` or `related.heading` left the
 check running and checking less, with exit 0 (ai-agent-template#155).
@@ -220,9 +220,14 @@ check running and checking less, with exit 0 (ai-agent-template#155).
   `extra_css` cannot switch the checks off. A copy from before the marker existed is still
   known by its name in `extra_css`. Deleting `required`, or a name in it, cannot turn one off
   either (ai-agent-template#164).
-  A profile may require more of a check than a site that names it: every Liferay profile site
-  carries the related-tools rows, so its HOME-LAYOUT needs the `related` block itself, and
+  A profile may require more of a check than the check's own keys: every Liferay profile
+  site carries the related-tools rows, so HOME-LAYOUT needs the `related` block itself, and
   deleting the block (with the home page's section) fails (ai-agent-template#164).
+- **A required check is required the same way, however it came to be.** Listing a check in
+  `required` holds it to everything the profile default would, profile keys included,
+  whether or not the profile is recognised: a site that lists HOME-LAYOUT needs the `related`
+  block, even with the profile stylesheet dropped (ai-agent-template#175). A site with no
+  related projects therefore does not list HOME-LAYOUT, or waives it with its reason.
 - **A site drops a required check only by waiving it, with a reason.** A waive without a
   reason, or of a check nothing requires, fails as `REQUIRED`. A waived check still runs if it
   is configured; only the requirement goes.

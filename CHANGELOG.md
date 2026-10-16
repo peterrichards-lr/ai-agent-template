@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A check listed in `extra.docs_standard.required` now needs everything the profile default
+  would require of it, profile keys included, whether or not the profile is recognised. A site
+  that listed HOME-LAYOUT, with the profile stylesheet swapped for another in `extra_css` and
+  the `related` block deleted, passed with exit 0, because the related requirement applied only
+  when the profile itself required HOME-LAYOUT. A site with no related projects no longer lists
+  HOME-LAYOUT, or waives it with a reason (#175).
 - The Liferay profile's stylesheet is identified by a `docs-profile: liferay` marker line inside
   it, not by its filename. The rendered check finds it anywhere in the built site, so a query
   string, a rename, a moved path, or dropping it from `extra_css` no longer switches the
