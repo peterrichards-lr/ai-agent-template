@@ -148,7 +148,7 @@ never after. Configured from `mkdocs.yml`:
 | Check | Runs when | Asserts |
 | :--- | :--- | :--- |
 | `LEAKED-ALERT`, `UNRENDERED-DIAGRAM`, `STYLE-TITLE` | always | Rule 3 |
-| `UNDATED-PAGE` | always | every page shows its Last Updated / Last Reviewed footer |
+| `UNDATED-PAGE` | always | every page shows both dates: `<p><em>Last Updated: …</em> \| <em>Last Reviewed: …</em></p>` in the body, or `<p><em>Last Reviewed: …</em></p>` in the body plus a date in Material's `<aside class="md-source-file">` |
 | `ABOUT-LINK` | always | every page's footer link resolves to a built page, at every depth |
 | `NAV` | always | rule 2 |
 | `SECTION-TITLE` | a section has an index page | its title is in the markup `SECTION_TITLE_RULE` targets, and a stylesheet in `extra_css` carries the rule (rule 2) |
@@ -159,6 +159,15 @@ never after. Configured from `mkdocs.yml`:
 
 `ABOUT-LINK` exists because `mkdocs build --strict` passes a relative footer link that 404s on
 every nested page.
+
+**Typing both dates and generating "Last updated" from git: both are allowed.** A site may type
+both dates into every page's footer, or use `mkdocs-git-revision-date-localized-plugin` for the
+first and type only `*Last Reviewed: YYYY-MM-DD*`. The generated date cannot drift from the
+file, and a commit timestamp says the file changed, not that anyone re-read it, so the review
+date is typed either way. `UNDATED-PAGE` finds the generated date by the aside's structure (a
+`md-source-file__fact` holding text, not a contributors `<nav>`), not by its title: Material
+localises that title ("Last update", "Letztes Update"). A page showing only one of the two dates
+fails (ai-agent-template#142).
 
 ### 6. The Liferay profile
 
