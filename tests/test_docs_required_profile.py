@@ -87,13 +87,8 @@ def test_deleting_a_key_a_required_check_needs_fails_and_names_it(dotted, check)
     assert any(key in line for line in problems[check]), problems[check]
 
 
-def test_a_site_with_no_profile_and_no_related_block_needs_no_related_keys():
-    """Required by name, HOME-LAYOUT needs related.* only with a related block: a site with no
-    related projects has no section to check."""
-    config = _delete(_met(), 'extra.docs_standard.related')
-    config['extra_css'] = []
-    config['extra']['docs_standard']['required'] = ['HOME-LAYOUT']
-    assert check_required(config, set()) == {}
+# A site with no profile that lists HOME-LAYOUT in `required` needs the related block too, as the
+# profile default does (#175): tests/test_docs_required_explicit.py.
 
 
 # --- #164: what v2.4.0 still let through, from lfr-tunnel#2412 and #155 -----------------------
