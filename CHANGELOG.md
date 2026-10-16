@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A site can require a specific verification token: `required` and `waive` accept
+  `MISSING-VERIFICATION:google` and `MISSING-VERIFICATION:bing`, and the Liferay profile now
+  requires Google's. Plain `MISSING-VERIFICATION` was satisfied by either token, so Bing's in
+  place of Google's passed with no Google tag on any page, which a site that depends on Search
+  Console cannot afford. Waiving `MISSING-VERIFICATION` waives its qualified forms too, so the
+  profile's shipped waive still covers a fresh project (#161).
 - Dependabot's pull requests skip the docs drift step (a step-level `if` on
   `dependabot[bot]`), so a required docs check reports success rather than pending. They still
   build the site and run `check_docs_rendered.py`, because dependency bumps are what break
