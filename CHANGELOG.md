@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   CI green. Each part is checked only when configured, and the check now runs when
   `extra.social_image`, `extra.favicon_svg` or `theme.favicon` is set; a site that sets none of
   them is unchanged (#146).
+- `check_template_drift.py`, a shared file, no longer imports `FOOTER_REGEX` and `IGNORE_DIRS`
+  from `check_docs_review.py`, which is not shared and which adopters diverge. v2.3.0 fell back
+  to the template's names only when an adopter's copy lacked them, so a copy that defined them
+  differently, or failed on import, still changed what the drift check compared. It now
+  defines both itself, with the same values. `check_docs_review.FOOTER_REGEX` is unchanged and
+  still importable (#147).
 
 ## [2.3.0] - 2026-10-16
 

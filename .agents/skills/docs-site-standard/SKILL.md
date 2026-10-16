@@ -120,9 +120,10 @@ alerts hook, `scripts/mkdocs_github_alerts.py`, converts it at build time:
 | Liferay stylesheet | `.agents/templates/docs-profiles/liferay/liferay-blue.css` | Rule 6 |
 
 A site's own extra override goes in `overrides/` beside them (Material has one `custom_dir`);
-only the two override files above are governed there. `scripts/check_docs_review.py`, which the drift
-check imports from, is **not** shared: adopters keep their own, and the import falls back to the
-template's definitions when theirs lacks the names.
+only the two override files above are governed there. `scripts/check_docs_review.py` is **not**
+shared: adopters keep their own, which may diverge freely. A shared file never imports from a file
+that is not shared, so the drift check defines its own footer pattern and ignore list, and an
+adopter's `check_docs_review.py` cannot change what it compares (ai-agent-template#147).
 
 - **Change them here, in a template PR, then copy them into each project unchanged.** Never
   edit a local copy to make a check pass, and never push a local edit upstream as if it were
