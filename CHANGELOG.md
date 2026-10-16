@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [2.2.0] - 2026-10-16
+
 ### Added
 
 - Add the `docs-site-standard` skill: the shared MkDocs site standard (home-page layout,
@@ -43,6 +47,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   failure still warns and exits 0 (#135).
 - The template's own docs nav follows the standard order and sentence case ("How-to guides",
   "About these docs" last) (#135).
+- **deps**: bump github/codeql-action/upload-sarif (#134)
+- **deps-dev**: bump actionlint-py from 1.7.12.24 to 1.7.12.25 (#132)
+
+### Fixed
+
+- The `NAV` check in `check_docs_rendered.py` now holds every nav label to sentence case, top
+  level and below, as the navigation rule requires; it read only the top level. It skips the
+  page's own table of contents, and a proper noun a label needs mid-label goes in
+  `extra.docs_standard.proper_nouns` (the Liferay profile lists `Liferay`) (#137, #138).
 
 ## [2.1.0] - 2026-09-22
 
@@ -244,11 +257,12 @@ Example of a released version, kept commented out so the stub starts clean:
 [1.0.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v1.0.0
 -->
 
-[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.2.0
 [2.1.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.1.0
 [2.0.1]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.0.1
 [2.0.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.0.0
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*
+*Last Updated: 2026-10-16* | *Last Reviewed: 2026-10-16*
