@@ -16,7 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- The AGENTS.md skills routing table is generated from each skill's `SKILL.md` frontmatter
+  (`name`, `description`) by `scripts/generate_skill_index.py`, between markers. `make
+  skill-index` regenerates it, `make docs` runs it, and a `skill-index` pre-commit hook fails
+  when it is stale. The table now has two columns, its rows are sorted by name, and their
+  wording is the frontmatter description. `docs/TEMPLATE_GUIDE.md` and the README tree point at
+  AGENTS.md instead of restating the list, and the tests that kept the three copies in step are
+  removed. An adopter's drift check will show the new table (#180).
 
 ## [2.6.0] - 2026-10-16
 
@@ -442,4 +450,4 @@ Example of a released version, kept commented out so the stub starts clean:
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-10-16* | *Last Reviewed: 2026-10-16*
+*Last Updated: 2026-10-19* | *Last Reviewed: 2026-10-19*

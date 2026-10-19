@@ -163,23 +163,12 @@ later change language.
 
 ## Included Skill Modules
 
-| Skill Directory | Purpose & Design Pattern |
-| :--- | :--- |
-| **`no-assumptions`** | Always active. Forbids technical claims not backed by a tool call made in the current session; after a compaction or resume, earlier tool results stop counting as evidence. |
-| **`reflection-and-planning`** | Implements Logic-First Planning, written implementation plans, Predictive Failure Analysis, and approval loops. |
-| **`human-in-the-loop`** | Enforces safety gates for deployments, database drops, plain-text secret prohibitions, and visual diff approvals. |
-| **`coding-standards`** | Mandates DRY code discovery (using the agent's available code-search tool), self-documenting code, defensive safety guards, language idiom alignment, mechanically enforced rules (`.semgrep.yaml`), and scope-sprawl anti-churn limits. |
-| **`unit-testing`** | Enforces test-driven development, fail-first verification gates (citing red-to-green empirical evidence), non-interactive execution, and prohibits superficial test deletion. |
-| **`e2e-verification`** | Covers changes a green unit suite cannot prove (UI, process/network boundaries, CLI, deployment): what real-system evidence counts, teardown duties, and specific human escalation. |
-| **`documentation`** | Governs timestamp footers (`*Last Updated* \| *Last Reviewed*`), post-feature doc updates, and staleness policy checks. |
-| **`docs-site-standard`** | Governs the shared MkDocs Material site standard: home-page layout, top-level navigation, GitHub alerts (GitHub's label as the title, a strict title lift), shared files that are never edited downstream, and the rendered-output and drift checks that hold a site to them. Includes the opt-in Liferay profile. |
-| **`documentation-review`** | Governs auditing an existing documentation set: measure before diagnosing, inspect the rendered output rather than the source, check documents against the code, and fix routing before restructuring. Sibling to `documentation`, which covers hygiene after a change. |
-| **`github-workflow`** | Standardizes `gh` CLI usage, forces PRs to link `Closes #<issue>`, drives the PR review feedback loop (pull review summaries and CI status with `gh pr view`, inline file/line comments with `gh api repos/{owner}/{repo}/pulls/<number>/comments`, close the loop on each one), logs tech-debt to the repo's one canonical tracker (with a documented external-tracker escape hatch), and cleans up historical CI failures. |
-| **`tool-use-react`** | Enforces reasoning before tool activation, non-interactive flags, and asynchronous task lifecycle management. |
-| **`multi-agent-orchestration`** | Governs subagent delegation criteria, clear prompt framing, and asynchronous result synthesis. |
-| **`rule-adherence`** | Addresses agents not reliably following prose rules: re-read before acting, prefer checkable artifacts, and self-correct visibly. |
-| **`release-management`** | Governs semantic versioning, release notes, auditing issue closure, and human verification gates. |
-| **`template-sync`** | Defines the bidirectional contract with the upstream template: consult it before writing a new agent rule locally, contribute reusable guardrails back, and record every real difference in `.agents/TEMPLATE_REF.md` as either linked drift or deliberate divergence. |
+The skill index lives in one place: the generated routing table in
+[`AGENTS.md`](../AGENTS.md#2-skills-routing-directory). `scripts/generate_skill_index.py`
+renders it from each `SKILL.md`'s frontmatter `name` and `description` -- the same fields
+agent harnesses load eagerly -- and the `skill-index` pre-commit hook fails when it is stale.
+This page deliberately does not restate the list: it used to, alongside a third copy in the
+README tree, and a test was needed to keep the three in step.
 
 ---
 
@@ -325,4 +314,4 @@ these placeholders is still live, citing the file and line. Supply `--repo-owner
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-10-16* | *Last Reviewed: 2026-10-16*
+*Last Updated: 2026-10-19* | *Last Reviewed: 2026-10-19*

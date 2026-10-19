@@ -41,7 +41,7 @@ DOCS_MAX_AGE_DAYS ?= 180
 MESSAGE ?=
 PUSH_ARGS ?=
 
-.PHONY: help setup lint test docs verify push setup-tooling lint-tooling
+.PHONY: help setup lint test docs verify push setup-tooling lint-tooling skill-index
 
 help:
 	@echo "Task runner. 'make verify' is exactly what CI runs."
@@ -49,7 +49,7 @@ help:
 	@echo "  make setup   - install dev dependencies and the pre-commit git hooks"
 	@echo "  make lint    - pre-commit run --all-files, plus this stack's linters"
 	@echo "  make test    - this stack's non-interactive test command"
-	@echo "  make docs    - refresh and verify documentation timestamp footers"
+	@echo "  make docs    - regenerate the skill index, refresh and verify doc footers"
 	@echo "  make verify  - lint + test + docs; the full local quality gate"
 	@echo "  make push    - guarded commit-and-push (scripts/agent_push.py)"
 	@echo "  make help    - this message"
@@ -71,7 +71,12 @@ lint-tooling:
 
 test: test-lang
 
-docs:
+# AGENTS.md's skill routing table is generated from SKILL.md frontmatter. `make docs`
+# regenerates it; the pre-commit hook (and so CI) runs it with --check and fails when stale.
+skill-index:
+	$(PYTHON) scripts/generate_skill_index.py
+
+docs: skill-index
 	$(PYTHON) scripts/append_timestamps.py
 	$(PYTHON) scripts/check_docs_review.py --max-review-days $(DOCS_MAX_AGE_DAYS) --max-update-days $(DOCS_MAX_AGE_DAYS)
 

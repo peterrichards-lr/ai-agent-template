@@ -1,11 +1,11 @@
 """
 test_agent_skills.py - Content contract tests for `.agents/skills/` skill files.
 
-Separate from test_template_scripts.py (which covers scripts/ behaviour and the
-cross-document skill-name drift check). This module asserts the *substance* of
+Separate from test_template_scripts.py (which covers scripts/ behaviour) and
+test_skill_index.py (which owns the generated routing table). This module asserts the *substance* of
 individual skill files: that the always-active anti-hallucination skill states
-its operative clauses, that the end-to-end verification skill covers each branch
-it is required to cover, and that the documents pointing at them stay in sync.
+its operative clauses and that the end-to-end verification skill covers each branch
+it is required to cover.
 """
 
 import re
@@ -111,24 +111,4 @@ def test_unit_testing_stopping_condition_defers_to_e2e_verification():
     )
     assert 'appropriate verification' in body.lower(), (
         "unit-testing rule 3 must read as 'the appropriate verification for this change'"
-    )
-
-
-def test_both_new_skills_are_routed_in_every_index_document():
-    agents_content = (ROOT_DIR / 'AGENTS.md').read_text(encoding='utf-8')
-    guide_content = (ROOT_DIR / 'docs' / 'TEMPLATE_GUIDE.md').read_text(encoding='utf-8')
-    readme_content = (ROOT_DIR / 'README.md').read_text(encoding='utf-8')
-
-    for skill_name in ('no-assumptions', 'e2e-verification'):
-        assert (SKILLS_DIR / skill_name / 'SKILL.md').exists()
-        assert f'**[{skill_name}]' in agents_content, f"AGENTS.md routing table missing {skill_name}"
-        assert f'**`{skill_name}`**' in guide_content, f"TEMPLATE_GUIDE.md table missing {skill_name}"
-        assert re.search(rf'[├└]──\s+{skill_name}/', readme_content), (
-            f"README.md skills tree missing {skill_name}"
-        )
-
-    routing_row = re.search(r'^\|\s*\*\*\[no-assumptions\].*$', agents_content, re.MULTILINE)
-    assert routing_row, "no-assumptions routing row not found"
-    assert 'always' in routing_row.group(0).lower(), (
-        "no-assumptions must be routed with an 'always' trigger condition"
     )

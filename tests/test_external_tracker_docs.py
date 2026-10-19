@@ -17,8 +17,7 @@ sound default plus a documented escape hatch, so these tests assert:
    documented claim to the checker's actual behaviour, so building a configurable
    ID pattern later cannot silently leave the docs lying.
 
-Kept out of tests/test_template_scripts.py, which covers scripts/ behaviour and the
-cross-document skill-name drift check.
+Kept out of tests/test_template_scripts.py, which covers scripts/ behaviour.
 """
 
 import re

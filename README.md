@@ -169,22 +169,7 @@ is materialized as a text file and agent skill discovery silently finds nothing.
 │   │   └── config.yml                 # Issue chooser: blank issues off, contact links
 │   ├── workflows/ci.yml               # GitHub Actions CI workflow (installed from a CI profile)
 │   └── workflows/security-scan.yml    # Optional non-blocking Semgrep & dependency review
-├── .agents/skills/                    # Modular skill instructions for AI agents
-│   ├── no-assumptions/                # Always-active anti-hallucination protocol
-│   ├── reflection-and-planning/       # Logic-first planning & approval loops
-│   ├── human-in-the-loop/             # Safety verification gates for risky operations
-│   ├── coding-standards/              # DRY code, self-documenting code & error safety
-│   ├── unit-testing/                  # TDD & non-interactive test rules
-│   ├── e2e-verification/              # Real-app evidence when unit tests aren't proof
-│   ├── documentation/                 # Timestamp & doc maintenance rules
-│   ├── docs-site-standard/            # Shared MkDocs site standard & its checks
-│   ├── documentation-review/          # Auditing an existing documentation set
-│   ├── github-workflow/               # Issue sync, PR review feedback loop & CI cleanup
-│   ├── tool-use-react/                # ReAct reasoning & CLI command boundaries
-│   ├── multi-agent-orchestration/     # Subagent delegation directives
-│   ├── rule-adherence/                # Self-verification & checkable artifact rules
-│   ├── release-management/            # Semantic versioning & release auditing
-│   └── template-sync/                 # Upstream drift checks & the bidirectional contract
+├── .agents/skills/                    # Modular skills; AGENTS.md indexes them (generated)
 ├── .agents/templates/                 # Tracked seed files copied into place by bootstrap
 │   ├── agent-state.md                 # Starter scratchpad seed for .agent-state.md
 │   ├── template-ref.md                # Seed for the committed .agents/TEMPLATE_REF.md checkpoint
@@ -193,6 +178,7 @@ is materialized as a text file and agent skill discovery silently finds nothing.
 ├── scripts/                           # Portable Python 3 helper utilities
 │   ├── append_timestamps.py           # Injects markdown footer timestamps
 │   ├── check_docs_review.py           # Validates doc freshness & review age
+│   ├── generate_skill_index.py        # Generates the AGENTS.md skill table from frontmatter
 │   ├── bootstrap_template.py          # Project initializer script
 │   ├── agent_push.py                  # Guarded commit-and-push behind `make push`
 │   ├── check_template_drift.py        # Compares this repo against the upstream template
@@ -226,4 +212,4 @@ This template is open source and available under the [MIT License](LICENSE).
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-10-15* | *Last Reviewed: 2026-10-15*
+*Last Updated: 2026-10-19* | *Last Reviewed: 2026-10-19*
