@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--no-verify` in automation files. `coding-standards` directive 5 now asks for a guard, added
   with the fix, whenever a fixed bug's shape could recur. `.guards.json` is a governed path for
   the drift check (#181).
+- An "Engineering Principles" section in AGENTS.md: five short, editable project defaults (fix
+  where the problem is produced; unknown is not absent; finish the change; a green test is not
+  the proof; earn every abstraction). "Related References" becomes section 6 (#182).
 
 ### Changed
 
