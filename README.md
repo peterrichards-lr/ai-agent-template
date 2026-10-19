@@ -158,6 +158,7 @@ is materialized as a text file and agent skill discovery silently finds nothing.
 ├── .editorconfig                      # Shared editor baseline (UTF-8, LF, final newline)
 ├── .pre-commit-config.yaml            # Pre-commit quality gate configuration
 ├── .semgrep.yaml                      # Project-specific Semgrep rules (commented stub)
+├── .guards.json                       # Blocking line-level guards (scripts/check_guards.py)
 ├── .github/                           # CI workflows & GitHub templates
 │   ├── copilot-instructions.md        # Discovery redirect to AGENTS.md (GitHub Copilot)
 │   ├── CODEOWNERS                     # Commented ownership stub (see require_code_owner_review)
@@ -179,6 +180,7 @@ is materialized as a text file and agent skill discovery silently finds nothing.
 │   ├── append_timestamps.py           # Injects markdown footer timestamps
 │   ├── check_docs_review.py           # Validates doc freshness & review age
 │   ├── generate_skill_index.py        # Generates the AGENTS.md skill table from frontmatter
+│   ├── check_guards.py                # Runs the blocking .guards.json invariants
 │   ├── bootstrap_template.py          # Project initializer script
 │   ├── agent_push.py                  # Guarded commit-and-push behind `make push`
 │   ├── check_template_drift.py        # Compares this repo against the upstream template

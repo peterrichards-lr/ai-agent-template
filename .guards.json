@@ -1,0 +1,19 @@
+{
+  "$comment": "Blocking project guards, run by scripts/check_guards.py as a pre-commit hook. Add one with the fix that brings its match count to zero. See .agents/skills/coding-standards/SKILL.md rule 5.",
+  "guards": [
+    {
+      "id": "no-local-file-uri-in-markdown",
+      "pattern": "file://",
+      "include": ["*.md"],
+      "why": "Every AGENTS.md routing link once used an absolute file:/// URI, which resolves to the filesystem root and is dropped by GitHub's renderer, so the table lost its navigation.",
+      "instead": "Use a repository-relative path, e.g. .agents/skills/<name>/SKILL.md."
+    },
+    {
+      "id": "no-hook-bypass-in-automation",
+      "pattern": "--no-verify",
+      "include": ["Makefile", "*.mk", "*.sh", ".github/workflows/*"],
+      "why": "CONTRIBUTING.md's No Bypass Rule: pre-commit hooks are the quality gate, and automation that skips them skips it for every caller.",
+      "instead": "Run the hooks; skip one specific unavailable tool with SKIP=<hook-id> if you must."
+    }
+  ]
+}

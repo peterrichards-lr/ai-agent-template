@@ -234,6 +234,9 @@ def test_coding_standards_skill_mandates_mechanised_rules():
     assert '.semgrep.yaml' in skill, (
         "coding-standards/SKILL.md must point agents at the project rule file"
     )
+    assert '.guards.json' in skill, (
+        "coding-standards/SKILL.md must point agents at the blocking guard file"
+    )
     assert 'pattern-matcher' in skill
     assert 'rather than only prose' in skill
 
