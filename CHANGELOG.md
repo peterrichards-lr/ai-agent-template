@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Blocking line-level project guards: `.guards.json`, checked by `scripts/check_guards.py` as a
+  pre-commit hook. Each guard is a regular expression that must never match, with the incident
+  that motivated it (`why`) and the remedy (`instead`). Two ship: no local-file URI link in Markdown
+  (moved from a pytest test, so it survives `--clean-template`, which deletes `tests/`) and no
+  `--no-verify` in automation files. `coding-standards` directive 5 now asks for a guard, added
+  with the fix, whenever a fixed bug's shape could recur. `.guards.json` is a governed path for
+  the drift check (#181).
+- An "Engineering Principles" section in AGENTS.md: five short, editable project defaults (fix
+  where the problem is produced; unknown is not absent; finish the change; a green test is not
+  the proof; earn every abstraction). "Related References" becomes section 6 (#182).
+
 ### Changed
 
 - The AGENTS.md skills routing table is generated from each skill's `SKILL.md` frontmatter
