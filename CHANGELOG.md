@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [2.7.0] - 2026-10-19
+
 ### Added
 
 - Blocking line-level project guards: `.guards.json`, checked by `scripts/check_guards.py` as a
@@ -28,6 +32,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An "Engineering Principles" section in AGENTS.md: five short, editable project defaults (fix
   where the problem is produced; unknown is not absent; finish the change; a green test is not
   the proof; earn every abstraction). "Related References" becomes section 6 (#182).
+- `make check`, a fast inner loop for agents: pre-commit over only the files changed relative to
+  the merge base with `BASE_REF` (default `origin/main`; committed, uncommitted and untracked),
+  then `make test`. `scripts/check_changed.py` selects the files, so names with spaces survive
+  and a failure names the hook; an unresolvable base exits 2. It is a subset of `make verify`,
+  never a substitute. The task-runner vocabulary is now eight verbs across the Makefile, docs
+  and CI profiles. `e2e-verification` asks for real-system harnesses as `make verify-e2e-<area>`
+  targets kept out of `verify` and `check` (#183).
+- `experiments/skill-evals/`, a harness that measures whether the skills help.
+  `run_eval.py` runs a task corpus through a headless agent CLI in throwaway git worktrees,
+  comparing arms that differ only in the guidance present: `full`, `no-guidance`, and
+  `without:<skill>` (one skill removed, routing table regenerated). It records task-check
+  success, wall time and, when the agent reports them, turns and tokens (unknown, never zero,
+  when it does not). Three seed tasks ship. Results go to a git-ignored directory and nothing
+  runs in CI. The harness is tested end to end with stand-in agents and has not yet been run
+  against a real model (#185).
 
 ### Changed
 
@@ -38,6 +57,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wording is the frontmatter description. `docs/TEMPLATE_GUIDE.md` and the README tree point at
   AGENTS.md instead of restating the list, and the tests that kept the three copies in step are
   removed. An adopter's drift check will show the new table (#180).
+- **Behaviour change:** bootstrap now refuses to run while tracked files have uncommitted
+  changes, and exits 1 listing them. It rewrites and deletes tracked files (the Makefile
+  profile, `ci.yml`, and README and CHANGELOG under `--clean-template`), and git is its backup:
+  on a committed tree `git restore .` undoes everything, on a dirty one those edits would be
+  lost. Pass `--allow-dirty` to run anyway, as before. `--dry-run` reports the check without
+  refusing, and outside a git work tree bootstrap warns instead of assuming the tree is clean
+  (#184).
+
+### Fixed
+
+- The Liferay profile is found by its `docs-profile: liferay` marker in the source `docs_dir`
+  too, not only in the built site. MkDocs' `exclude_docs` keeps a file out of the build while
+  it stays in `docs/` unchanged, so on lfr-tunnel's v2.6.0 build the stylesheet excluded and
+  dropped from `extra_css`, with `required` and Google's token deleted, exited 0 with the
+  profile's checks switched off and the drift check green. `docs_dir` is read from mkdocs.yml
+  and resolved against the `--config` file's directory, as MkDocs resolves it (#179).
 
 ## [2.6.0] - 2026-10-16
 
@@ -449,7 +484,8 @@ Example of a released version, kept commented out so the stub starts clean:
 [1.0.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v1.0.0
 -->
 
-[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/compare/v2.7.0...HEAD
+[2.7.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.7.0
 [2.6.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.6.0
 [2.5.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.5.0
 [2.4.0]: https://github.com/<GITHUB_OWNER_PLACEHOLDER>/ai-agent-template/releases/tag/v2.4.0
