@@ -38,13 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wording is the frontmatter description. `docs/TEMPLATE_GUIDE.md` and the README tree point at
   AGENTS.md instead of restating the list, and the tests that kept the three copies in step are
   removed. An adopter's drift check will show the new table (#180).
-- **Behaviour change:** bootstrap now refuses to run while tracked files have uncommitted
-  changes, and exits 1 listing them. It rewrites and deletes tracked files (the Makefile
-  profile, `ci.yml`, and README and CHANGELOG under `--clean-template`), and git is its backup:
-  on a committed tree `git restore .` undoes everything, on a dirty one those edits would be
-  lost. Pass `--allow-dirty` to run anyway, as before. `--dry-run` reports the check without
-  refusing, and outside a git work tree bootstrap warns instead of assuming the tree is clean
-  (#184).
 
 ## [2.6.0] - 2026-10-16
 
