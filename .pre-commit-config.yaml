@@ -76,6 +76,16 @@ repos:
         files: ^(AGENTS\.md|\.agents/skills/.*|scripts/generate_skill_index\.py)$
         pass_filenames: false
 
+      # Blocking project invariants from .guards.json (see scripts/check_guards.py for
+      # how they differ from the advisory .semgrep.yaml rules). always_run because a
+      # guard edit can make an untouched file start failing.
+      - id: check-guards
+        name: Check Project Guards
+        entry: python3 scripts/check_guards.py
+        language: system
+        always_run: true
+        pass_filenames: false
+
       - id: check-provider-redirects
         name: Validate Provider Redirects
         entry: python3 scripts/check_provider_redirects.py

@@ -110,6 +110,7 @@ GOVERNED_PATHS = (
     'overrides/partials/copyright.html',
     '.github/workflows',
     '.pre-commit-config.yaml',
+    '.guards.json',
 )
 
 # The docs site's shared files (ai-agent-template#135), for a docs CI job that should fail on

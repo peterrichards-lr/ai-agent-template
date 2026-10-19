@@ -32,9 +32,10 @@ Before implementing new helper functions, utility methods, or data classes, the 
 - **TypeScript/Node**: Immutable state, strict null checks (`tsconfig`), async/await over raw promises.
 
 ### 5. Mechanically Enforced Rules
-- **Prose Is Advisory, a Pattern Is Enforced**: When you write a rule that a pattern-matcher could check, add a Semgrep rule for it in `.semgrep.yaml` rather than only prose in a skill file. Prose can be read and still violated; a rule in `.semgrep.yaml` is checked on every push and pull request by `.github/workflows/security-scan.yml` -- the same argument [`docs/BRANCH_PROTECTION.md`](../../../docs/BRANCH_PROTECTION.md) makes for rulesets over convention.
-- **Cite the Prose in the Message**: A Semgrep rule's `message` MUST say what to use instead and cite the skill rule it mechanises, so the finding teaches the standard rather than merely blocking.
-- **Non-Blocking by Default**: The scan runs `continue-on-error: true` and is not a required status check, so a new rule reports before it gates. Promote it to blocking only once existing findings are triaged to zero.
+- **Fix the Class, Not Just the Instance**: When you fix a bug whose shape could recur -- a raw API used instead of the approved helper, a value normalised in two places, a banned flag -- add a guard to `.guards.json` in the same change, with `why` naming the incident and `instead` naming the fix. Guards are line-level regular expressions checked by `scripts/check_guards.py` on every commit, and they **block** from day one: the fix that adds a guard is the fix that brings its matches to zero, so there is no backlog to triage first.
+- **Prose Is Advisory, a Pattern Is Enforced**: When you write a rule that a pattern-matcher could check, add an enforced check for it rather than only prose in a skill file: a guard in `.guards.json` when a line-level regular expression is enough, a Semgrep rule in `.semgrep.yaml` when the match needs syntax (statement shapes, metavariables). Prose can be read and still violated; a rule in `.semgrep.yaml` is checked on every push and pull request by `.github/workflows/security-scan.yml` -- the same argument [`docs/BRANCH_PROTECTION.md`](../../../docs/BRANCH_PROTECTION.md) makes for rulesets over convention.
+- **Cite the Prose in the Message**: A guard's `why`/`instead` and a Semgrep rule's `message` MUST say what to use instead and cite the skill rule it mechanises, so the finding teaches the standard rather than merely blocking.
+- **Semgrep Is Non-Blocking by Default**: The scan runs `continue-on-error: true` and is not a required status check, so a new rule reports before it gates. Promote it to blocking only once existing findings are triaged to zero.
 
 ### 6. Scope Sprawl & Anti-Churn Guardrails
 - **Focused Bugfixes**: Bugfix pull requests (branch starting with `fix/`, `fix-`, `bugfix/`, or `bugfix-`, or PR title starting with `fix:`/`bugfix:`/`bug:`) MUST be tightly focused on resolving the targeted defect and MUST NOT modify more than 10 files.
@@ -43,4 +44,4 @@ Before implementing new helper functions, utility methods, or data classes, the 
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
+*Last Updated: 2026-10-19* | *Last Reviewed: 2026-10-19*
