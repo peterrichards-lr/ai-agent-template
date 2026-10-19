@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An "Engineering Principles" section in AGENTS.md: five short, editable project defaults (fix
   where the problem is produced; unknown is not absent; finish the change; a green test is not
   the proof; earn every abstraction). "Related References" becomes section 6 (#182).
+- `experiments/skill-evals/`, a harness that measures whether the skills help.
+  `run_eval.py` runs a task corpus through a headless agent CLI in throwaway git worktrees,
+  comparing arms that differ only in the guidance present: `full`, `no-guidance`, and
+  `without:<skill>` (one skill removed, routing table regenerated). It records task-check
+  success, wall time and, when the agent reports them, turns and tokens (unknown, never zero,
+  when it does not). Three seed tasks ship. Results go to a git-ignored directory and nothing
+  runs in CI. The harness is tested end to end with stand-in agents and has not yet been run
+  against a real model (#185).
 
 ### Changed
 
