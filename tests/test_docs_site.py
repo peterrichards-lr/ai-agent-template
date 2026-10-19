@@ -926,10 +926,9 @@ def test_the_template_site_passes_its_own_rendered_check(tmp_path):
     assert check.returncode == 0, check.stdout
 
 
-@needs_mkdocs
-def test_a_liferay_profile_site_builds_and_holds_to_the_standard(tmp_path):
-    """Bootstrap the profile into a copy, write a conforming home page, build, check -- then
-    break the home page and watch the same check fail (the control)."""
+def liferay_profile_project(tmp_path: Path) -> Path:
+    """A copy of the template's docs site with the Liferay profile bootstrapped into it, as an
+    adopter's repository looks before its home page is written."""
     import shutil
     from bootstrap_template import apply_docs_profile, enable_docs_site
 
@@ -948,6 +947,14 @@ def test_a_liferay_profile_site_builds_and_holds_to_the_standard(tmp_path):
 
     enable_docs_site(project, project_name='lfr-tunnel', repo_owner='peterrichards-lr')
     apply_docs_profile(project, 'liferay', 'Liferay Tunnel', repo_owner='peterrichards-lr')
+    return project
+
+
+@needs_mkdocs
+def test_a_liferay_profile_site_builds_and_holds_to_the_standard(tmp_path):
+    """Bootstrap the profile into a copy, write a conforming home page, build, check -- then
+    break the home page and watch the same check fail (the control)."""
+    project = liferay_profile_project(tmp_path)
     index = project / 'docs' / 'index.md'
 
     # A fresh profile site, before anyone has written its home page, must deploy: the profile

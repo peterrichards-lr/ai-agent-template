@@ -54,7 +54,8 @@ each missing key and sub-key (CONFIGURED_CHECKS), instead of being skipped or ch
 (ai-agent-template#141, #155). Required: what the site's profile requires (PROFILE_REQUIRED: the
 Liferay profile requires all four, and PROFILE_KEYS what more it needs of them, #164, which
 apply too when the site lists the check in `required` itself, #175; a site is
-a profile site when its build holds a stylesheet with the PROFILE_MARKER line), plus
+a profile site when its build or its source docs_dir holds a stylesheet with the
+PROFILE_MARKER line, #179), plus
 extra.docs_standard.required, less what
 extra.docs_standard.waive drops with a reason. An unknown name, or a waive with no reason or of
 a check nothing requires, fails as REQUIRED. MISSING-VERIFICATION:google and :bing require
@@ -819,14 +820,18 @@ PROFILE_KEYS = {
 }
 
 
-def profile_required(config, site=None):
+def profile_required(config, site=None, docs_dir=None):
     """(the profile's name, the checks it requires), or (None, ()) for a site with no profile.
 
     Found by the marker in any stylesheet in the built site, so it holds however the file is
-    named, moved or linked; or, failing that, by the profile stylesheet's name in extra_css.
+    named, moved or linked; then in the source docs_dir, because exclude_docs keeps a file out
+    of the build while it stays in the repository unchanged (#179); or, failing both, by the
+    profile stylesheet's name in extra_css.
     """
-    if site is not None:
-        for sheet in sorted(Path(site).rglob("*.css")):
+    for root in (site, docs_dir):
+        if root is None:
+            continue
+        for sheet in sorted(Path(root).rglob("*.css")):
             match = PROFILE_MARKER.search(sheet.read_text(encoding="utf-8", errors="replace"))
             if match and match.group(1) in PROFILE_REQUIRED:
                 return PROFILE_REQUIRED[match.group(1)]
@@ -851,7 +856,7 @@ def required_keys(name, profile=None, explicit=False):
     return needs
 
 
-def check_required(config, always_run, site=None):
+def check_required(config, always_run, site=None, docs_dir=None):
     """Failures for the required checks, as {check name: problems}.
 
     Required: what the site's profile requires, plus extra.docs_standard.required, less what
@@ -879,7 +884,7 @@ def check_required(config, always_run, site=None):
             f"not {waive!r}")
         waive = {}
 
-    profile, by_profile = profile_required(config, site)
+    profile, by_profile = profile_required(config, site, docs_dir)
     known = set(CONFIGURED_CHECKS) | set(always_run)
     unknown = [name for name in list(required) + list(waive) if name not in known]
     if unknown:
@@ -918,7 +923,7 @@ def check_required(config, always_run, site=None):
 
 # --------------------------------------------------------------------------------------------
 
-def run(site, config):
+def run(site, config, docs_dir=None):
     """Run every check; print the report; return the exit code."""
     site = Path(site)
     if not site.is_dir():
@@ -968,7 +973,7 @@ def run(site, config):
             failures["HOME-LAYOUT"] = bad
         passes += [f"home: {line}" for line in ok]
     # SECTION-TITLE is a known name even on a build without an index page, where it did not run.
-    failures.update(check_required(config, set(always) | {"SECTION-TITLE"}, site))
+    failures.update(check_required(config, set(always) | {"SECTION-TITLE"}, site, docs_dir))
 
     if failures:
         for name, problems in failures.items():
@@ -995,7 +1000,10 @@ def main(argv=None):
     parser.add_argument("--config", default="mkdocs.yml", help="the MkDocs config the site was "
                         "built from (default: mkdocs.yml)")
     args = parser.parse_args(argv)
-    return run(args.site, load_config(args.config))
+    config = load_config(args.config)
+    # MkDocs resolves docs_dir against the config file's directory, and so does this.
+    docs_dir = Path(args.config).resolve().parent / config.get("docs_dir", "docs")
+    return run(args.site, config, docs_dir if docs_dir.is_dir() else None)
 
 
 if __name__ == "__main__":
