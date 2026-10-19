@@ -27,6 +27,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 
 import bootstrap_template
+import generate_skill_index
 from bootstrap_template import (
     AGENT_STATE_SEED_RELPATH,
     CONDUCT_EMAIL_PLACEHOLDER,
@@ -365,7 +366,10 @@ def test_bootstrap_customizes_agents_md_without_corrupting_template_sync(tmp_pat
     agents = (project / 'AGENTS.md').read_text(encoding='utf-8')
     assert agents.startswith("# my-awesome-app - Canonical Agent Context")
     assert "- **Repository**: `my-awesome-app`\n" in agents
-    assert "Governs the bidirectional contract with `ai-agent-template`" in agents
+    # The routing table is generated from SKILL.md frontmatter, so bootstrap's substitutions
+    # must leave it exactly as the generator renders it, template-sync row included.
+    assert "**[template-sync](.agents/skills/template-sync/SKILL.md)**" in agents
+    assert generate_skill_index.main(['--check', '--root', str(project)]) == 0
 
 def test_bootstrap_customizes_agents_md_with_repo_desc(tmp_path):
     """Bootstrap with --repo-desc must append the description to the repo line."""

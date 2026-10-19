@@ -267,49 +267,6 @@ def test_ruleset_validator_rejects_internal_job_id_when_name_present(tmp_path):
     with pytest.raises(AssertionError, match="requires status check 'quality-gate'"):
         validate_ruleset_contexts(bad_ruleset, valid_contexts)
 
-def test_skill_frontmatter_and_routing_tables():
-    root_dir = Path(__file__).parent.parent
-    skills_dir = root_dir / '.agents' / 'skills'
-    agents_md = root_dir / 'AGENTS.md'
-    template_guide = root_dir / 'docs' / 'TEMPLATE_GUIDE.md'
-
-    skill_dirs = sorted([d for d in skills_dir.iterdir() if d.is_dir()])
-    agents_content = agents_md.read_text(encoding='utf-8')
-    guide_content = template_guide.read_text(encoding='utf-8')
-    readme_content = (root_dir / 'README.md').read_text(encoding='utf-8')
-    # Bounded by the next top-level tree entry, `.agents/templates/`, not by `scripts/`.
-    # The looser boundary swallowed everything between the two, so a subdirectory added
-    # under .agents/templates/ (the per-language CI profiles, #42) was read as a skill
-    # that had no directory on disk.
-    skills_section = re.search(
-        r'├── \.agents/skills/.*?(?=├── \.agents/templates/)', readme_content, re.DOTALL)
-    assert skills_section, "Could not find .agents/skills section in README.md"
-
-    disk = {d.name for d in skill_dirs}
-    agents = set(re.findall(r'\*\*\[([a-z0-9-]+)\]', agents_content))
-    guide = set(re.findall(r'\*\*`([a-z0-9-]+)`\*\*', guide_content))
-    readme = set(re.findall(r'[├└]──\s+([a-z0-9-]+)/', skills_section.group(0)))
-
-    assert disk == agents, f"AGENTS.md drift — only on disk: {disk - agents}; only in table: {agents - disk}"
-    assert disk == guide, f"TEMPLATE_GUIDE drift — only on disk: {disk - guide}; only in table: {guide - disk}"
-    assert disk == readme, f"README.md tree drift — only on disk: {disk - readme}; only in README: {readme - disk}"
-
-    for s_dir in skill_dirs:
-        skill_name = s_dir.name
-        skill_file = s_dir / 'SKILL.md'
-        assert skill_file.exists(), f"Missing SKILL.md in {s_dir}"
-
-        content = skill_file.read_text(encoding='utf-8')
-        assert content.startswith('---\n'), f"{skill_file} missing leading frontmatter delimiter"
-        parts = content.split('---\n', 2)
-        assert len(parts) >= 3, f"{skill_file} invalid frontmatter structure"
-
-        fm_text = parts[1]
-        fm = yaml.safe_load(fm_text)
-        assert isinstance(fm, dict), f"{skill_file} frontmatter did not parse to a dict"
-        assert fm.get('name') == skill_name, f"{skill_file} frontmatter name '{fm.get('name')}' != directory name '{skill_name}'"
-        assert fm.get('description'), f"{skill_file} missing or empty frontmatter description"
-
 def test_claude_skills_symlink_and_gitignore(tmp_path):
     root_dir = Path(__file__).parent.parent
     claude_skills = root_dir / '.claude' / 'skills'
@@ -672,11 +629,10 @@ def test_unit_testing_skill_fail_first_gate():
     assert "Durable Citation in Pull Request" in skill_content
     assert "PR description" in skill_content
 
-    # Assert docs/TEMPLATE_GUIDE.md Pattern 5 & skill table alignment
+    # Assert docs/TEMPLATE_GUIDE.md Pattern 5 alignment
     guide_content = (root_dir / 'docs' / 'TEMPLATE_GUIDE.md').read_text(encoding='utf-8')
     assert "Empirical Test-Driven Verification Gate" in guide_content
     assert "reproduction test must be observed and cited failing red" in guide_content
-    assert "fail-first verification gates" in guide_content
 
 def test_ruleset_validator_supports_same_named_skip_jobs(tmp_path):
     """Verify that extract_workflow_job_contexts cleanly supports the filter + same-named skip-job pattern."""
@@ -911,8 +867,6 @@ def test_community_health_files_documented_in_readme_tree():
     for rel_path in COMMUNITY_HEALTH_FILES:
         assert Path(rel_path).name in tree, f"README.md tree missing '{rel_path}'"
 
-    # Guard the sibling drift test's anchor: the skills block must stay between these markers.
-    assert re.search(r'├── \.agents/skills/.*?(?=├── scripts/)', readme_content, re.DOTALL)
 
 def test_bootstrap_substitutes_community_health_placeholders(tmp_path):
     """Bootstrap replaces owner/email/project placeholders and reports unresolved leftovers."""
@@ -1213,10 +1167,8 @@ def test_github_workflow_skill_pr_review_feedback_loop():
     assert "human-in-the-loop/SKILL.md" in skill
     assert "Resolving a reviewer's thread on their behalf" in skill
 
-    # 6. Routing tables describe the widened skill scope (doc drift guard)
-    agents_content = (root_dir / 'AGENTS.md').read_text(encoding='utf-8')
-    guide_content = (root_dir / 'docs' / 'TEMPLATE_GUIDE.md').read_text(encoding='utf-8')
-    assert "PR review feedback loop" in agents_content
-    assert "PR review feedback loop" in guide_content
-    assert "pulls/<number>/comments" in agents_content
-    assert "pulls/<number>/comments" in guide_content
+    # 6. The frontmatter description -- which generates the AGENTS.md routing row --
+    # names the widened scope, and the skill body carries the inline-comment endpoint.
+    frontmatter = yaml.safe_load(skill.split('---\n', 2)[1])
+    assert "PR review feedback loop" in frontmatter['description']
+    assert "pulls/<number>/comments" in skill
