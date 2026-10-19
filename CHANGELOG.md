@@ -28,13 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An "Engineering Principles" section in AGENTS.md: five short, editable project defaults (fix
   where the problem is produced; unknown is not absent; finish the change; a green test is not
   the proof; earn every abstraction). "Related References" becomes section 6 (#182).
-- `make check`, a fast inner loop for agents: pre-commit over only the files changed relative to
-  the merge base with `BASE_REF` (default `origin/main`; committed, uncommitted and untracked),
-  then `make test`. `scripts/check_changed.py` selects the files, so names with spaces survive
-  and a failure names the hook; an unresolvable base exits 2. It is a subset of `make verify`,
-  never a substitute. The task-runner vocabulary is now eight verbs across the Makefile, docs
-  and CI profiles. `e2e-verification` asks for real-system harnesses as `make verify-e2e-<area>`
-  targets kept out of `verify` and `check` (#183).
 
 ### Changed
 
