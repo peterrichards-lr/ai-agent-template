@@ -116,6 +116,12 @@ adopting a tool by default:
 Back the harness with its own CI workflow so the evidence is regenerated on every change rather
 than produced once by hand.
 
+Expose each harness as a `make verify-e2e-<area>` target (for example `verify-e2e-api`), kept
+**outside** `make verify` and `make check`: those must stay fast and runnable without the real
+system. A named target is checkable and discoverable through `make help`; a sequence of commands
+remembered from a previous session is neither. Report which `verify-e2e-*` targets you ran --
+and which you did not -- alongside the evidence.
+
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-09-05* | *Last Reviewed: 2026-09-05*
+*Last Updated: 2026-10-19* | *Last Reviewed: 2026-10-19*
