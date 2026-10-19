@@ -215,9 +215,10 @@ check running and checking less, with exit 0 (ai-agent-template#155).
 
 - **A profile requires its checks by default.** The Liferay profile requires all four (rule
   6). The site is known as a profile site by the `docs-profile: liferay` marker line inside
-  `liferay-blue.css`, found anywhere in the built site, not by the file's name or how
-  `extra_css` links it. A query string, a rename, a moved path, or dropping it from
-  `extra_css` cannot switch the checks off. A copy from before the marker existed is still
+  `liferay-blue.css`, found anywhere in the built site or in the source `docs_dir`, not by
+  the file's name or how `extra_css` links it. A query string, a rename, a moved path,
+  dropping it from `extra_css`, or keeping it out of the build with `exclude_docs` cannot
+  switch the checks off (ai-agent-template#179). A copy from before the marker existed is still
   known by its name in `extra_css`. Deleting `required`, or a name in it, cannot turn one off
   either (ai-agent-template#164).
   A profile may require more of a check than the check's own keys: every Liferay profile
@@ -311,4 +312,4 @@ fails (ai-agent-template#142).
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-10-16* | *Last Reviewed: 2026-10-16*
+*Last Updated: 2026-10-19* | *Last Reviewed: 2026-10-19*
