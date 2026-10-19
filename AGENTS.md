@@ -82,7 +82,8 @@ language stack, so an agent never has to work out which ecosystem's commands app
 | `make setup` | Install dev dependencies and the pre-commit Git hooks. |
 | `make lint` | `pre-commit run --all-files` plus this stack's linters. |
 | `make test` | This stack's non-interactive test command. |
-| `make docs` | `append_timestamps.py` then `check_docs_review.py` (rule 2). |
+| `make docs` | `generate_skill_index.py`, `append_timestamps.py`, then `check_docs_review.py` (rule 2). |
+| `make check` | Fast inner loop while iterating: pre-commit on files changed relative to `BASE_REF` (default `origin/main`), then `test`. Never a substitute for `verify`. |
 | `make verify` | `lint` + `test` + `docs` -- **exactly** what `.github/workflows/ci.yml` runs, split across its two jobs. |
 | `make push` | Guarded commit-and-push (`scripts/agent_push.py`): refuses no-op pushes and unstaged trees, never bypasses the hooks. |
 | `make help` | Self-documenting target list; the default goal. |

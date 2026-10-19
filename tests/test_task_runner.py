@@ -46,7 +46,7 @@ REPO_ROOT = Path(__file__).parent.parent
 # resolves locally and only fails on the Linux CI runner.
 MAKEFILE = REPO_ROOT / MAKEFILE_RELPATH
 
-VOCABULARY_TARGETS = ['setup', 'lint', 'test', 'docs', 'verify', 'push', 'help']
+VOCABULARY_TARGETS = ['setup', 'lint', 'test', 'docs', 'check', 'verify', 'push', 'help']
 
 
 def read_makefile() -> str:
@@ -505,3 +505,45 @@ def test_readme_documents_the_windows_make_limitation():
     assert 'make verify' in readme
     assert re.search(r'Windows.*Make|Make.*Windows', readme), \
         "Make is not present by default on Windows; the limitation is accepted and documented"
+
+
+# --- make check: the changed-file inner loop ----------------------------------
+
+def _git(cwd, *args):
+    subprocess.run(['git', '-C', str(cwd), *args], check=True, capture_output=True)
+
+
+def test_check_changed_selects_modified_and_untracked_files_but_not_deleted_or_ignored(tmp_path):
+    from check_changed import changed_files
+
+    _git(tmp_path, 'init', '-q', '-b', 'main')
+    _git(tmp_path, 'config', 'user.email', 'test@example.com')
+    _git(tmp_path, 'config', 'user.name', 'Test')
+    for name in ('kept.txt', 'edited.txt', 'committed.txt', 'deleted.txt'):
+        (tmp_path / name).write_text('base\n', encoding='utf-8')
+    (tmp_path / '.gitignore').write_text('ignored.txt\n', encoding='utf-8')
+    _git(tmp_path, 'add', '-A')
+    _git(tmp_path, 'commit', '-qm', 'base')
+    _git(tmp_path, 'checkout', '-qb', 'topic')
+
+    (tmp_path / 'committed.txt').write_text('changed\n', encoding='utf-8')
+    _git(tmp_path, 'commit', '-qam', 'topic')
+    (tmp_path / 'edited.txt').write_text('uncommitted\n', encoding='utf-8')
+    (tmp_path / 'deleted.txt').unlink()
+    (tmp_path / 'new file.txt').write_text('untracked\n', encoding='utf-8')
+    (tmp_path / 'ignored.txt').write_text('ignored\n', encoding='utf-8')
+
+    assert changed_files('main', tmp_path) == ['committed.txt', 'edited.txt', 'new file.txt']
+
+
+def test_check_changed_reports_an_unresolvable_base_as_exit_two(capsys):
+    from check_changed import main as check_changed_main
+
+    assert check_changed_main(['--base', 'refs/heads/does-not-exist', '--pre-commit', 'false']) == 2
+    assert 'BASE_REF=<ref>' in capsys.readouterr().err
+
+
+def test_make_check_is_hooks_on_changed_files_then_test():
+    makefile = read_makefile()
+    assert re.search(r'^check: check-changed test$', makefile, re.MULTILINE)
+    assert 'scripts/check_changed.py --base "$(BASE_REF)" --pre-commit "$(PRE_COMMIT)"' in makefile

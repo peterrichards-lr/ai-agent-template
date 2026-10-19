@@ -74,7 +74,8 @@ runs `lint-tooling` and `docs`, while `Build & Test` runs `lint-lang` and `test`
 filter that skips it for documentation-only changes. The union is `make verify`, with nothing
 dropped and nothing run twice. "Did I break CI?" is therefore still one local command. The
 individual targets (`make lint`, `make test`, `make docs`) are available when you want to run
-just one; `make help` lists them all.
+just one, and `make check` is the fast loop while iterating (hooks on changed files only,
+then tests); `make help` lists them all.
 
 Each ecosystem's real test command lives in the `Makefile`'s language profile block, stated once
 and filled in by `scripts/bootstrap_template.py --lang <stack>`. Do not restate it here, in
@@ -156,4 +157,4 @@ Expired PATs trigger `401 Unauthorized` errors on `gh` commands. Set calendar re
 
 <!-- markdownlint-disable MD049 -->
 ---
-*Last Updated: 2026-10-16* | *Last Reviewed: 2026-10-16*
+*Last Updated: 2026-10-19* | *Last Reviewed: 2026-10-19*

@@ -62,7 +62,7 @@ This template solves these failure modes out of the box, providing a standardize
 
 ### 11. One Task Runner Vocabulary Across Every Stack
 - **Problem**: Each ecosystem's commands get restated in `AGENTS.md`, `CONTRIBUTING.md`, the skill files and the CI workflow. The copies drift, and an agent that reads the wrong one runs the wrong command -- or, in Go's case, an EDR-unsafe one.
-- **Pattern**: A root `Makefile` exposes seven fixed verbs (`setup`, `lint`, `test`, `docs`, `verify`, `push`, `help`) in every language. Only a marked profile block varies, filled in by `scripts/bootstrap_template.py --lang <stack>`. `make verify` is invoked *by* `.github/workflows/ci.yml`, so local and CI gates cannot drift. A knock-on effect: once the sanctioned Go test path is `make test` rather than something starting with `go test`, `.claude/settings.json` can deny `Bash(go test*)` wholesale -- deny beats allow, and "`go test*` except `-c`" is inexpressible in the permission patterns.
+- **Pattern**: A root `Makefile` exposes eight fixed verbs (`setup`, `lint`, `test`, `docs`, `check`, `verify`, `push`, `help`) in every language. Only a marked profile block varies, filled in by `scripts/bootstrap_template.py --lang <stack>`. `make verify` is invoked *by* `.github/workflows/ci.yml`, so local and CI gates cannot drift. A knock-on effect: once the sanctioned Go test path is `make test` rather than something starting with `go test`, `.claude/settings.json` can deny `Bash(go test*)` wholesale -- deny beats allow, and "`go test*` except `-c`" is inexpressible in the permission patterns.
 
 ### 12. Per-Language CI Profiles Instead of One Language's CI For Everyone
 - **Problem**: The template shipped a single `ci.yml` that installed Python and ran the template's *own* pytest suite. `--lang go` rewrote the Makefile and `AGENTS.md` but left that workflow untouched, so a Go repository had a check named "CI Quality Gate" that never compiled a line of Go -- and reported green while doing it. Every downstream project wrote its CI from scratch, so the template contributed nothing reusable at exactly the point where a mistake is most expensive.
@@ -86,14 +86,15 @@ This template solves these failure modes out of the box, providing a standardize
 When bootstrapping this template for a specific programming language, follow these ecosystem
 customization steps. In every case the test command itself is **not** restated below: it lives in
 the `Makefile`'s language profile block, which `scripts/bootstrap_template.py --lang <stack>` fills
-in, and every stack is driven through the same seven verbs:
+in, and every stack is driven through the same eight verbs:
 
 | Target | Contract |
 | :--- | :--- |
 | `make setup` | Install dev dependencies and the pre-commit Git hooks. |
 | `make lint` | `pre-commit run --all-files` plus the stack's linters. |
 | `make test` | The stack's non-interactive test command. |
-| `make docs` | `append_timestamps.py` then `check_docs_review.py`. |
+| `make docs` | `generate_skill_index.py`, `append_timestamps.py`, then `check_docs_review.py`. |
+| `make check` | Fast inner loop: pre-commit on files changed relative to `BASE_REF` (default `origin/main`), then `test`. A subset of `verify`, not a substitute. |
 | `make verify` | `lint` + `test` + `docs` -- exactly what `.github/workflows/ci.yml` runs, split across its two jobs. |
 | `make push` | Guarded commit-and-push (`scripts/agent_push.py`). |
 | `make help` | Self-documenting target list; the default goal. |
@@ -192,7 +193,10 @@ python3 scripts/bootstrap_template.py --name "my-awesome-service" --lang go --cl
 ```
 
 Add `--dry-run` to print every planned mutation -- file writes, deletions, `gh repo edit`
-calls and hook installation -- without applying any of them.
+calls and hook installation -- without applying any of them. A real run refuses a working
+tree whose tracked files have uncommitted changes unless `--allow-dirty` is passed: bootstrap
+rewrites and deletes tracked files, and a committed tree is what makes `git restore .` a
+complete undo. Outside a git work tree it warns instead, since there is nothing to restore from.
 
 The bootstrapper script will:
 1. Generate a clean project `README.md` describing your application.

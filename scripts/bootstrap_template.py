@@ -145,8 +145,8 @@ PRE_COMMIT_CONFIG_RELPATH = Path('.pre-commit-config.yaml')
 DOCTOR_TEMPLATE_MODE_ENTRY = 'scripts/doctor.py --mode template'
 DOCTOR_ADOPTER_MODE_ENTRY = 'scripts/doctor.py'
 
-# The task runner (#46). Every stack answers to the same seven verbs -- setup, lint,
-# test, docs, verify, push, help -- and only the block between these markers varies by
+# The task runner (#46). Every stack answers to the same eight verbs -- setup, lint,
+# test, docs, check, verify, push, help -- and only the block between these markers varies by
 # language. Everything else in the Makefile is language agnostic and is never rewritten.
 MAKEFILE_RELPATH = Path('Makefile')
 MAKEFILE_PROFILE_BEGIN_MARKER = '# >>> BOOTSTRAP LANGUAGE PROFILE >>>'
@@ -415,6 +415,53 @@ def check_system_dependencies(strict: bool = False):
         if strict:
             print("❌ Error: pre-commit is required in strict mode.", file=sys.stderr)
             sys.exit(1)
+
+def uncommitted_tracked_changes(root_dir: Path):
+    """Tracked paths with uncommitted changes, or None when root_dir is not a git work tree.
+
+    None means "git cannot vouch for this tree", which is not the same as "clean": the
+    caller must treat the two differently.
+    """
+    inside = subprocess.run(['git', '-C', str(root_dir), 'rev-parse', '--is-inside-work-tree'],
+                            capture_output=True, text=True, check=False)
+    if inside.returncode != 0 or inside.stdout.strip() != 'true':
+        return None
+    status = subprocess.run(
+        ['git', '-C', str(root_dir), 'status', '--porcelain', '--untracked-files=no'],
+        capture_output=True, text=True, check=True)
+    return [line[3:] for line in status.stdout.splitlines() if line.strip()]
+
+
+def ensure_bootstrap_is_reversible(root_dir: Path, allow_dirty: bool = False, dry_run: bool = False):
+    """Make git the backup for every file bootstrap rewrites or deletes.
+
+    Bootstrap overwrites and removes tracked files (the Makefile profile, ci.yml, the
+    README and CHANGELOG under --clean-template). On a committed tree all of that is one
+    `git restore .` away from undone; on a tree with uncommitted edits those edits would
+    be lost for good. So a dirty tree is refused unless --allow-dirty says the loss is
+    accepted, and a tree git cannot see at all is warned about rather than assumed clean.
+    """
+    changed = uncommitted_tracked_changes(root_dir)
+    if changed is None:
+        print("  ⚠️ Warning: not a git work tree, so bootstrap's changes cannot be undone with git.\n"
+              "     To make them reversible first: git init && git add -A && git commit -m 'Template'")
+        return
+    if not changed:
+        print("  ✓ Working tree is committed; undo bootstrap with `git restore .`"
+              " (then `git status` lists any files it created)")
+        return
+    listing = '\n'.join(f"       {path}" for path in changed[:10])
+    more = f"\n       ... and {len(changed) - 10} more" if len(changed) > 10 else ''
+    if dry_run or allow_dirty:
+        print(f"  ⚠️ Warning: {len(changed)} tracked file(s) have uncommitted changes that a real run "
+              f"could overwrite:\n{listing}{more}")
+        return
+    print(f"❌ Error: {len(changed)} tracked file(s) have uncommitted changes:\n{listing}{more}\n"
+          "   Bootstrap rewrites and deletes tracked files, and git is its backup. Commit or stash\n"
+          "   first, or pass --allow-dirty to accept that these edits may be overwritten.",
+          file=sys.stderr)
+    sys.exit(1)
+
 
 def configure_task_runner(root_dir: Path, language: str, dry_run: bool = False) -> bool:
     """Rewrite the Makefile's language profile block for the selected stack.
@@ -1398,7 +1445,8 @@ def bootstrap(
     conduct_email: str = None,
     dry_run: bool = False,
     docs_site: bool = False,
-    docs_profile: str = None
+    docs_profile: str = None,
+    allow_dirty: bool = False
 ):
     root_dir = Path(__file__).parent.parent.resolve()
     print(f"🚀 Initializing AI Agent Project Template in: {root_dir}")
@@ -1409,6 +1457,7 @@ def bootstrap(
     print("-" * 50)
 
     check_system_dependencies(strict=install_deps)
+    ensure_bootstrap_is_reversible(root_dir, allow_dirty=allow_dirty, dry_run=dry_run)
     print("-" * 50)
 
     # 1. Optionally install dev dependencies if requested
@@ -1584,6 +1633,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     # usage error, raised before any file is touched. See #90.
     parser.add_argument('--install-deps', action='store_true', help='Automatically pip install requirements-dev.txt (plus requirements-python.txt for --lang python)')
     parser.add_argument('--dry-run', action='store_true', help='Preview every planned mutation without modifying files, repository settings or Git hooks')
+    parser.add_argument('--allow-dirty', action='store_true', help='Run even though tracked files have uncommitted changes, which bootstrap may overwrite (by default a dirty tree is refused, so git can undo every change)')
     parser.add_argument('--clean-template', action='store_true', help='Clean up template meta docs and generate clean project README')
     parser.add_argument('--repo-desc', type=str, default=None, help='GitHub repository description for SEO')
     parser.add_argument('--repo-topics', type=str, default=None, help='Comma-separated list of GitHub topics for SEO')
@@ -1617,7 +1667,8 @@ def main():
         conduct_email=args.conduct_email,
         dry_run=args.dry_run,
         docs_site=args.docs_site,
-        docs_profile=args.docs_profile
+        docs_profile=args.docs_profile,
+        allow_dirty=args.allow_dirty
     )
 
 if __name__ == '__main__':

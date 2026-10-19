@@ -1,9 +1,9 @@
 # Makefile - One Task Runner Vocabulary for Agents and Humans
 #
-# Every language stack this template supports answers to the same seven verbs, so an
+# Every language stack this template supports answers to the same eight verbs, so an
 # agent never has to work out which ecosystem's commands this project uses:
 #
-#   make setup   make lint   make test   make docs   make verify   make push   make help
+#   make setup  make lint  make test  make docs  make check  make verify  make push  make help
 #
 # `make verify` is exactly what .github/workflows/ci.yml runs. "Did I break CI?" is
 # therefore one local command rather than a careful reading of the workflow file, and
@@ -36,12 +36,15 @@ endif
 # `make docs` cannot pass locally and fail in the pipeline.
 DOCS_MAX_AGE_DAYS ?= 180
 
+# `make check` hooks only the files changed relative to the merge base with this ref.
+BASE_REF ?= origin/main
+
 # Commit subject for `make push`. A make variable rather than a positional argument,
 # so a forgotten message can never be filled in by the next flag on the line.
 MESSAGE ?=
 PUSH_ARGS ?=
 
-.PHONY: help setup lint test docs verify push setup-tooling lint-tooling skill-index
+.PHONY: help setup lint test docs check verify push setup-tooling lint-tooling skill-index check-changed
 
 help:
 	@echo "Task runner. 'make verify' is exactly what CI runs."
@@ -50,12 +53,14 @@ help:
 	@echo "  make lint    - pre-commit run --all-files, plus this stack's linters"
 	@echo "  make test    - this stack's non-interactive test command"
 	@echo "  make docs    - regenerate the skill index, refresh and verify doc footers"
+	@echo "  make check   - fast inner loop: hooks on changed files, then test"
 	@echo "  make verify  - lint + test + docs; the full local quality gate"
 	@echo "  make push    - guarded commit-and-push (scripts/agent_push.py)"
 	@echo "  make help    - this message"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make push MESSAGE=\"feat(scope): what changed\""
+	@echo "  make check BASE_REF=origin/develop"
 	@echo "  make verify DOCS_MAX_AGE_DAYS=365"
 
 setup: setup-tooling setup-lang
@@ -81,6 +86,13 @@ docs: skill-index
 	$(PYTHON) scripts/check_docs_review.py --max-review-days $(DOCS_MAX_AGE_DAYS) --max-update-days $(DOCS_MAX_AGE_DAYS)
 
 verify: lint test docs
+
+# The agent's edit-test loop: pre-commit over the changed files only, then the stack's
+# tests. A subset of `make verify`, never a substitute -- run verify before a pull request.
+check: check-changed test
+
+check-changed:
+	@$(PYTHON) scripts/check_changed.py --base "$(BASE_REF)" --pre-commit "$(PRE_COMMIT)"
 
 # Guarded commit-and-push. The guards live in scripts/agent_push.py so they are
 # unit-testable and work on a Windows checkout: it refuses a no-op push, refuses to
