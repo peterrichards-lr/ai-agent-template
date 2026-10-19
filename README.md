@@ -13,7 +13,7 @@ Whether you are building in **Go**, **Python**, **Rust**, **Java**, **TypeScript
 - 📌 **Persistent Scratchpad State (`.agent-state.md`)**: Shared gitignored scratchpad tracking project status, active goals, and roadmap priorities across provider switches. Seeded from the tracked template `.agents/templates/agent-state.md` during bootstrap, so a fresh clone always starts with one.
 - 🛡️ **Language-Agnostic Quality Gates (`.pre-commit-config.yaml`)**: Out-of-the-box pre-commit configuration supporting secret scanning (`detect-secrets`, `gitleaks`), markdown link validation, document review policies, and modular linting for Go, Python, Rust, Java, and Node.js.
 - ⏱️ **Automated Documentation Hygiene**: Zero-dependency Python 3 tools (`append_timestamps.py` and `check_docs_review.py`) to enforce timestamp footers (`*Last Updated* | *Last Reviewed*`) and prevent documentation decay.
-- 🧰 **One Task Runner Vocabulary (`Makefile`)**: `make setup`, `make lint`, `make test`, `make docs`, `make verify`, `make push` and `make help` mean the same thing in Go, Python, Rust, Java, Node, C++ and Liferay projects. Only a marked profile block varies, filled in by the bootstrapper. `make verify` is invoked *by* `ci.yml`, so "did I break CI" is one local command and the two cannot drift.
+- 🧰 **One Task Runner Vocabulary (`Makefile`)**: `make setup`, `make lint`, `make test`, `make docs`, `make check`, `make verify`, `make push` and `make help` mean the same thing in Go, Python, Rust, Java, Node, C++ and Liferay projects. Only a marked profile block varies, filled in by the bootstrapper. `make verify` is invoked *by* `ci.yml`, so "did I break CI" is one local command and the two cannot drift.
 - ⚙️ **Project Bootstrapper (`scripts/bootstrap_template.py`)**: One-command initialization script that customizes the template for your chosen programming language stack, installs git hooks, and seeds project metadata. `--dry-run` previews every mutation before anything is written.
 - 🩺 **Post-Bootstrap Verification (`scripts/doctor.py`)**: Runs as bootstrap's final step and as a pre-commit hook, exiting non-zero with the file and line of every surviving template placeholder, plus checks that `.claude/skills` resolved to a directory and the agent scratchpad was seeded. A missed substitution fails loudly instead of shipping an unsubstituted test-command placeholder into your agent rules.
 - 🏗️ **Per-Language CI Profiles (`.agents/templates/ci/`)**: `--lang go` installs a workflow that builds Go, not one that runs this template's Python self-tests. Every profile calls the same `Makefile` verbs, so no ecosystem command is ever restated in YAML. The always-on `Code & Documentation Quality Verification` job carries the doc and lint checks; only the `Build & Test` job sits behind a paths filter, paired with a same-named skip job so a documentation-only pull request still reports the context instead of deadlocking on it, and a *failed* filter fails loudly rather than silently skipping both.
@@ -94,7 +94,7 @@ python3 scripts/doctor.py
 
 ### 3. Use the Task Runner
 
-Everything after bootstrap goes through seven verbs that mean the same thing in every
+Everything after bootstrap goes through eight verbs that mean the same thing in every
 language stack, so an agent never has to work out which ecosystem's commands apply:
 
 ```bash
@@ -102,7 +102,8 @@ make help      # self-documenting target list (the default goal)
 make setup     # install dev dependencies and the pre-commit git hooks
 make lint      # pre-commit run --all-files, plus this stack's linters
 make test      # this stack's non-interactive test command
-make docs      # refresh and verify documentation timestamp footers
+make docs      # regenerate the skill index, refresh and verify doc footers
+make check     # fast inner loop: hooks on changed files only, then test
 make verify    # lint + test + docs -- the full local quality gate
 make push MESSAGE="feat(scope): what changed"
 ```

@@ -145,8 +145,8 @@ PRE_COMMIT_CONFIG_RELPATH = Path('.pre-commit-config.yaml')
 DOCTOR_TEMPLATE_MODE_ENTRY = 'scripts/doctor.py --mode template'
 DOCTOR_ADOPTER_MODE_ENTRY = 'scripts/doctor.py'
 
-# The task runner (#46). Every stack answers to the same seven verbs -- setup, lint,
-# test, docs, verify, push, help -- and only the block between these markers varies by
+# The task runner (#46). Every stack answers to the same eight verbs -- setup, lint,
+# test, docs, check, verify, push, help -- and only the block between these markers varies by
 # language. Everything else in the Makefile is language agnostic and is never rewritten.
 MAKEFILE_RELPATH = Path('Makefile')
 MAKEFILE_PROFILE_BEGIN_MARKER = '# >>> BOOTSTRAP LANGUAGE PROFILE >>>'
