@@ -82,6 +82,10 @@ The bootstrapper will:
 10. Configure GitHub Repository Description and SEO Topic Tags via `gh` CLI.
 11. Run `scripts/doctor.py` and **fail** if any placeholder survived.
 
+Git is bootstrap's backup. It refuses to run while tracked files have uncommitted changes
+(override with `--allow-dirty`), so every rewrite and deletion it makes can be undone with
+`git restore .`; `--dry-run` reports the same check without refusing.
+
 Re-run the verification at any time:
 
 ```bash

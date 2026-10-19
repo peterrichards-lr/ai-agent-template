@@ -192,7 +192,10 @@ python3 scripts/bootstrap_template.py --name "my-awesome-service" --lang go --cl
 ```
 
 Add `--dry-run` to print every planned mutation -- file writes, deletions, `gh repo edit`
-calls and hook installation -- without applying any of them.
+calls and hook installation -- without applying any of them. A real run refuses a working
+tree whose tracked files have uncommitted changes unless `--allow-dirty` is passed: bootstrap
+rewrites and deletes tracked files, and a committed tree is what makes `git restore .` a
+complete undo. Outside a git work tree it warns instead, since there is nothing to restore from.
 
 The bootstrapper script will:
 1. Generate a clean project `README.md` describing your application.

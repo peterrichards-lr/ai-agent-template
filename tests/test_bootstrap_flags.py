@@ -86,7 +86,9 @@ def test_cleanup_does_not_run_without_clean_template():
 
     assert result.returncode == 0, result.stderr
     assert CLEANUP_BANNER not in result.stdout
-    assert 'docs/TEMPLATE_GUIDE.md' not in result.stdout
+    # The planned deletion, not the bare path: the dirty-tree warning lists uncommitted
+    # paths, which may legitimately include docs/TEMPLATE_GUIDE.md.
+    assert 'docs/TEMPLATE_GUIDE.md: remove template meta-doc' not in result.stdout
 
 
 def test_clean_template_remains_the_explicit_way_to_request_cleanup():
@@ -94,7 +96,7 @@ def test_clean_template_remains_the_explicit_way_to_request_cleanup():
 
     assert result.returncode == 0, result.stderr
     assert CLEANUP_BANNER in result.stdout
-    assert 'docs/TEMPLATE_GUIDE.md' in result.stdout
+    assert 'docs/TEMPLATE_GUIDE.md: remove template meta-doc' in result.stdout
 
 
 def test_changelog_records_the_removal_as_a_behaviour_change():
