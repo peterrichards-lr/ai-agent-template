@@ -99,7 +99,27 @@ Before a high-commitment action (merging, deploying, tagging, applying a ruleset
 
 ---
 
-## 5. Related References
+## 5. Engineering Principles
+
+Project-level defaults for how changes are made, complementing the per-task skills. They
+are deliberately few and general: edit them to fit this project, and keep the list short.
+
+1. **Fix where the problem is produced.** Parse, validate and normalise a value once, at
+   the boundary that owns it; downstream code uses the owner's result rather than
+   re-interpreting the raw input. Repair the producer before adding a downstream workaround.
+2. **Unknown is not absent.** When a value cannot be determined, keep it explicitly
+   unknown. Never let it default to "none", "false", "empty" or "not applicable".
+3. **Finish the change.** Remove the code, aliases, wrappers and tests a change supersedes
+   in the same change. If related cleanup remains, say what it is and why it was left.
+4. **A green test is not the proof.** A passing regression test shows the symptom is gone,
+   not that the brittleness behind it is. Report what was verified and how, and name what
+   was not -- including anything checked only against a mock or simulation.
+5. **Earn every abstraction.** Introduce one only when it removes complexity you have
+   actually observed, not complexity you anticipate.
+
+---
+
+## 6. Related References
 
 | File | Purpose |
 | :--- | :--- |
