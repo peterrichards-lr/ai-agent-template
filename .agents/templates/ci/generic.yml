@@ -149,7 +149,7 @@ jobs:
       # command is filled in, so this job stands as a red reminder to configure one
       # rather than reporting a green build over a project that has never run a test.
 
-      # `make setup` rather than `make setup-lang`: the seven verbs are the contract, and
+      # `make setup` rather than `make setup-lang`: the eight verbs are the contract, and
       # a stack whose tests import a tool from requirements-dev.txt (this template's own
       # do) would otherwise fail for a reason no reading of this file could explain.
       - name: Install dependencies
