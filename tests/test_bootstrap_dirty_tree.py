@@ -25,6 +25,13 @@ def commit_clone(project: Path, env: dict):
         subprocess.run(['git', *args], cwd=project, env=env, check=True, capture_output=True)
 
 
+def work_tree_fingerprint(project: Path) -> dict:
+    """The tree minus .git/, which git changes on its own: in CI the commit in commit_clone
+    left a background `.git/objects/maintenance.lock` appearing between the two snapshots."""
+    return {rel: digest for rel, digest in fingerprint_tree(project).items()
+            if rel != '.git' and not rel.startswith('.git/')}
+
+
 def _dirty_clone(tmp_path):
     project, env = make_isolated_clone(tmp_path)
     commit_clone(project, env)
@@ -35,14 +42,14 @@ def _dirty_clone(tmp_path):
 
 def test_bootstrap_refuses_a_tree_with_uncommitted_tracked_changes(tmp_path):
     project, env = _dirty_clone(tmp_path)
-    before = fingerprint_tree(project)
+    before = work_tree_fingerprint(project)
 
     result = run_bootstrap(project, env, QUICKSTART_ARGS)
 
     assert result.returncode == 1
     assert 'uncommitted changes' in result.stderr and 'Makefile' in result.stderr
     assert '--allow-dirty' in result.stderr
-    assert fingerprint_tree(project) == before, "a refused run must not touch the tree"
+    assert work_tree_fingerprint(project) == before, "a refused run must not touch the tree"
 
 
 def test_allow_dirty_runs_on_a_tree_with_uncommitted_changes(tmp_path):
