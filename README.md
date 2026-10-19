@@ -189,6 +189,7 @@ is materialized as a text file and agent skill discovery silently finds nothing.
 │   ├── release.py                     # Semver proposal, issue-closure audit & tagging gate
 │   ├── doctor.py                      # Post-bootstrap placeholder & structure verification
 │   └── gh_issue_sync.py               # GitHub issue & task plan helper
+├── experiments/skill-evals/           # Measures whether the skills earn their context
 ├── requirements-dev.txt               # Language-agnostic agent tooling & quality gate deps
 ├── requirements-python.txt            # Python-project test deps (removed for other stacks)
 └── src/                               # Starter source directory (Python marker removed for other stacks)

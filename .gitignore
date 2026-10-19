@@ -16,6 +16,7 @@ Thumbs.db
 .progress-signal
 scratch/
 implementation_plan.md
+experiments/skill-evals/results/
 walkthrough.md
 *.tmp
 *.log

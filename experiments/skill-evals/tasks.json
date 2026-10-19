@@ -1,0 +1,21 @@
+{
+  "$comment": "Seed tasks for run_eval.py. Each check is a shell command run in the task's worktree after the agent finishes; exit 0 means success. {python} is the interpreter running the harness. Checks must pass in every arm, so they never require a guidance file to exist.",
+  "tasks": [
+    {
+      "id": "fix-ignored-dirs",
+      "prompt": "scripts/append_timestamps.py is injecting timestamp footers into Markdown files inside node_modules/ and other directories it is supposed to skip. Find and fix the bug, and make sure the existing tests pass.",
+      "setup": "{python} -c \"import pathlib; p = pathlib.Path('scripts/append_timestamps.py'); s = p.read_text(); p.write_text(s.replace('for part in path.parts:', 'for part in path.parts[:1]:', 1))\"",
+      "check": "{python} -m pytest -q -p no:cacheprovider tests/test_template_scripts.py -k 'should_ignore or append_timestamps'"
+    },
+    {
+      "id": "add-skill",
+      "prompt": "Add a new agent skill named dependency-updates that tells agents how to review and merge Dependabot pull requests in this repository. Follow this repository's conventions for adding a skill.",
+      "check": "{python} -c \"import sys, pathlib; sys.path.insert(0, 'scripts'); from generate_skill_index import parse_skill; parse_skill(pathlib.Path('.agents/skills/dependency-updates'), pathlib.Path('.'))\" && { test ! -f AGENTS.md || {python} scripts/generate_skill_index.py --check; }"
+    },
+    {
+      "id": "document-base-ref",
+      "prompt": "Document the BASE_REF variable that `make check` accepts in CONTRIBUTING.md, following this repository's documentation conventions.",
+      "check": "grep -q BASE_REF CONTRIBUTING.md && grep -q \"Last Updated: $(date +%Y-%m-%d)\" CONTRIBUTING.md"
+    }
+  ]
+}
