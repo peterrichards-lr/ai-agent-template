@@ -2,7 +2,7 @@
 # Every project bootstrapped from this template needs these regardless of its stack.
 # Python-project test dependencies live in requirements-python.txt, which
 # `bootstrap_template.py --clean-template` removes for non-Python languages.
-pre-commit==4.6.2
+pre-commit==4.7.0
 detect-secrets==1.5.0
 actionlint-py==1.7.12.25
 PyYAML==6.0.3
